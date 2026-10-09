@@ -329,6 +329,25 @@ func (r *run) walk(x, y, z, radius float32) error {
 	return nil
 }
 
+// approachNpc walks to the spawn point, then follows the NPC if it wandered off.
+func (r *run) approachNpc(entry uint32, x, y, z float32) error {
+	if err := r.walk(x, y, z, 3); err != nil {
+		return err
+	}
+	for i := 0; i < 4; i++ {
+		vis, err := r.s.api.Nearby(r.ctx, &statepb.NearbyRequest{Kind: "unit", Entry: entry, Radius: 80, Max: 1})
+		if err != nil || len(vis.Objs) == 0 || vis.Objs[0].Dist <= 4 {
+			return nil
+		}
+		o := vis.Objs[0]
+		if err := r.walk(o.X, o.Y, o.Z, 2.5); err != nil {
+			return err
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	return nil
+}
+
 func (r *run) doQuest(id uint32, reward uint32) error {
 	info, err := r.s.api.QuestInfo(r.ctx, id)
 	if err != nil {
@@ -348,7 +367,7 @@ func (r *run) doQuest(id uint32, reward uint32) error {
 			return fmt.Errorf("no quest giver found on this map")
 		}
 		r.step("go to %s to accept '%s'", st.Name, info.Title)
-		if err := r.walk(st.X, st.Y, st.Z, 3); err != nil {
+		if err := r.approachNpc(st.Entry, st.X, st.Y, st.Z); err != nil {
 			return err
 		}
 		if res, err := r.s.api.Accept(r.ctx, st.Entry, id); err != nil || !res.Ok {
@@ -384,7 +403,7 @@ func (r *run) doQuest(id uint32, reward uint32) error {
 		return fmt.Errorf("no quest ender found on this map")
 	}
 	r.step("turn in '%s' at %s", info.Title, en.Name)
-	if err := r.walk(en.X, en.Y, en.Z, 3); err != nil {
+	if err := r.approachNpc(en.Entry, en.X, en.Y, en.Z); err != nil {
 		return err
 	}
 	if res, err := r.s.api.TurnIn(r.ctx, en.Entry, id, reward); err != nil || !res.Ok {
@@ -526,12 +545,19 @@ func (r *run) useObject(entry uint32, name string, loot bool) error {
 		return err
 	}
 	me := snap.Self
-	sp, err := r.s.api.Spawns(r.ctx, entry, me.Map, me.X, me.Y, 800, "gameobject")
-	if err != nil || len(sp) == 0 {
-		return fmt.Errorf("no spawn found for object %s (%d)", name, entry)
-	}
 	r.step("use %s", name)
-	if err := r.walk(sp[0].X, sp[0].Y, sp[0].Z, 3); err != nil {
+	tx, ty, tz := float32(0), float32(0), float32(0)
+	if vis, err := r.s.api.Nearby(r.ctx, &statepb.NearbyRequest{Kind: "gameobject", Entry: entry, Radius: 80, Max: 1}); err == nil && len(vis.Objs) > 0 {
+		o := vis.Objs[0]
+		tx, ty, tz = o.X, o.Y, o.Z
+	} else {
+		sp, err := r.s.api.Spawns(r.ctx, entry, me.Map, me.X, me.Y, 800, "gameobject")
+		if err != nil || len(sp) == 0 {
+			return fmt.Errorf("no spawn found for object %s (%d)", name, entry)
+		}
+		tx, ty, tz = sp[0].X, sp[0].Y, sp[0].Z
+	}
+	if err := r.walk(tx, ty, tz, 2.5); err != nil {
 		return err
 	}
 	if res, err := r.s.api.UseObject(r.ctx, entry, loot); err != nil || !res.Ok {

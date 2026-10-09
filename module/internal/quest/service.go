@@ -141,9 +141,24 @@ func (s *Service) Use(ctx context.Context, r *pb.UseRequest) (*pb.QuestResult, e
 	if !r.Loot {
 		return &pb.QuestResult{Ok: true}, nil
 	}
+	s.loot.Wait = 1500 * time.Millisecond
 	res, err := s.loot.Take(ctx, s.s, o.Guid, false)
+	s.loot.Wait = 8 * time.Second
 	if err != nil {
-		return fail("loot: %v", err)
+		// Locked objects need the client to cast the opening spell (22810) on them.
+		s.loot.Drain()
+		cw := &wire.Writer{}
+		cw.U8(1)
+		cw.U32(22810)
+		cw.U8(0)
+		cw.U32(0x800)
+		cw.PackedGUID(o.Guid)
+		if err := moveio.Packet(ctx, s.s, uint32(opcode.CMSGCastSpell), cw.B); err != nil {
+			return fail("cast: %v", err)
+		}
+		if res, err = s.loot.Take(ctx, s.s, o.Guid, false); err != nil {
+			return fail("loot: %v", err)
+		}
 	}
 	return &pb.QuestResult{Ok: true, Items: res.Items}, nil
 }

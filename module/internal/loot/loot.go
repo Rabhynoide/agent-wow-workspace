@@ -21,9 +21,12 @@ type response struct {
 }
 
 // Tracker receives SMSG_LOOT_RESPONSE packets.
-type Tracker struct{ ch chan response }
+type Tracker struct {
+	ch   chan response
+	Wait time.Duration
+}
 
-func NewTracker() *Tracker { return &Tracker{ch: make(chan response, 8)} }
+func NewTracker() *Tracker { return &Tracker{ch: make(chan response, 8), Wait: 8 * time.Second} }
 
 func (t *Tracker) OnPacket(payload []byte) {
 	r := wire.NewReader(payload)
@@ -80,7 +83,7 @@ func (t *Tracker) Take(ctx context.Context, s modv1.SessionClient, guid uint64, 
 	var resp response
 	select {
 	case resp = <-t.ch:
-	case <-time.After(8 * time.Second):
+	case <-time.After(t.Wait):
 		return Result{}, fmt.Errorf("no loot response")
 	case <-ctx.Done():
 		return Result{}, ctx.Err()

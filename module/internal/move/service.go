@@ -28,7 +28,7 @@ const (
 	flagForward = 0x1
 	flagWalk    = 0x100
 	tick        = 100 * time.Millisecond
-	heartbeat   = 500 * time.Millisecond
+	heartbeat   = 250 * time.Millisecond
 	maxWait     = 25
 )
 
@@ -168,6 +168,30 @@ func densify(m *nav.Mesh, tm *terrain.Maps, pts []nav.V3, corridor []nav.PolyRef
 			add(v)
 		}
 		add(b)
+	}
+	return smoothZ(out)
+}
+
+// smoothZ low-passes heights so stairs and bumps become ramps; real cliffs (big steps) are kept.
+func smoothZ(p [][3]float32) [][3]float32 {
+	if len(p) < 3 {
+		return p
+	}
+	out := make([][3]float32, len(p))
+	copy(out, p)
+	const w = 3
+	for i := range p {
+		var sum, n float32
+		for j := max(0, i-w); j <= min(len(p)-1, i+w); j++ {
+			if math.Abs(float64(p[j][2]-p[i][2])) > 2.5 {
+				continue
+			}
+			sum += p[j][2]
+			n++
+		}
+		if n > 0 {
+			out[i][2] = sum / n
+		}
 	}
 	return out
 }
@@ -348,8 +372,8 @@ func (s *Service) run(ctx context.Context, j *job, path [][3]float32, target [3]
 		step := speed * float32(now.Sub(lastTick).Seconds())
 		lastTick = now
 		for step > 0 && seg < len(path) {
-			d := dist(pos, path[seg])
-			if d <= step {
+			d := dist2(pos, path[seg])
+			if d <= step || d < 1e-3 {
 				pos = path[seg]
 				step -= d
 				seg++
@@ -376,7 +400,7 @@ func (s *Service) run(ctx context.Context, j *job, path [][3]float32, target [3]
 		j.st.DistLeft = remaining
 		j.st.EtaS = remaining / speed
 		j.mu.Unlock()
-		if seg >= len(path) || dist2(pos, target) <= radius {
+		if seg >= len(path) || (dist2(pos, target) <= radius && math.Abs(float64(pos[2]-target[2])) <= 3) {
 			finish("arrived", "")
 			return
 		}
