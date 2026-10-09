@@ -1,5 +1,5 @@
 .PHONY: generate build
-PROTOS := state world move
+PROTOS := state world move quest combat auto town
 
 generate:
 	go build -o bin/ google.golang.org/protobuf/cmd/protoc-gen-go google.golang.org/grpc/cmd/protoc-gen-go-grpc

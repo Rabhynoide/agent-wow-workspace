@@ -66,7 +66,7 @@ message QuestInfo {
   string title = 2;
   uint32 level = 3;
   uint32 min_level = 4;
-  uint32 zone_or_sort = 5;
+  int32 zone_or_sort = 5;
   uint32 prev_quest = 6;
   uint32 next_quest = 7;
   uint32 reward_xp_id = 8;
@@ -153,7 +153,26 @@ message CreatureInfo {
   uint32 loot_id = 10;
 }
 
+message ItemSourcesRequest {
+  uint32 entry = 1;
+}
+
+message ItemSource {
+  // "creature" or "gameobject".
+  string kind = 1;
+  uint32 entry = 2;
+  string name = 3;
+  uint32 min_level = 4;
+  uint32 max_level = 5;
+  float chance = 6;
+}
+
+message ItemSourcesResponse {
+  repeated ItemSource sources = 1;
+}
+
 service World {
+  rpc ItemSources(ItemSourcesRequest) returns (ItemSourcesResponse);
   rpc FindNpc(FindNpcRequest) returns (FindNpcResponse);
   rpc QuestInfo(QuestInfoRequest) returns (QuestInfoResponse);
   rpc QuestsForNpc(QuestsForNpcRequest) returns (QuestsForNpcResponse);

@@ -26,6 +26,7 @@ message SelfInfo {
   bool dead = 17;
   float run_speed = 18;
   uint32 unit_flags = 19;
+  bool ghost = 20;
 }
 
 message Item {
@@ -93,6 +94,10 @@ message SetPosRequest {
   uint32 map = 5;
 }
 
+message SpellsResponse {
+  repeated uint32 spells = 1;
+}
+
 message GetObjRequest {
   uint64 guid = 1;
 }
@@ -102,6 +107,7 @@ service State {
   rpc Nearby(NearbyRequest) returns (NearbyResponse);
   rpc GetObj(GetObjRequest) returns (Obj);
   rpc SetPos(SetPosRequest) returns (google.protobuf.Empty);
+  rpc Spells(google.protobuf.Empty) returns (SpellsResponse);
   rpc OnPacket(agentwow.module.v1.WorldPacket) returns (google.protobuf.Empty);
   rpc BeforeLogout(google.protobuf.Empty) returns (google.protobuf.Empty);
 }

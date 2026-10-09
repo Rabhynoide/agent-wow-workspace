@@ -25,6 +25,7 @@ const (
 	State_Nearby_FullMethodName       = "/wowagent.state.v1.State/Nearby"
 	State_GetObj_FullMethodName       = "/wowagent.state.v1.State/GetObj"
 	State_SetPos_FullMethodName       = "/wowagent.state.v1.State/SetPos"
+	State_Spells_FullMethodName       = "/wowagent.state.v1.State/Spells"
 	State_OnPacket_FullMethodName     = "/wowagent.state.v1.State/OnPacket"
 	State_BeforeLogout_FullMethodName = "/wowagent.state.v1.State/BeforeLogout"
 )
@@ -37,6 +38,7 @@ type StateClient interface {
 	Nearby(ctx context.Context, in *NearbyRequest, opts ...grpc.CallOption) (*NearbyResponse, error)
 	GetObj(ctx context.Context, in *GetObjRequest, opts ...grpc.CallOption) (*Obj, error)
 	SetPos(ctx context.Context, in *SetPosRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Spells(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*SpellsResponse, error)
 	OnPacket(ctx context.Context, in *v1.WorldPacket, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	BeforeLogout(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
@@ -89,6 +91,16 @@ func (c *stateClient) SetPos(ctx context.Context, in *SetPosRequest, opts ...grp
 	return out, nil
 }
 
+func (c *stateClient) Spells(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*SpellsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SpellsResponse)
+	err := c.cc.Invoke(ctx, State_Spells_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *stateClient) OnPacket(ctx context.Context, in *v1.WorldPacket, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -117,6 +129,7 @@ type StateServer interface {
 	Nearby(context.Context, *NearbyRequest) (*NearbyResponse, error)
 	GetObj(context.Context, *GetObjRequest) (*Obj, error)
 	SetPos(context.Context, *SetPosRequest) (*emptypb.Empty, error)
+	Spells(context.Context, *emptypb.Empty) (*SpellsResponse, error)
 	OnPacket(context.Context, *v1.WorldPacket) (*emptypb.Empty, error)
 	BeforeLogout(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	mustEmbedUnimplementedStateServer()
@@ -140,6 +153,9 @@ func (UnimplementedStateServer) GetObj(context.Context, *GetObjRequest) (*Obj, e
 }
 func (UnimplementedStateServer) SetPos(context.Context, *SetPosRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetPos not implemented")
+}
+func (UnimplementedStateServer) Spells(context.Context, *emptypb.Empty) (*SpellsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Spells not implemented")
 }
 func (UnimplementedStateServer) OnPacket(context.Context, *v1.WorldPacket) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method OnPacket not implemented")
@@ -240,6 +256,24 @@ func _State_SetPos_Handler(srv interface{}, ctx context.Context, dec func(interf
 	return interceptor(ctx, in, info, handler)
 }
 
+func _State_Spells_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StateServer).Spells(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: State_Spells_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StateServer).Spells(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _State_OnPacket_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(v1.WorldPacket)
 	if err := dec(in); err != nil {
@@ -298,6 +332,10 @@ var State_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetPos",
 			Handler:    _State_SetPos_Handler,
+		},
+		{
+			MethodName: "Spells",
+			Handler:    _State_Spells_Handler,
 		},
 		{
 			MethodName: "OnPacket",

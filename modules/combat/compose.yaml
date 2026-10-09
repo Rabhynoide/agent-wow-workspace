@@ -1,0 +1,8 @@
+services:
+  module:
+    build:
+      context: ../../module
+      args:
+        CMD: combat
+    volumes:
+      - ../../logs:/logs

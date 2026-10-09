@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package wowagent.combat.v1;
+option go_package = "wowagent/gen/combatv1;combatv1";
+
+import "api/module/v1/session.proto";
+import "google/protobuf/empty.proto";
+
+message KillRequest {
+  // Creature entry to hunt.
+  uint32 entry = 1;
+  // Number of kills wanted (0 = until the item goal is reached).
+  uint32 count = 2;
+  // Stop when the bags hold item_count of item_entry.
+  uint32 item_entry = 3;
+  uint32 item_count = 4;
+  // Search radius in yards (default 80).
+  float radius = 5;
+  // Job time limit in seconds (default 600).
+  uint32 max_s = 6;
+  // Seconds to block before returning the current status (default 20, max 25).
+  uint32 wait_s = 7;
+  bool no_loot = 8;
+}
+
+message RestRequest {
+  uint32 wait_s = 1;
+}
+
+message StatusRequest {
+  uint32 wait_s = 1;
+}
+
+message CombatStatus {
+  // idle | running | done | failed | stopped
+  string state = 1;
+  string reason = 2;
+  uint32 kills = 3;
+  uint32 items = 4;
+  uint32 hp_pct = 5;
+  uint32 mana_pct = 6;
+  uint32 elapsed_s = 7;
+  string doing = 8;
+  uint64 coin = 9;
+}
+
+service Combat {
+  rpc Kill(KillRequest) returns (CombatStatus);
+  rpc Rest(RestRequest) returns (CombatStatus);
+  rpc Status(StatusRequest) returns (CombatStatus);
+  rpc Stop(google.protobuf.Empty) returns (CombatStatus);
+  rpc OnPacket(agentwow.module.v1.WorldPacket) returns (google.protobuf.Empty);
+  rpc BeforeLogout(google.protobuf.Empty) returns (google.protobuf.Empty);
+}

@@ -32,6 +32,7 @@ const (
 	fUnitNpc     = 82
 	fQuestLog    = 158
 	fInvSlots    = 324
+	fPlayerFlags = 150
 	fXP          = 634
 	fNextXP      = 635
 	fCoinage     = 1170
@@ -66,11 +67,12 @@ type Store struct {
 	self    uint64
 	Map     uint32
 	objs    map[uint64]*Obj
+	Spells  map[uint32]bool
 	Packets uint32
 }
 
 func NewStore(self uint64) *Store {
-	return &Store{self: self, objs: map[uint64]*Obj{}}
+	return &Store{self: self, objs: map[uint64]*Obj{}, Spells: map[uint32]bool{}}
 }
 
 func (s *Store) obj(guid uint64, typ uint8) *Obj {
@@ -116,6 +118,22 @@ func (s *Store) Handle(op uint32, payload []byte) {
 		}
 	case opMonsterMove:
 		s.monsterMove(r)
+	case opInitialSpells:
+		r.U8()
+		n := int(r.U16())
+		for i := 0; i < n && !r.Err; i++ {
+			id := r.U32()
+			r.U16()
+			s.Spells[id] = true
+		}
+	case opLearnedSpell:
+		s.Spells[r.U32()] = true
+	case opSupercededSpell:
+		newID, oldID := r.U32(), r.U32()
+		delete(s.Spells, oldID)
+		s.Spells[newID] = true
+	case opRemovedSpell:
+		delete(s.Spells, r.U32())
 	}
 }
 

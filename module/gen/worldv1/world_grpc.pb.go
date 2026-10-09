@@ -20,6 +20,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
+	World_ItemSources_FullMethodName  = "/wowagent.world.v1.World/ItemSources"
 	World_FindNpc_FullMethodName      = "/wowagent.world.v1.World/FindNpc"
 	World_QuestInfo_FullMethodName    = "/wowagent.world.v1.World/QuestInfo"
 	World_QuestsForNpc_FullMethodName = "/wowagent.world.v1.World/QuestsForNpc"
@@ -33,6 +34,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type WorldClient interface {
+	ItemSources(ctx context.Context, in *ItemSourcesRequest, opts ...grpc.CallOption) (*ItemSourcesResponse, error)
 	FindNpc(ctx context.Context, in *FindNpcRequest, opts ...grpc.CallOption) (*FindNpcResponse, error)
 	QuestInfo(ctx context.Context, in *QuestInfoRequest, opts ...grpc.CallOption) (*QuestInfoResponse, error)
 	QuestsForNpc(ctx context.Context, in *QuestsForNpcRequest, opts ...grpc.CallOption) (*QuestsForNpcResponse, error)
@@ -48,6 +50,16 @@ type worldClient struct {
 
 func NewWorldClient(cc grpc.ClientConnInterface) WorldClient {
 	return &worldClient{cc}
+}
+
+func (c *worldClient) ItemSources(ctx context.Context, in *ItemSourcesRequest, opts ...grpc.CallOption) (*ItemSourcesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ItemSourcesResponse)
+	err := c.cc.Invoke(ctx, World_ItemSources_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *worldClient) FindNpc(ctx context.Context, in *FindNpcRequest, opts ...grpc.CallOption) (*FindNpcResponse, error) {
@@ -124,6 +136,7 @@ func (c *worldClient) BeforeLogout(ctx context.Context, in *emptypb.Empty, opts 
 // All implementations must embed UnimplementedWorldServer
 // for forward compatibility.
 type WorldServer interface {
+	ItemSources(context.Context, *ItemSourcesRequest) (*ItemSourcesResponse, error)
 	FindNpc(context.Context, *FindNpcRequest) (*FindNpcResponse, error)
 	QuestInfo(context.Context, *QuestInfoRequest) (*QuestInfoResponse, error)
 	QuestsForNpc(context.Context, *QuestsForNpcRequest) (*QuestsForNpcResponse, error)
@@ -141,6 +154,9 @@ type WorldServer interface {
 // pointer dereference when methods are called.
 type UnimplementedWorldServer struct{}
 
+func (UnimplementedWorldServer) ItemSources(context.Context, *ItemSourcesRequest) (*ItemSourcesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ItemSources not implemented")
+}
 func (UnimplementedWorldServer) FindNpc(context.Context, *FindNpcRequest) (*FindNpcResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FindNpc not implemented")
 }
@@ -181,6 +197,24 @@ func RegisterWorldServer(s grpc.ServiceRegistrar, srv WorldServer) {
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&World_ServiceDesc, srv)
+}
+
+func _World_ItemSources_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ItemSourcesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorldServer).ItemSources(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: World_ItemSources_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorldServer).ItemSources(ctx, req.(*ItemSourcesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _World_FindNpc_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -316,6 +350,10 @@ var World_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "wowagent.world.v1.World",
 	HandlerType: (*WorldServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "ItemSources",
+			Handler:    _World_ItemSources_Handler,
+		},
 		{
 			MethodName: "FindNpc",
 			Handler:    _World_FindNpc_Handler,

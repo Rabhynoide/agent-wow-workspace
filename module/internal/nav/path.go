@@ -289,16 +289,22 @@ func (q *pq) Pop() any          { o := *q; n := o[len(o)-1]; *q = o[:len(o)-1]; 
 
 // Path finds a smoothed path (Recast space) between two Recast-space points.
 func (m *Mesh) Path(from, to V3, f Filter) ([]V3, error) {
+	pts, _, err := m.PathCorridor(from, to, f)
+	return pts, err
+}
+
+// PathCorridor is Path plus the polygons the path runs through (used to resolve heights between layers).
+func (m *Mesh) PathCorridor(from, to V3, f Filter) ([]V3, []polyRef, error) {
 	sRef, sPt, ok := m.NearestPoly(from, f, 6, 3)
 	if !ok {
-		return nil, ErrNoStartPoly
+		return nil, nil, ErrNoStartPoly
 	}
 	eRef, ePt, ok := m.NearestPoly(to, f, 6, 3)
 	if !ok {
-		return nil, ErrNoEndPoly
+		return nil, nil, ErrNoEndPoly
 	}
 	if sRef == eRef {
-		return []V3{sPt, ePt}, nil
+		return []V3{sPt, ePt}, []polyRef{sRef}, nil
 	}
 	best := map[polyRef]*node{}
 	open := &pq{}
@@ -316,7 +322,7 @@ func (m *Mesh) Path(from, to V3, f Filter) ([]V3, error) {
 		}
 		closed[cur.ref] = true
 		if expansions++; expansions > 400000 {
-			return nil, ErrNoPath
+			return nil, nil, ErrNoPath
 		}
 		for _, l := range m.links(cur.ref, f) {
 			if closed[l.to] {
@@ -340,7 +346,7 @@ func (m *Mesh) Path(from, to V3, f Filter) ([]V3, error) {
 		}
 	}
 	if goal == nil {
-		return nil, ErrNoPath
+		return nil, nil, ErrNoPath
 	}
 	var chain []*node
 	for n := goal; n != nil; n = n.parent {
@@ -349,7 +355,11 @@ func (m *Mesh) Path(from, to V3, f Filter) ([]V3, error) {
 	for i, j := 0, len(chain)-1; i < j; i, j = i+1, j-1 {
 		chain[i], chain[j] = chain[j], chain[i]
 	}
-	return funnel(sPt, ePt, chain), nil
+	refs := make([]polyRef, len(chain))
+	for i, n := range chain {
+		refs[i] = n.ref
+	}
+	return funnel(sPt, ePt, chain), refs, nil
 }
 
 func triArea2(a, b, c V3) float32 {
@@ -408,4 +418,69 @@ func funnel(start, end V3, chain []*node) []V3 {
 func (m *Mesh) Height(pt V3, f Filter) (float32, bool) {
 	_, p, ok := m.NearestPoly(pt, f, 4, 1.5)
 	return p[1], ok
+}
+
+// OnMesh reports whether the point lies inside a walkable polygon (2D) and returns the surface height there.
+func (m *Mesh) OnMesh(pt V3, f Filter) (float32, bool) {
+	tx, ty := m.TileCoord(pt)
+	t := m.Tile(tx, ty)
+	if t == nil {
+		return 0, false
+	}
+	best := float32(math.MaxFloat32)
+	var h float32
+	found := false
+	for i := range t.polys {
+		p := &t.polys[i]
+		if !f.ok(p) || pt[0] < t.pmin[i][0] || pt[0] > t.pmax[i][0] || pt[2] < t.pmin[i][2] || pt[2] > t.pmax[i][2] {
+			continue
+		}
+		if hh, ok := t.heightIn(i, pt); ok {
+			if d := abs32(hh - pt[1]); d < best {
+				best, h, found = d, hh, true
+			}
+		}
+	}
+	return h, found
+}
+
+// HeightInCorridor returns the surface height at pt using only the corridor polygons.
+func (m *Mesh) HeightInCorridor(pt V3, corridor []polyRef) (float32, bool) {
+	best := float32(math.MaxFloat32)
+	var h float32
+	found := false
+	for _, r := range corridor {
+		t, p := m.poly(r)
+		if t == nil {
+			continue
+		}
+		i := int(r.idx)
+		if pt[0] < t.pmin[i][0]-0.01 || pt[0] > t.pmax[i][0]+0.01 || pt[2] < t.pmin[i][2]-0.01 || pt[2] > t.pmax[i][2]+0.01 {
+			continue
+		}
+		_ = p
+		if hh, ok := t.heightIn(i, pt); ok {
+			if d := abs32(hh - pt[1]); d < best {
+				best, h, found = d, hh, true
+			}
+		}
+	}
+	if found {
+		return h, true
+	}
+	// Slightly off the corridor (corner cutting): take the closest corridor polygon edge.
+	bd := float32(2.0)
+	for _, r := range corridor {
+		t, p := m.poly(r)
+		if t == nil {
+			continue
+		}
+		vs := t.polyVerts(p)
+		for a, b := len(vs)-1, 0; b < len(vs); a, b = b, b+1 {
+			if d := distToSeg2D(pt, vs[a], vs[b]); d < bd {
+				bd, h, found = d, closestOnSeg(pt, vs[a], vs[b])[1], true
+			}
+		}
+	}
+	return h, found
 }

@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package wowagent.town.v1;
+option go_package = "wowagent/gen/townv1;townv1";
+
+import "google/protobuf/empty.proto";
+
+message SellRequest {
+  // Also sell white-quality items that are not equipment-useful (not implemented: gray only).
+  bool dry_run = 1;
+}
+
+message SellResult {
+  bool ok = 1;
+  string reason = 2;
+  uint32 sold = 3;
+  uint32 copper = 4;
+  uint32 free_slots = 5;
+  string vendor = 6;
+}
+
+service Town {
+  rpc SellJunk(SellRequest) returns (SellResult);
+  rpc BeforeLogout(google.protobuf.Empty) returns (google.protobuf.Empty);
+}

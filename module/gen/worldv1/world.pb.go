@@ -513,7 +513,7 @@ type QuestInfo struct {
 	Title          string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
 	Level          uint32                 `protobuf:"varint,3,opt,name=level,proto3" json:"level,omitempty"`
 	MinLevel       uint32                 `protobuf:"varint,4,opt,name=min_level,json=minLevel,proto3" json:"min_level,omitempty"`
-	ZoneOrSort     uint32                 `protobuf:"varint,5,opt,name=zone_or_sort,json=zoneOrSort,proto3" json:"zone_or_sort,omitempty"`
+	ZoneOrSort     int32                  `protobuf:"varint,5,opt,name=zone_or_sort,json=zoneOrSort,proto3" json:"zone_or_sort,omitempty"`
 	PrevQuest      uint32                 `protobuf:"varint,6,opt,name=prev_quest,json=prevQuest,proto3" json:"prev_quest,omitempty"`
 	NextQuest      uint32                 `protobuf:"varint,7,opt,name=next_quest,json=nextQuest,proto3" json:"next_quest,omitempty"`
 	RewardXpId     uint32                 `protobuf:"varint,8,opt,name=reward_xp_id,json=rewardXpId,proto3" json:"reward_xp_id,omitempty"`
@@ -584,7 +584,7 @@ func (x *QuestInfo) GetMinLevel() uint32 {
 	return 0
 }
 
-func (x *QuestInfo) GetZoneOrSort() uint32 {
+func (x *QuestInfo) GetZoneOrSort() int32 {
 	if x != nil {
 		return x.ZoneOrSort
 	}
@@ -1373,6 +1373,179 @@ func (x *CreatureInfo) GetLootId() uint32 {
 	return 0
 }
 
+type ItemSourcesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Entry         uint32                 `protobuf:"varint,1,opt,name=entry,proto3" json:"entry,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ItemSourcesRequest) Reset() {
+	*x = ItemSourcesRequest{}
+	mi := &file_world_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ItemSourcesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ItemSourcesRequest) ProtoMessage() {}
+
+func (x *ItemSourcesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_world_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ItemSourcesRequest.ProtoReflect.Descriptor instead.
+func (*ItemSourcesRequest) Descriptor() ([]byte, []int) {
+	return file_world_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *ItemSourcesRequest) GetEntry() uint32 {
+	if x != nil {
+		return x.Entry
+	}
+	return 0
+}
+
+type ItemSource struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// "creature" or "gameobject".
+	Kind          string  `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
+	Entry         uint32  `protobuf:"varint,2,opt,name=entry,proto3" json:"entry,omitempty"`
+	Name          string  `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	MinLevel      uint32  `protobuf:"varint,4,opt,name=min_level,json=minLevel,proto3" json:"min_level,omitempty"`
+	MaxLevel      uint32  `protobuf:"varint,5,opt,name=max_level,json=maxLevel,proto3" json:"max_level,omitempty"`
+	Chance        float32 `protobuf:"fixed32,6,opt,name=chance,proto3" json:"chance,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ItemSource) Reset() {
+	*x = ItemSource{}
+	mi := &file_world_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ItemSource) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ItemSource) ProtoMessage() {}
+
+func (x *ItemSource) ProtoReflect() protoreflect.Message {
+	mi := &file_world_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ItemSource.ProtoReflect.Descriptor instead.
+func (*ItemSource) Descriptor() ([]byte, []int) {
+	return file_world_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *ItemSource) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *ItemSource) GetEntry() uint32 {
+	if x != nil {
+		return x.Entry
+	}
+	return 0
+}
+
+func (x *ItemSource) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ItemSource) GetMinLevel() uint32 {
+	if x != nil {
+		return x.MinLevel
+	}
+	return 0
+}
+
+func (x *ItemSource) GetMaxLevel() uint32 {
+	if x != nil {
+		return x.MaxLevel
+	}
+	return 0
+}
+
+func (x *ItemSource) GetChance() float32 {
+	if x != nil {
+		return x.Chance
+	}
+	return 0
+}
+
+type ItemSourcesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Sources       []*ItemSource          `protobuf:"bytes,1,rep,name=sources,proto3" json:"sources,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ItemSourcesResponse) Reset() {
+	*x = ItemSourcesResponse{}
+	mi := &file_world_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ItemSourcesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ItemSourcesResponse) ProtoMessage() {}
+
+func (x *ItemSourcesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_world_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ItemSourcesResponse.ProtoReflect.Descriptor instead.
+func (*ItemSourcesResponse) Descriptor() ([]byte, []int) {
+	return file_world_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *ItemSourcesResponse) GetSources() []*ItemSource {
+	if x != nil {
+		return x.Sources
+	}
+	return nil
+}
+
 var File_world_proto protoreflect.FileDescriptor
 
 const file_world_proto_rawDesc = "" +
@@ -1424,7 +1597,7 @@ const file_world_proto_rawDesc = "" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x14\n" +
 	"\x05level\x18\x03 \x01(\rR\x05level\x12\x1b\n" +
 	"\tmin_level\x18\x04 \x01(\rR\bminLevel\x12 \n" +
-	"\fzone_or_sort\x18\x05 \x01(\rR\n" +
+	"\fzone_or_sort\x18\x05 \x01(\x05R\n" +
 	"zoneOrSort\x12\x1d\n" +
 	"\n" +
 	"prev_quest\x18\x06 \x01(\rR\tprevQuest\x12\x1d\n" +
@@ -1495,8 +1668,21 @@ const file_world_proto_rawDesc = "" +
 	"\x04type\x18\b \x01(\rR\x04type\x12#\n" +
 	"\rskinning_loot\x18\t \x01(\rR\fskinningLoot\x12\x17\n" +
 	"\aloot_id\x18\n" +
-	" \x01(\rR\x06lootId2\xcb\x04\n" +
-	"\x05World\x12P\n" +
+	" \x01(\rR\x06lootId\"*\n" +
+	"\x12ItemSourcesRequest\x12\x14\n" +
+	"\x05entry\x18\x01 \x01(\rR\x05entry\"\x9c\x01\n" +
+	"\n" +
+	"ItemSource\x12\x12\n" +
+	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x14\n" +
+	"\x05entry\x18\x02 \x01(\rR\x05entry\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12\x1b\n" +
+	"\tmin_level\x18\x04 \x01(\rR\bminLevel\x12\x1b\n" +
+	"\tmax_level\x18\x05 \x01(\rR\bmaxLevel\x12\x16\n" +
+	"\x06chance\x18\x06 \x01(\x02R\x06chance\"N\n" +
+	"\x13ItemSourcesResponse\x127\n" +
+	"\asources\x18\x01 \x03(\v2\x1d.wowagent.world.v1.ItemSourceR\asources2\xa9\x05\n" +
+	"\x05World\x12\\\n" +
+	"\vItemSources\x12%.wowagent.world.v1.ItemSourcesRequest\x1a&.wowagent.world.v1.ItemSourcesResponse\x12P\n" +
 	"\aFindNpc\x12!.wowagent.world.v1.FindNpcRequest\x1a\".wowagent.world.v1.FindNpcResponse\x12V\n" +
 	"\tQuestInfo\x12#.wowagent.world.v1.QuestInfoRequest\x1a$.wowagent.world.v1.QuestInfoResponse\x12_\n" +
 	"\fQuestsForNpc\x12&.wowagent.world.v1.QuestsForNpcRequest\x1a'.wowagent.world.v1.QuestsForNpcResponse\x12M\n" +
@@ -1517,7 +1703,7 @@ func file_world_proto_rawDescGZIP() []byte {
 	return file_world_proto_rawDescData
 }
 
-var file_world_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_world_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_world_proto_goTypes = []any{
 	(*FindNpcRequest)(nil),       // 0: wowagent.world.v1.FindNpcRequest
 	(*Spawn)(nil),                // 1: wowagent.world.v1.Spawn
@@ -1537,7 +1723,10 @@ var file_world_proto_goTypes = []any{
 	(*ItemInfoResponse)(nil),     // 15: wowagent.world.v1.ItemInfoResponse
 	(*CreatureInfoRequest)(nil),  // 16: wowagent.world.v1.CreatureInfoRequest
 	(*CreatureInfo)(nil),         // 17: wowagent.world.v1.CreatureInfo
-	(*emptypb.Empty)(nil),        // 18: google.protobuf.Empty
+	(*ItemSourcesRequest)(nil),   // 18: wowagent.world.v1.ItemSourcesRequest
+	(*ItemSource)(nil),           // 19: wowagent.world.v1.ItemSource
+	(*ItemSourcesResponse)(nil),  // 20: wowagent.world.v1.ItemSourcesResponse
+	(*emptypb.Empty)(nil),        // 21: google.protobuf.Empty
 }
 var file_world_proto_depIdxs = []int32{
 	1,  // 0: wowagent.world.v1.FindNpcResponse.spawns:type_name -> wowagent.world.v1.Spawn
@@ -1548,25 +1737,28 @@ var file_world_proto_depIdxs = []int32{
 	9,  // 5: wowagent.world.v1.QuestsForNpcResponse.quests:type_name -> wowagent.world.v1.QuestRef
 	1,  // 6: wowagent.world.v1.SpawnsResponse.spawns:type_name -> wowagent.world.v1.Spawn
 	14, // 7: wowagent.world.v1.ItemInfoResponse.items:type_name -> wowagent.world.v1.ItemInfo
-	0,  // 8: wowagent.world.v1.World.FindNpc:input_type -> wowagent.world.v1.FindNpcRequest
-	3,  // 9: wowagent.world.v1.World.QuestInfo:input_type -> wowagent.world.v1.QuestInfoRequest
-	8,  // 10: wowagent.world.v1.World.QuestsForNpc:input_type -> wowagent.world.v1.QuestsForNpcRequest
-	11, // 11: wowagent.world.v1.World.Spawns:input_type -> wowagent.world.v1.SpawnsRequest
-	13, // 12: wowagent.world.v1.World.ItemInfo:input_type -> wowagent.world.v1.ItemInfoRequest
-	16, // 13: wowagent.world.v1.World.Creature:input_type -> wowagent.world.v1.CreatureInfoRequest
-	18, // 14: wowagent.world.v1.World.BeforeLogout:input_type -> google.protobuf.Empty
-	2,  // 15: wowagent.world.v1.World.FindNpc:output_type -> wowagent.world.v1.FindNpcResponse
-	7,  // 16: wowagent.world.v1.World.QuestInfo:output_type -> wowagent.world.v1.QuestInfoResponse
-	10, // 17: wowagent.world.v1.World.QuestsForNpc:output_type -> wowagent.world.v1.QuestsForNpcResponse
-	12, // 18: wowagent.world.v1.World.Spawns:output_type -> wowagent.world.v1.SpawnsResponse
-	15, // 19: wowagent.world.v1.World.ItemInfo:output_type -> wowagent.world.v1.ItemInfoResponse
-	17, // 20: wowagent.world.v1.World.Creature:output_type -> wowagent.world.v1.CreatureInfo
-	18, // 21: wowagent.world.v1.World.BeforeLogout:output_type -> google.protobuf.Empty
-	15, // [15:22] is the sub-list for method output_type
-	8,  // [8:15] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	19, // 8: wowagent.world.v1.ItemSourcesResponse.sources:type_name -> wowagent.world.v1.ItemSource
+	18, // 9: wowagent.world.v1.World.ItemSources:input_type -> wowagent.world.v1.ItemSourcesRequest
+	0,  // 10: wowagent.world.v1.World.FindNpc:input_type -> wowagent.world.v1.FindNpcRequest
+	3,  // 11: wowagent.world.v1.World.QuestInfo:input_type -> wowagent.world.v1.QuestInfoRequest
+	8,  // 12: wowagent.world.v1.World.QuestsForNpc:input_type -> wowagent.world.v1.QuestsForNpcRequest
+	11, // 13: wowagent.world.v1.World.Spawns:input_type -> wowagent.world.v1.SpawnsRequest
+	13, // 14: wowagent.world.v1.World.ItemInfo:input_type -> wowagent.world.v1.ItemInfoRequest
+	16, // 15: wowagent.world.v1.World.Creature:input_type -> wowagent.world.v1.CreatureInfoRequest
+	21, // 16: wowagent.world.v1.World.BeforeLogout:input_type -> google.protobuf.Empty
+	20, // 17: wowagent.world.v1.World.ItemSources:output_type -> wowagent.world.v1.ItemSourcesResponse
+	2,  // 18: wowagent.world.v1.World.FindNpc:output_type -> wowagent.world.v1.FindNpcResponse
+	7,  // 19: wowagent.world.v1.World.QuestInfo:output_type -> wowagent.world.v1.QuestInfoResponse
+	10, // 20: wowagent.world.v1.World.QuestsForNpc:output_type -> wowagent.world.v1.QuestsForNpcResponse
+	12, // 21: wowagent.world.v1.World.Spawns:output_type -> wowagent.world.v1.SpawnsResponse
+	15, // 22: wowagent.world.v1.World.ItemInfo:output_type -> wowagent.world.v1.ItemInfoResponse
+	17, // 23: wowagent.world.v1.World.Creature:output_type -> wowagent.world.v1.CreatureInfo
+	21, // 24: wowagent.world.v1.World.BeforeLogout:output_type -> google.protobuf.Empty
+	17, // [17:25] is the sub-list for method output_type
+	9,  // [9:17] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_world_proto_init() }
@@ -1580,7 +1772,7 @@ func file_world_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_world_proto_rawDesc), len(file_world_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   18,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

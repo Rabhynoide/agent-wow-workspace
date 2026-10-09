@@ -31,8 +31,8 @@ EmptyProtoPZ.google.golang.org/protobuf/types/known/emptypbø¢GPBªGoogle.P
 SendPacket%.agentwow.module.v1.SendPacketRequest.google.protobuf.EmptyE
 GetClock.google.protobuf.Empty!.agentwow.module.v1.ClockResponsea
 InvokeModule'.agentwow.module.v1.InvokeModuleRequest(.agentwow.module.v1.InvokeModuleResponseB5Z3github.com/agent-wow/agent-wow/pkg/modules/v1;modv1bproto3
-°
-state.protowowagent.state.v1api/module/v1/session.protogoogle/protobuf/empty.proto"ž
+µ
+state.protowowagent.state.v1api/module/v1/session.protogoogle/protobuf/empty.proto"´
 SelfInfo
 guid (Rguid
 map (Rmap
@@ -55,7 +55,8 @@ power_type (R	powerType
 dead (Rdead
 	run_speed (RrunSpeed
 
-unit_flags (R	unitFlags"x
+unit_flags (R	unitFlags
+ghost (Rghost"x
 Item
 slot (Rslot
 entry (Rentry
@@ -106,13 +107,16 @@ unit_flags (R	unitFlags
 y (Ry
 z (Rz
 o (Ro
-map (Rmap"#
+map (Rmap"(
+SpellsResponse
+spells (Rspells"#
 GetObjRequest
-guid (Rguid2¬
+guid (Rguid2ñ
 StateG
 Snapshot.google.protobuf.Empty#.wowagent.state.v1.SnapshotResponseM
 Nearby .wowagent.state.v1.NearbyRequest!.wowagent.state.v1.NearbyResponseB
 GetObj .wowagent.state.v1.GetObjRequest.wowagent.state.v1.ObjB
 SetPos .wowagent.state.v1.SetPosRequest.google.protobuf.EmptyC
+Spells.google.protobuf.Empty!.wowagent.state.v1.SpellsResponseC
 OnPacket.agentwow.module.v1.WorldPacket.google.protobuf.Empty>
 BeforeLogout.google.protobuf.Empty.google.protobuf.EmptyBZwowagent/gen/statev1;statev1bproto3

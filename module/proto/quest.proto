@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package wowagent.quest.v1;
+option go_package = "wowagent/gen/questv1;questv1";
+
+import "api/module/v1/session.proto";
+import "google/protobuf/empty.proto";
+
+message QuestResult {
+  bool ok = 1;
+  string reason = 2;
+  // Items looted (for Use with loot) as "entry" ids.
+  repeated uint32 items = 3;
+}
+
+message AcceptRequest {
+  uint32 npc_entry = 1;
+  uint32 quest_id = 2;
+}
+
+message TurnInRequest {
+  uint32 npc_entry = 1;
+  uint32 quest_id = 2;
+  // Index of the chosen reward among the choice items (0 when none).
+  uint32 reward = 3;
+}
+
+message UseRequest {
+  uint32 entry = 1;
+  // Take all loot opened by the object.
+  bool loot = 2;
+}
+
+service Quest {
+  rpc Accept(AcceptRequest) returns (QuestResult);
+  rpc TurnIn(TurnInRequest) returns (QuestResult);
+  rpc Use(UseRequest) returns (QuestResult);
+  rpc OnPacket(agentwow.module.v1.WorldPacket) returns (google.protobuf.Empty);
+  rpc BeforeLogout(google.protobuf.Empty) returns (google.protobuf.Empty);
+}

@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package wowagent.auto.v1;
+option go_package = "wowagent/gen/autov1;autov1";
+
+import "api/module/v1/session.proto";
+import "google/protobuf/empty.proto";
+
+message RunRequest {
+  // Quest ids to complete in order (accept, objectives, turn in).
+  repeated uint32 quests = 1;
+  // Reward choice index per quest id (default 0).
+  map<uint32, uint32> rewards = 2;
+  // Seconds to block before returning the status (default 20, max 25).
+  uint32 wait_s = 3;
+}
+
+message StatusRequest {
+  uint32 wait_s = 1;
+}
+
+message AutoStatus {
+  // idle | running | done | failed | stopped
+  string state = 1;
+  string reason = 2;
+  uint32 quest = 3;
+  string step = 4;
+  repeated uint32 done = 5;
+  uint32 level = 6;
+  uint32 xp = 7;
+  uint32 elapsed_s = 8;
+}
+
+service Auto {
+  rpc Recover(StatusRequest) returns (AutoStatus);
+  rpc OnPacket(agentwow.module.v1.WorldPacket) returns (google.protobuf.Empty);
+  rpc Run(RunRequest) returns (AutoStatus);
+  rpc Status(StatusRequest) returns (AutoStatus);
+  rpc Stop(google.protobuf.Empty) returns (AutoStatus);
+  rpc BeforeLogout(google.protobuf.Empty) returns (google.protobuf.Empty);
+}

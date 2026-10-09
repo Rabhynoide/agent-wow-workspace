@@ -44,6 +44,7 @@ type SelfInfo struct {
 	Dead          bool                   `protobuf:"varint,17,opt,name=dead,proto3" json:"dead,omitempty"`
 	RunSpeed      float32                `protobuf:"fixed32,18,opt,name=run_speed,json=runSpeed,proto3" json:"run_speed,omitempty"`
 	UnitFlags     uint32                 `protobuf:"varint,19,opt,name=unit_flags,json=unitFlags,proto3" json:"unit_flags,omitempty"`
+	Ghost         bool                   `protobuf:"varint,20,opt,name=ghost,proto3" json:"ghost,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -209,6 +210,13 @@ func (x *SelfInfo) GetUnitFlags() uint32 {
 		return x.UnitFlags
 	}
 	return 0
+}
+
+func (x *SelfInfo) GetGhost() bool {
+	if x != nil {
+		return x.Ghost
+	}
+	return false
 }
 
 type Item struct {
@@ -794,6 +802,50 @@ func (x *SetPosRequest) GetMap() uint32 {
 	return 0
 }
 
+type SpellsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Spells        []uint32               `protobuf:"varint,1,rep,packed,name=spells,proto3" json:"spells,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SpellsResponse) Reset() {
+	*x = SpellsResponse{}
+	mi := &file_state_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SpellsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SpellsResponse) ProtoMessage() {}
+
+func (x *SpellsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_state_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SpellsResponse.ProtoReflect.Descriptor instead.
+func (*SpellsResponse) Descriptor() ([]byte, []int) {
+	return file_state_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *SpellsResponse) GetSpells() []uint32 {
+	if x != nil {
+		return x.Spells
+	}
+	return nil
+}
+
 type GetObjRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Guid          uint64                 `protobuf:"varint,1,opt,name=guid,proto3" json:"guid,omitempty"`
@@ -803,7 +855,7 @@ type GetObjRequest struct {
 
 func (x *GetObjRequest) Reset() {
 	*x = GetObjRequest{}
-	mi := &file_state_proto_msgTypes[8]
+	mi := &file_state_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -815,7 +867,7 @@ func (x *GetObjRequest) String() string {
 func (*GetObjRequest) ProtoMessage() {}
 
 func (x *GetObjRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_state_proto_msgTypes[8]
+	mi := &file_state_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -828,7 +880,7 @@ func (x *GetObjRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetObjRequest.ProtoReflect.Descriptor instead.
 func (*GetObjRequest) Descriptor() ([]byte, []int) {
-	return file_state_proto_rawDescGZIP(), []int{8}
+	return file_state_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GetObjRequest) GetGuid() uint64 {
@@ -842,7 +894,7 @@ var File_state_proto protoreflect.FileDescriptor
 
 const file_state_proto_rawDesc = "" +
 	"\n" +
-	"\vstate.proto\x12\x11wowagent.state.v1\x1a\x1bapi/module/v1/session.proto\x1a\x1bgoogle/protobuf/empty.proto\"\x9e\x03\n" +
+	"\vstate.proto\x12\x11wowagent.state.v1\x1a\x1bapi/module/v1/session.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xb4\x03\n" +
 	"\bSelfInfo\x12\x12\n" +
 	"\x04guid\x18\x01 \x01(\x04R\x04guid\x12\x10\n" +
 	"\x03map\x18\x02 \x01(\rR\x03map\x12\f\n" +
@@ -865,7 +917,8 @@ const file_state_proto_rawDesc = "" +
 	"\x04dead\x18\x11 \x01(\bR\x04dead\x12\x1b\n" +
 	"\trun_speed\x18\x12 \x01(\x02R\brunSpeed\x12\x1d\n" +
 	"\n" +
-	"unit_flags\x18\x13 \x01(\rR\tunitFlags\"x\n" +
+	"unit_flags\x18\x13 \x01(\rR\tunitFlags\x12\x14\n" +
+	"\x05ghost\x18\x14 \x01(\bR\x05ghost\"x\n" +
 	"\x04Item\x12\x12\n" +
 	"\x04slot\x18\x01 \x01(\x05R\x04slot\x12\x14\n" +
 	"\x05entry\x18\x02 \x01(\rR\x05entry\x12\x14\n" +
@@ -916,14 +969,17 @@ const file_state_proto_rawDesc = "" +
 	"\x01y\x18\x02 \x01(\x02R\x01y\x12\f\n" +
 	"\x01z\x18\x03 \x01(\x02R\x01z\x12\f\n" +
 	"\x01o\x18\x04 \x01(\x02R\x01o\x12\x10\n" +
-	"\x03map\x18\x05 \x01(\rR\x03map\"#\n" +
+	"\x03map\x18\x05 \x01(\rR\x03map\"(\n" +
+	"\x0eSpellsResponse\x12\x16\n" +
+	"\x06spells\x18\x01 \x03(\rR\x06spells\"#\n" +
 	"\rGetObjRequest\x12\x12\n" +
-	"\x04guid\x18\x01 \x01(\x04R\x04guid2\xac\x03\n" +
+	"\x04guid\x18\x01 \x01(\x04R\x04guid2\xf1\x03\n" +
 	"\x05State\x12G\n" +
 	"\bSnapshot\x12\x16.google.protobuf.Empty\x1a#.wowagent.state.v1.SnapshotResponse\x12M\n" +
 	"\x06Nearby\x12 .wowagent.state.v1.NearbyRequest\x1a!.wowagent.state.v1.NearbyResponse\x12B\n" +
 	"\x06GetObj\x12 .wowagent.state.v1.GetObjRequest\x1a\x16.wowagent.state.v1.Obj\x12B\n" +
 	"\x06SetPos\x12 .wowagent.state.v1.SetPosRequest\x1a\x16.google.protobuf.Empty\x12C\n" +
+	"\x06Spells\x12\x16.google.protobuf.Empty\x1a!.wowagent.state.v1.SpellsResponse\x12C\n" +
 	"\bOnPacket\x12\x1f.agentwow.module.v1.WorldPacket\x1a\x16.google.protobuf.Empty\x12>\n" +
 	"\fBeforeLogout\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.EmptyB\x1eZ\x1cwowagent/gen/statev1;statev1b\x06proto3"
 
@@ -939,7 +995,7 @@ func file_state_proto_rawDescGZIP() []byte {
 	return file_state_proto_rawDescData
 }
 
-var file_state_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_state_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_state_proto_goTypes = []any{
 	(*SelfInfo)(nil),         // 0: wowagent.state.v1.SelfInfo
 	(*Item)(nil),             // 1: wowagent.state.v1.Item
@@ -949,29 +1005,32 @@ var file_state_proto_goTypes = []any{
 	(*Obj)(nil),              // 5: wowagent.state.v1.Obj
 	(*NearbyResponse)(nil),   // 6: wowagent.state.v1.NearbyResponse
 	(*SetPosRequest)(nil),    // 7: wowagent.state.v1.SetPosRequest
-	(*GetObjRequest)(nil),    // 8: wowagent.state.v1.GetObjRequest
-	(*emptypb.Empty)(nil),    // 9: google.protobuf.Empty
-	(*v1.WorldPacket)(nil),   // 10: agentwow.module.v1.WorldPacket
+	(*SpellsResponse)(nil),   // 8: wowagent.state.v1.SpellsResponse
+	(*GetObjRequest)(nil),    // 9: wowagent.state.v1.GetObjRequest
+	(*emptypb.Empty)(nil),    // 10: google.protobuf.Empty
+	(*v1.WorldPacket)(nil),   // 11: agentwow.module.v1.WorldPacket
 }
 var file_state_proto_depIdxs = []int32{
 	0,  // 0: wowagent.state.v1.SnapshotResponse.self:type_name -> wowagent.state.v1.SelfInfo
 	1,  // 1: wowagent.state.v1.SnapshotResponse.items:type_name -> wowagent.state.v1.Item
 	2,  // 2: wowagent.state.v1.SnapshotResponse.quests:type_name -> wowagent.state.v1.Quest
 	5,  // 3: wowagent.state.v1.NearbyResponse.objs:type_name -> wowagent.state.v1.Obj
-	9,  // 4: wowagent.state.v1.State.Snapshot:input_type -> google.protobuf.Empty
+	10, // 4: wowagent.state.v1.State.Snapshot:input_type -> google.protobuf.Empty
 	4,  // 5: wowagent.state.v1.State.Nearby:input_type -> wowagent.state.v1.NearbyRequest
-	8,  // 6: wowagent.state.v1.State.GetObj:input_type -> wowagent.state.v1.GetObjRequest
+	9,  // 6: wowagent.state.v1.State.GetObj:input_type -> wowagent.state.v1.GetObjRequest
 	7,  // 7: wowagent.state.v1.State.SetPos:input_type -> wowagent.state.v1.SetPosRequest
-	10, // 8: wowagent.state.v1.State.OnPacket:input_type -> agentwow.module.v1.WorldPacket
-	9,  // 9: wowagent.state.v1.State.BeforeLogout:input_type -> google.protobuf.Empty
-	3,  // 10: wowagent.state.v1.State.Snapshot:output_type -> wowagent.state.v1.SnapshotResponse
-	6,  // 11: wowagent.state.v1.State.Nearby:output_type -> wowagent.state.v1.NearbyResponse
-	5,  // 12: wowagent.state.v1.State.GetObj:output_type -> wowagent.state.v1.Obj
-	9,  // 13: wowagent.state.v1.State.SetPos:output_type -> google.protobuf.Empty
-	9,  // 14: wowagent.state.v1.State.OnPacket:output_type -> google.protobuf.Empty
-	9,  // 15: wowagent.state.v1.State.BeforeLogout:output_type -> google.protobuf.Empty
-	10, // [10:16] is the sub-list for method output_type
-	4,  // [4:10] is the sub-list for method input_type
+	10, // 8: wowagent.state.v1.State.Spells:input_type -> google.protobuf.Empty
+	11, // 9: wowagent.state.v1.State.OnPacket:input_type -> agentwow.module.v1.WorldPacket
+	10, // 10: wowagent.state.v1.State.BeforeLogout:input_type -> google.protobuf.Empty
+	3,  // 11: wowagent.state.v1.State.Snapshot:output_type -> wowagent.state.v1.SnapshotResponse
+	6,  // 12: wowagent.state.v1.State.Nearby:output_type -> wowagent.state.v1.NearbyResponse
+	5,  // 13: wowagent.state.v1.State.GetObj:output_type -> wowagent.state.v1.Obj
+	10, // 14: wowagent.state.v1.State.SetPos:output_type -> google.protobuf.Empty
+	8,  // 15: wowagent.state.v1.State.Spells:output_type -> wowagent.state.v1.SpellsResponse
+	10, // 16: wowagent.state.v1.State.OnPacket:output_type -> google.protobuf.Empty
+	10, // 17: wowagent.state.v1.State.BeforeLogout:output_type -> google.protobuf.Empty
+	11, // [11:18] is the sub-list for method output_type
+	4,  // [4:11] is the sub-list for method input_type
 	4,  // [4:4] is the sub-list for extension type_name
 	4,  // [4:4] is the sub-list for extension extendee
 	0,  // [0:4] is the sub-list for field type_name
@@ -988,7 +1047,7 @@ func file_state_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_state_proto_rawDesc), len(file_state_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

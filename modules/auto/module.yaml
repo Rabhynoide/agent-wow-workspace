@@ -1,0 +1,24 @@
+api_version: 1
+enabled: true
+description: Orchestrates quests end to end (accept, hunt/collect, turn in)
+requires:
+  - state
+  - world
+  - move
+  - quest
+  - combat
+  - town
+compose:
+  file: compose.yaml
+  service: module
+grpc:
+  descriptor_set: module.pb
+rpc:
+  run: /wowagent.auto.v1.Auto/Run
+  status: /wowagent.auto.v1.Auto/Status
+  stop: /wowagent.auto.v1.Auto/Stop
+  recover: /wowagent.auto.v1.Auto/Recover
+packets:
+  MSG_CORPSE_QUERY: /wowagent.auto.v1.Auto/OnPacket
+lifecycle:
+  before_logout: /wowagent.auto.v1.Auto/BeforeLogout

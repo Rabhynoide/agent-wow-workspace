@@ -1,0 +1,16 @@
+api_version: 1
+enabled: true
+description: Vendor actions (sell gray items)
+requires:
+  - state
+  - world
+  - move
+compose:
+  file: compose.yaml
+  service: module
+grpc:
+  descriptor_set: module.pb
+rpc:
+  sell_junk: /wowagent.town.v1.Town/SellJunk
+lifecycle:
+  before_logout: /wowagent.town.v1.Town/BeforeLogout

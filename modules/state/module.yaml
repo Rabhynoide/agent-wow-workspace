@@ -11,6 +11,7 @@ rpc:
   nearby: /wowagent.state.v1.State/Nearby
   get_obj: /wowagent.state.v1.State/GetObj
   set_pos: /wowagent.state.v1.State/SetPos
+  spells: /wowagent.state.v1.State/Spells
 packets:
   SMSG_UPDATE_OBJECT: /wowagent.state.v1.State/OnPacket
   SMSG_COMPRESSED_UPDATE_OBJECT: /wowagent.state.v1.State/OnPacket
@@ -18,5 +19,9 @@ packets:
   SMSG_LOGIN_VERIFY_WORLD: /wowagent.state.v1.State/OnPacket
   SMSG_NEW_WORLD: /wowagent.state.v1.State/OnPacket
   SMSG_MONSTER_MOVE: /wowagent.state.v1.State/OnPacket
+  SMSG_INITIAL_SPELLS: /wowagent.state.v1.State/OnPacket
+  SMSG_LEARNED_SPELL: /wowagent.state.v1.State/OnPacket
+  SMSG_SUPERCEDED_SPELL: /wowagent.state.v1.State/OnPacket
+  SMSG_REMOVED_SPELL: /wowagent.state.v1.State/OnPacket
 lifecycle:
   before_logout: /wowagent.state.v1.State/BeforeLogout

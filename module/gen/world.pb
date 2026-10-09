@@ -4,7 +4,7 @@
 EmptyB}
 com.google.protobufB
 EmptyProtoPZ.google.golang.org/protobuf/types/known/emptypbø¢GPBªGoogle.Protobuf.WellKnownTypesbproto3
-Ù
+Ò
 world.protowowagent.world.v1google/protobuf/empty.proto"Î
 FindNpcRequest
 name (	Rname
@@ -52,7 +52,7 @@ map_filter (R	mapFilter
 title (	Rtitle
 level (Rlevel
 	min_level (RminLevel 
-zone_or_sort (R
+zone_or_sort (R
 zoneOrSort
 
 prev_quest (R	prevQuest
@@ -123,8 +123,21 @@ sell_price	 (R	sellPrice
 type (Rtype#
 skinning_loot	 (RskinningLoot
 loot_id
- (RlootId2Ë
-WorldP
+ (RlootId"*
+ItemSourcesRequest
+entry (Rentry"œ
+
+ItemSource
+kind (	Rkind
+entry (Rentry
+name (	Rname
+	min_level (RminLevel
+	max_level (RmaxLevel
+chance (Rchance"N
+ItemSourcesResponse7
+sources (2.wowagent.world.v1.ItemSourceRsources2©
+World\
+ItemSources%.wowagent.world.v1.ItemSourcesRequest&.wowagent.world.v1.ItemSourcesResponseP
 FindNpc!.wowagent.world.v1.FindNpcRequest".wowagent.world.v1.FindNpcResponseV
 	QuestInfo#.wowagent.world.v1.QuestInfoRequest$.wowagent.world.v1.QuestInfoResponse_
 QuestsForNpc&.wowagent.world.v1.QuestsForNpcRequest'.wowagent.world.v1.QuestsForNpcResponseM

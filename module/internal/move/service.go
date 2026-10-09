@@ -19,8 +19,9 @@ import (
 
 	pb "wowagent/gen/movev1"
 	statepb "wowagent/gen/statev1"
+	"wowagent/internal/moveio"
 	"wowagent/internal/nav"
-	"wowagent/internal/wire"
+	"wowagent/internal/terrain"
 )
 
 const (
@@ -58,6 +59,8 @@ type Service struct {
 
 	mu     sync.Mutex
 	meshes map[uint32]*nav.Mesh
+	terr   map[uint32]*terrain.Maps
+	maps   string
 	cur    *job
 	last   pb.MoveStatus
 }
@@ -68,7 +71,25 @@ func Register(s grpc.ServiceRegistrar, session modv1.SessionClient) {
 		dir = "/mmaps"
 	}
 	guid, _ := strconv.ParseUint(os.Getenv("AGENT_WOW_CHARACTER_GUID"), 10, 64)
-	pb.RegisterMoveServer(s, &Service{session: session, dir: dir, guid: guid, meshes: map[uint32]*nav.Mesh{}, last: pb.MoveStatus{State: "idle"}})
+	pb.RegisterMoveServer(s, &Service{session: session, dir: dir, guid: guid, meshes: map[uint32]*nav.Mesh{}, terr: map[uint32]*terrain.Maps{}, maps: mapsDir(), last: pb.MoveStatus{State: "idle"}})
+}
+
+func mapsDir() string {
+	if d := os.Getenv("MAPS_DIR"); d != "" {
+		return d
+	}
+	return "/maps"
+}
+
+func (s *Service) terrainFor(id uint32) *terrain.Maps {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if t := s.terr[id]; t != nil {
+		return t
+	}
+	t := terrain.New(s.maps, id)
+	s.terr[id] = t
+	return t
 }
 
 func (s *Service) mesh(id uint32) (*nav.Mesh, error) {
@@ -109,22 +130,7 @@ func (s *Service) setPos(ctx context.Context, x, y, z, o float32) {
 }
 
 func (s *Service) send(ctx context.Context, op uint32, flags uint32, x, y, z, o float32) error {
-	clock, err := s.session.GetClock(ctx, &emptypb.Empty{})
-	if err != nil {
-		return err
-	}
-	w := &wire.Writer{}
-	w.PackedGUID(s.guid)
-	w.U32(flags)
-	w.U16(0)
-	w.U32(clock.ClientTimeMs)
-	w.F32(x)
-	w.F32(y)
-	w.F32(z)
-	w.F32(o)
-	w.U32(0) // fall time
-	_, err = s.session.SendPacket(ctx, &modv1.SendPacketRequest{Opcode: op, Payload: w.B})
-	return err
+	return moveio.Send(ctx, s.session, s.guid, op, flags, x, y, z, o)
 }
 
 func orient(dx, dy float32) float32 {
@@ -135,22 +141,28 @@ func orient(dx, dy float32) float32 {
 	return float32(o)
 }
 
-// densify converts the funnel path to WoW-space points no more than ~3 yards apart, snapped to ground.
-func densify(m *nav.Mesh, pts []nav.V3) [][3]float32 {
+// densify converts the funnel path to WoW-space points about 1.5 yards apart, snapped to the real terrain
+// (the navmesh surface can be off by a yard or more); the navmesh height is kept under bridges and roofs.
+func densify(m *nav.Mesh, tm *terrain.Maps, pts []nav.V3, corridor []nav.PolyRef) [][3]float32 {
 	var out [][3]float32
 	add := func(v nav.V3) {
 		x, y, z := v.ToWoW()
+		if tm != nil {
+			if th, ok := tm.Height(x, y); ok && math.Abs(float64(th-z)) < 0.8 {
+				z = th
+			}
+		}
 		out = append(out, [3]float32{x, y, z})
 	}
 	add(pts[0])
 	for i := 1; i < len(pts); i++ {
 		a, b := pts[i-1], pts[i]
 		d := float32(math.Hypot(float64(b[0]-a[0]), float64(b[2]-a[2])))
-		n := int(d / 3)
+		n := int(d / 1.5)
 		for k := 1; k <= n; k++ {
 			t := float32(k) / float32(n+1)
 			v := nav.V3{a[0] + t*(b[0]-a[0]), a[1] + t*(b[1]-a[1]), a[2] + t*(b[2]-a[2])}
-			if h, ok := m.Height(v, nav.GroundOnly); ok {
+			if h, ok := m.HeightInCorridor(v, corridor); ok {
 				v[1] = h
 			}
 			add(v)
@@ -165,11 +177,11 @@ func (s *Service) plan(ctx context.Context, self *statepb.SelfInfo, x, y, z floa
 	if err != nil {
 		return nil, 0, err
 	}
-	pts, err := m.Path(nav.ToRecast(self.X, self.Y, self.Z), nav.ToRecast(x, y, z), nav.GroundOnly)
+	pts, corridor, err := m.PathCorridor(nav.ToRecast(self.X, self.Y, self.Z), nav.ToRecast(x, y, z), nav.GroundOnly)
 	if err != nil {
 		return nil, 0, err
 	}
-	dense := densify(m, pts)
+	dense := densify(m, s.terrainFor(self.Map), pts, corridor)
 	var l float32
 	for i := 1; i < len(dense); i++ {
 		l += dist(dense[i-1], dense[i])
@@ -247,7 +259,7 @@ func (s *Service) Goto(ctx context.Context, r *pb.GotoRequest) (*pb.MoveStatus, 
 	if err != nil {
 		return &pb.MoveStatus{State: "failed", Reason: err.Error()}, nil
 	}
-	if self.Dead {
+	if self.Dead && !self.Ghost {
 		return &pb.MoveStatus{State: "failed", Reason: "character is dead", X: self.X, Y: self.Y, Z: self.Z}, nil
 	}
 	path, plen, err := s.plan(ctx, self, r.X, r.Y, r.Z)

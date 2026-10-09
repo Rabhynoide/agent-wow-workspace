@@ -336,3 +336,25 @@ func (s *Service) Creature(ctx context.Context, r *pb.CreatureInfoRequest) (*pb.
 	}
 	return c, nil
 }
+
+func (s *Service) ItemSources(ctx context.Context, r *pb.ItemSourcesRequest) (*pb.ItemSourcesResponse, error) {
+	out := &pb.ItemSourcesResponse{}
+	queries := []struct{ kind, q string }{
+		{"creature", "SELECT ct.entry, ct.name, ct.minlevel, ct.maxlevel, ABS(l.Chance) FROM creature_loot_template l JOIN creature_template ct ON ct.lootid=l.Entry WHERE l.Item=? AND EXISTS (SELECT 1 FROM creature c WHERE c.id=ct.entry) ORDER BY ABS(l.Chance) DESC LIMIT 8"},
+		{"gameobject", "SELECT g.entry, g.name, 0, 0, ABS(l.Chance) FROM gameobject_loot_template l JOIN gameobject_template g ON g.Data1=l.Entry AND g.type=3 WHERE l.Item=? AND EXISTS (SELECT 1 FROM gameobject o WHERE o.id=g.entry) ORDER BY ABS(l.Chance) DESC LIMIT 8"},
+	}
+	for _, qq := range queries {
+		rows, err := s.query(ctx, qq.q, r.Entry)
+		if err != nil {
+			return nil, err
+		}
+		for rows.Next() {
+			src := &pb.ItemSource{Kind: qq.kind}
+			if rows.Scan(&src.Entry, &src.Name, &src.MinLevel, &src.MaxLevel, &src.Chance) == nil {
+				out.Sources = append(out.Sources, src)
+			}
+		}
+		rows.Close()
+	}
+	return out, nil
+}

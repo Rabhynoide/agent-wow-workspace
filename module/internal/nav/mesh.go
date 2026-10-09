@@ -200,6 +200,9 @@ func (m *Mesh) Tile(x, y int32) *Tile {
 }
 
 // polyRef identifies a polygon: tile coordinates and index.
+// PolyRef identifies a polygon.
+type PolyRef = polyRef
+
 type polyRef struct {
 	tx, ty int32
 	idx    int32

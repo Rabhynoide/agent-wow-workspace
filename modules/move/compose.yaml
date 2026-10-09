@@ -6,6 +6,8 @@ services:
         CMD: move
     environment:
       MMAPS_DIR: /mmaps
+      MAPS_DIR: /maps
     volumes:
       - ../../logs:/logs
       - ../../assets/mmaps:/mmaps:ro
+      - ../../assets/maps:/maps:ro

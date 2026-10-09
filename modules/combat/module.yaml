@@ -1,0 +1,21 @@
+api_version: 1
+enabled: true
+description: Hunt creatures with priest spells/melee, rest and loot (async jobs)
+requires:
+  - state
+  - move
+compose:
+  file: compose.yaml
+  service: module
+grpc:
+  descriptor_set: module.pb
+rpc:
+  kill: /wowagent.combat.v1.Combat/Kill
+  rest: /wowagent.combat.v1.Combat/Rest
+  status: /wowagent.combat.v1.Combat/Status
+  stop: /wowagent.combat.v1.Combat/Stop
+packets:
+  SMSG_LOOT_RESPONSE: /wowagent.combat.v1.Combat/OnPacket
+  SMSG_CAST_FAILED: /wowagent.combat.v1.Combat/OnPacket
+lifecycle:
+  before_logout: /wowagent.combat.v1.Combat/BeforeLogout

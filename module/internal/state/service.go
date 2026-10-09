@@ -62,7 +62,8 @@ func (s *Service) Snapshot(context.Context, *emptypb.Empty) (*pb.SnapshotRespons
 		Level: me.u(fUnitLevel), Hp: me.u(fUnitHealth), MaxHp: me.u(fUnitMaxHP),
 		Power: me.u(fUnitPower1 + uint16(pt)), MaxPower: me.u(fUnitMaxPow1 + uint16(pt)), PowerType: pt,
 		Xp: me.u(fXP), NextXp: me.u(fNextXP), Money: me.u(fCoinage),
-		Target: me.guid(fUnitTarget), Dead: me.u(fUnitHealth) == 0 && me.u(fUnitMaxHP) > 0,
+		Target: me.guid(fUnitTarget), Ghost: me.u(fPlayerFlags)&0x10 != 0,
+		Dead:     (me.u(fUnitHealth) == 0 && me.u(fUnitMaxHP) > 0) || me.u(fPlayerFlags)&0x10 != 0,
 		RunSpeed: me.Speeds[1], UnitFlags: me.u(fUnitFlags),
 	}
 	slotOf := map[uint64]int32{}
@@ -175,4 +176,15 @@ func (s *Service) GetObj(_ context.Context, r *pb.GetObjRequest) (*pb.Obj, error
 		cx, cy, cz = me.X, me.Y, me.Z
 	}
 	return o.toPB(cx, cy, cz), nil
+}
+
+func (s *Service) Spells(context.Context, *emptypb.Empty) (*pb.SpellsResponse, error) {
+	s.st.mu.Lock()
+	defer s.st.mu.Unlock()
+	out := &pb.SpellsResponse{}
+	for id := range s.st.Spells {
+		out.Spells = append(out.Spells, id)
+	}
+	sort.Slice(out.Spells, func(i, j int) bool { return out.Spells[i] < out.Spells[j] })
+	return out, nil
 }
