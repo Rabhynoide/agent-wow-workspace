@@ -1,0 +1,11 @@
+services:
+  module:
+    build:
+      context: ../../module
+      args:
+        CMD: move
+    environment:
+      MMAPS_DIR: /mmaps
+    volumes:
+      - ../../logs:/logs
+      - ../../assets/mmaps:/mmaps:ro

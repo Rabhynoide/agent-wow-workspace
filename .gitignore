@@ -49,3 +49,6 @@ compile_commands.json
 *.prof
 coverage.out
 coverage/
+assets/
+logs/*.log
+logs/*.hex

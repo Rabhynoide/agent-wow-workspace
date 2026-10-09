@@ -1,0 +1,134 @@
+
+¾
+google/protobuf/empty.protogoogle.protobuf"
+EmptyB}
+com.google.protobufB
+EmptyProtoPZ.google.golang.org/protobuf/types/known/emptypbø¢GPBªGoogle.Protobuf.WellKnownTypesbproto3
+Ù
+world.protowowagent.world.v1google/protobuf/empty.proto"Î
+FindNpcRequest
+name (	Rname
+entry (Rentry
+
+map_filter (R	mapFilter
+map (Rmap
+x (Rx
+y (Ry
+radius (Rradius
+max (Rmax
+	npc_flags	 (RnpcFlags"ò
+Spawn
+entry (Rentry
+name (	Rname
+	min_level (RminLevel
+	max_level (RmaxLevel
+	npc_flags (RnpcFlags
+faction (Rfaction
+map (Rmap
+x (Rx
+y	 (Ry
+z
+ (Rz
+dist (Rdist"C
+FindNpcResponse0
+spawns (2.wowagent.world.v1.SpawnRspawns"8
+QuestInfoRequest
+id (Rid
+title (	Rtitle"p
+QuestNpc
+entry (Rentry
+name (	Rname
+map (Rmap
+x (Rx
+y (Ry
+z (Rz"d
+QuestObjective
+kind (	Rkind
+entry (Rentry
+name (	Rname
+count (Rcount"ã
+	QuestInfo
+id (Rid
+title (	Rtitle
+level (Rlevel
+	min_level (RminLevel 
+zone_or_sort (R
+zoneOrSort
+
+prev_quest (R	prevQuest
+
+next_quest (R	nextQuest 
+reward_xp_id (R
+rewardXpId!
+reward_money	 (RrewardMoneyA
+
+objectives
+ (2!.wowagent.world.v1.QuestObjectiveR
+objectives7
+starters (2.wowagent.world.v1.QuestNpcRstarters3
+enders (2.wowagent.world.v1.QuestNpcRenders'
+objectives_text (	RobjectivesText"I
+QuestInfoResponse4
+quests (2.wowagent.world.v1.QuestInfoRquests"+
+QuestsForNpcRequest
+entry (Rentry"w
+QuestRef
+id (Rid
+title (	Rtitle
+level (Rlevel
+	min_level (RminLevel
+role (	Rrole"K
+QuestsForNpcResponse3
+quests (2.wowagent.world.v1.QuestRefRquests"‘
+SpawnsRequest
+entry (Rentry
+map (Rmap
+x (Rx
+y (Ry
+radius (Rradius
+max (Rmax
+kind (	Rkind"B
+SpawnsResponse0
+spawns (2.wowagent.world.v1.SpawnRspawns";
+ItemInfoRequest
+entry (Rentry
+name (	Rname"Ç
+ItemInfo
+entry (Rentry
+name (	Rname
+quality (Rquality
+
+item_level (R	itemLevel%
+required_level (RrequiredLevel
+class (Rclass
+subclass (Rsubclass%
+inventory_type (RinventoryType
+
+sell_price	 (R	sellPrice
+	buy_price
+ (RbuyPrice
+	stackable (R	stackable"E
+ItemInfoResponse1
+items (2.wowagent.world.v1.ItemInfoRitems"+
+CreatureInfoRequest
+entry (Rentry"
+CreatureInfo
+entry (Rentry
+name (	Rname
+	min_level (RminLevel
+	max_level (RmaxLevel
+faction (Rfaction
+	npc_flags (RnpcFlags
+rank (Rrank
+type (Rtype#
+skinning_loot	 (RskinningLoot
+loot_id
+ (RlootId2Ë
+WorldP
+FindNpc!.wowagent.world.v1.FindNpcRequest".wowagent.world.v1.FindNpcResponseV
+	QuestInfo#.wowagent.world.v1.QuestInfoRequest$.wowagent.world.v1.QuestInfoResponse_
+QuestsForNpc&.wowagent.world.v1.QuestsForNpcRequest'.wowagent.world.v1.QuestsForNpcResponseM
+Spawns .wowagent.world.v1.SpawnsRequest!.wowagent.world.v1.SpawnsResponseS
+ItemInfo".wowagent.world.v1.ItemInfoRequest#.wowagent.world.v1.ItemInfoResponseS
+Creature&.wowagent.world.v1.CreatureInfoRequest.wowagent.world.v1.CreatureInfo>
+BeforeLogout.google.protobuf.Empty.google.protobuf.EmptyBZwowagent/gen/worldv1;worldv1bproto3

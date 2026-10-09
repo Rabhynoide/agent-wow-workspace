@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package wowagent.move.v1;
+option go_package = "wowagent/gen/movev1;movev1";
+
+import "google/protobuf/empty.proto";
+
+message GotoRequest {
+  float x = 1;
+  float y = 2;
+  float z = 3;
+  // Arrival tolerance in yards (horizontal). Default 1.5.
+  float radius = 4;
+  // Max seconds to block waiting for the result (default 20, max 25). The job keeps running afterwards.
+  uint32 wait_s = 5;
+  // Walk instead of run.
+  bool walk = 6;
+}
+
+message StatusRequest {
+  // Block up to this many seconds for the job to finish (max 25).
+  uint32 wait_s = 1;
+}
+
+message MoveStatus {
+  // idle | moving | arrived | failed | stopped
+  string state = 1;
+  string reason = 2;
+  float x = 3;
+  float y = 4;
+  float z = 5;
+  float o = 6;
+  float dist_left = 7;
+  float eta_s = 8;
+  float elapsed_s = 9;
+  float path_len = 10;
+}
+
+message PathRequest {
+  float x = 1;
+  float y = 2;
+  float z = 3;
+}
+
+message PathResponse {
+  uint32 points = 1;
+  float length = 2;
+  string error = 3;
+}
+
+service Move {
+  rpc Goto(GotoRequest) returns (MoveStatus);
+  rpc Status(StatusRequest) returns (MoveStatus);
+  rpc Stop(google.protobuf.Empty) returns (MoveStatus);
+  rpc Path(PathRequest) returns (PathResponse);
+  rpc BeforeLogout(google.protobuf.Empty) returns (google.protobuf.Empty);
+}

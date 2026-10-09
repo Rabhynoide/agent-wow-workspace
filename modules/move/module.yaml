@@ -1,0 +1,17 @@
+api_version: 1
+enabled: true
+description: Navmesh pathfinding and walking (async jobs)
+requires:
+  - state
+compose:
+  file: compose.yaml
+  service: module
+grpc:
+  descriptor_set: module.pb
+rpc:
+  goto: /wowagent.move.v1.Move/Goto
+  status: /wowagent.move.v1.Move/Status
+  stop: /wowagent.move.v1.Move/Stop
+  path: /wowagent.move.v1.Move/Path
+lifecycle:
+  before_logout: /wowagent.move.v1.Move/BeforeLogout

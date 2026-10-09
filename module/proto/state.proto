@@ -1,0 +1,107 @@
+syntax = "proto3";
+
+package wowagent.state.v1;
+option go_package = "wowagent/gen/statev1;statev1";
+
+import "api/module/v1/session.proto";
+import "google/protobuf/empty.proto";
+
+message SelfInfo {
+  uint64 guid = 1;
+  uint32 map = 2;
+  float x = 3;
+  float y = 4;
+  float z = 5;
+  float o = 6;
+  uint32 level = 7;
+  uint32 hp = 8;
+  uint32 max_hp = 9;
+  uint32 power = 10;
+  uint32 max_power = 11;
+  uint32 power_type = 12;
+  uint32 xp = 13;
+  uint32 next_xp = 14;
+  uint32 money = 15;
+  uint64 target = 16;
+  bool dead = 17;
+  float run_speed = 18;
+  uint32 unit_flags = 19;
+}
+
+message Item {
+  int32 slot = 1;
+  uint32 entry = 2;
+  uint32 count = 3;
+  uint64 guid = 4;
+  uint64 container = 5;
+}
+
+message Quest {
+  uint32 id = 1;
+  uint32 state = 2;
+  repeated uint32 counts = 3;
+}
+
+message SnapshotResponse {
+  SelfInfo self = 1;
+  repeated Item items = 2;
+  repeated Quest quests = 3;
+  uint32 objects = 4;
+  uint32 packets = 5;
+}
+
+message NearbyRequest {
+  // "unit" (default), "gameobject", "player" or "any".
+  string kind = 1;
+  uint32 entry = 2;
+  float radius = 3;
+  uint32 max = 4;
+  bool alive_only = 5;
+  // Keep only units whose npc_flags intersect this mask.
+  uint32 npc_flags = 6;
+}
+
+message Obj {
+  uint64 guid = 1;
+  uint32 entry = 2;
+  string kind = 3;
+  float x = 4;
+  float y = 5;
+  float z = 6;
+  float dist = 7;
+  uint32 level = 8;
+  uint32 hp = 9;
+  uint32 max_hp = 10;
+  uint32 faction = 11;
+  uint32 unit_flags = 12;
+  uint32 npc_flags = 13;
+  uint32 dyn_flags = 14;
+  uint64 target = 15;
+}
+
+message NearbyResponse {
+  repeated Obj objs = 1;
+  uint32 total = 2;
+}
+
+message SetPosRequest {
+  float x = 1;
+  float y = 2;
+  float z = 3;
+  float o = 4;
+  // 0 keeps the current map.
+  uint32 map = 5;
+}
+
+message GetObjRequest {
+  uint64 guid = 1;
+}
+
+service State {
+  rpc Snapshot(google.protobuf.Empty) returns (SnapshotResponse);
+  rpc Nearby(NearbyRequest) returns (NearbyResponse);
+  rpc GetObj(GetObjRequest) returns (Obj);
+  rpc SetPos(SetPosRequest) returns (google.protobuf.Empty);
+  rpc OnPacket(agentwow.module.v1.WorldPacket) returns (google.protobuf.Empty);
+  rpc BeforeLogout(google.protobuf.Empty) returns (google.protobuf.Empty);
+}

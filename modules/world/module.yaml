@@ -1,0 +1,17 @@
+api_version: 1
+enabled: true
+description: Read-only queries on acore_world (npcs, quests, spawns, items)
+compose:
+  file: compose.yaml
+  service: module
+grpc:
+  descriptor_set: module.pb
+rpc:
+  find_npc: /wowagent.world.v1.World/FindNpc
+  quest_info: /wowagent.world.v1.World/QuestInfo
+  quests_for_npc: /wowagent.world.v1.World/QuestsForNpc
+  spawns: /wowagent.world.v1.World/Spawns
+  item_info: /wowagent.world.v1.World/ItemInfo
+  creature: /wowagent.world.v1.World/Creature
+lifecycle:
+  before_logout: /wowagent.world.v1.World/BeforeLogout

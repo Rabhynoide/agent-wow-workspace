@@ -1,0 +1,22 @@
+api_version: 1
+enabled: true
+description: Tracks self/nearby objects, inventory and quest log from packets
+compose:
+  file: compose.yaml
+  service: module
+grpc:
+  descriptor_set: module.pb
+rpc:
+  snapshot: /wowagent.state.v1.State/Snapshot
+  nearby: /wowagent.state.v1.State/Nearby
+  get_obj: /wowagent.state.v1.State/GetObj
+  set_pos: /wowagent.state.v1.State/SetPos
+packets:
+  SMSG_UPDATE_OBJECT: /wowagent.state.v1.State/OnPacket
+  SMSG_COMPRESSED_UPDATE_OBJECT: /wowagent.state.v1.State/OnPacket
+  SMSG_DESTROY_OBJECT: /wowagent.state.v1.State/OnPacket
+  SMSG_LOGIN_VERIFY_WORLD: /wowagent.state.v1.State/OnPacket
+  SMSG_NEW_WORLD: /wowagent.state.v1.State/OnPacket
+  SMSG_MONSTER_MOVE: /wowagent.state.v1.State/OnPacket
+lifecycle:
+  before_logout: /wowagent.state.v1.State/BeforeLogout

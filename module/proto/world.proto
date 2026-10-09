@@ -1,0 +1,164 @@
+syntax = "proto3";
+
+package wowagent.world.v1;
+option go_package = "wowagent/gen/worldv1;worldv1";
+
+import "google/protobuf/empty.proto";
+
+message FindNpcRequest {
+  // Substring of the creature name, or empty to search by entry.
+  string name = 1;
+  uint32 entry = 2;
+  // Only spawns on this map when map_filter is set.
+  bool map_filter = 3;
+  uint32 map = 4;
+  // If set, spawns are sorted by distance to (x, y) and limited by radius when > 0.
+  float x = 5;
+  float y = 6;
+  float radius = 7;
+  uint32 max = 8;
+  // Keep only NPCs whose npcflag intersects this mask (vendor 128, repair 4096, innkeeper 65536, quest giver 2...).
+  uint32 npc_flags = 9;
+}
+
+message Spawn {
+  uint32 entry = 1;
+  string name = 2;
+  uint32 min_level = 3;
+  uint32 max_level = 4;
+  uint32 npc_flags = 5;
+  uint32 faction = 6;
+  uint32 map = 7;
+  float x = 8;
+  float y = 9;
+  float z = 10;
+  float dist = 11;
+}
+
+message FindNpcResponse {
+  repeated Spawn spawns = 1;
+}
+
+message QuestInfoRequest {
+  uint32 id = 1;
+  string title = 2;
+}
+
+message QuestNpc {
+  uint32 entry = 1;
+  string name = 2;
+  uint32 map = 3;
+  float x = 4;
+  float y = 5;
+  float z = 6;
+}
+
+message QuestObjective {
+  // "kill" or "item" or "gameobject".
+  string kind = 1;
+  uint32 entry = 2;
+  string name = 3;
+  uint32 count = 4;
+}
+
+message QuestInfo {
+  uint32 id = 1;
+  string title = 2;
+  uint32 level = 3;
+  uint32 min_level = 4;
+  uint32 zone_or_sort = 5;
+  uint32 prev_quest = 6;
+  uint32 next_quest = 7;
+  uint32 reward_xp_id = 8;
+  int32 reward_money = 9;
+  repeated QuestObjective objectives = 10;
+  repeated QuestNpc starters = 11;
+  repeated QuestNpc enders = 12;
+  string objectives_text = 13;
+}
+
+message QuestInfoResponse {
+  repeated QuestInfo quests = 1;
+}
+
+message QuestsForNpcRequest {
+  uint32 entry = 1;
+}
+
+message QuestRef {
+  uint32 id = 1;
+  string title = 2;
+  uint32 level = 3;
+  uint32 min_level = 4;
+  // "start" or "end".
+  string role = 5;
+}
+
+message QuestsForNpcResponse {
+  repeated QuestRef quests = 1;
+}
+
+message SpawnsRequest {
+  uint32 entry = 1;
+  uint32 map = 2;
+  float x = 3;
+  float y = 4;
+  float radius = 5;
+  uint32 max = 6;
+  // "creature" (default) or "gameobject".
+  string kind = 7;
+}
+
+message SpawnsResponse {
+  repeated Spawn spawns = 1;
+}
+
+message ItemInfoRequest {
+  uint32 entry = 1;
+  string name = 2;
+}
+
+message ItemInfo {
+  uint32 entry = 1;
+  string name = 2;
+  uint32 quality = 3;
+  uint32 item_level = 4;
+  uint32 required_level = 5;
+  uint32 class = 6;
+  uint32 subclass = 7;
+  uint32 inventory_type = 8;
+  uint32 sell_price = 9;
+  uint32 buy_price = 10;
+  uint32 stackable = 11;
+}
+
+message ItemInfoResponse {
+  repeated ItemInfo items = 1;
+}
+
+message CreatureInfoRequest {
+  uint32 entry = 1;
+}
+
+message CreatureInfo {
+  uint32 entry = 1;
+  string name = 2;
+  uint32 min_level = 3;
+  uint32 max_level = 4;
+  uint32 faction = 5;
+  uint32 npc_flags = 6;
+  uint32 rank = 7;
+  uint32 type = 8;
+  uint32 skinning_loot = 9;
+  uint32 loot_id = 10;
+}
+
+service World {
+  rpc FindNpc(FindNpcRequest) returns (FindNpcResponse);
+  rpc QuestInfo(QuestInfoRequest) returns (QuestInfoResponse);
+  rpc QuestsForNpc(QuestsForNpcRequest) returns (QuestsForNpcResponse);
+  rpc Spawns(SpawnsRequest) returns (SpawnsResponse);
+  rpc ItemInfo(ItemInfoRequest) returns (ItemInfoResponse);
+  rpc Creature(CreatureInfoRequest) returns (CreatureInfo);
+  rpc BeforeLogout(google.protobuf.Empty) returns (google.protobuf.Empty);
+}
