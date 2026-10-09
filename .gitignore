@@ -52,3 +52,4 @@ coverage/
 assets/
 logs/*.log
 logs/*.hex
+.env
