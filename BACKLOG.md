@@ -17,7 +17,7 @@ Légende : [ ] à faire, [~] partiel, [x] fait.
 - [x] Consigner ces remarques : ce fichier.
 
 ## Problèmes connus (moi)
-- [ ] Éviter de mourir : `combat` doit fuir/soigner/utiliser Bouclier, et ne pas laisser le personnage inactif au milieu des mobs après un arrêt.
+- [~] Éviter de mourir : garde d'`auto` contre les attaques entre deux jobs (fait) ; reste : fuir, utiliser les consommables.
 - [ ] `session.logout` est refusé en combat (reason 1) : attendre la fin du combat.
 - [x] Coffre « Milly's Harvest » : verrou « Open Kneeling » => sort 22810 lancé par `quest.use`.
 - [x] Vente de camelote : règles `sellrule` + distance 5 yards + PNJ « [DND] » ignorés (voir « Revente »).
@@ -56,9 +56,9 @@ Légende : [ ] à faire, [~] partiel, [x] fait.
 - [ ] Évitement des monstres hostiles dans l'A* (coût autour des monstres). Opus.
 
 ## Test du guerrier Claudio (2026-10-10) : ouvert
-- [ ] « Fight timeout » : `fightWarrior` expire après 120 s sans tuer (0 kill, PV 100 %) ; puis le personnage est trouvé mort à l'arrêt. Hypothèses : cible hors de portée de mêlée (le seuil `meleeRange+1` avec la distance 2D, une cible sur une pente ou derrière un mur), cible qui s'enfuit à faible vie, attaque automatique non engagée (CMSG_ATTACKSWING sans facing correct). A faire : journaliser l'état à chaque 20 s de combat (distance 3D, PV de la cible, rage, cible sélectionnée), abandonner et passer à une autre cible après 45 s sans dégât sur la cible, test hors ligne de `fightWarrior` avec un faux client.
-- [ ] Entraînement inutile : Parry (passive) acheté (95 pc) ; `training.skip` du fichier warrior.yaml ne le liste pas. A faire : liste d'exclusion locale par classe (`journal/classes/<classe>.local.yaml` ou règle « passifs de défense ») et n'acheter que max_rank / train_asap_single_rank en premier quand l'argent manque.
-- [ ] Charge « pas prête » (code 67) répétée et Overpower essayé toutes les 2 s : lire le journal de combat (SMSG_ATTACKERSTATEUPDATE) pour savoir quand Overpower est utilisable ; suivre le temps de recharge de Charge (15 s).
+- [x] « Fight timeout » et mort : analysée (personnage laissé sans job parmi des loups après l'arrêt de `auto.grind` ; coups refusés par le serveur) ; corrigé : garde d'`auto` (`combat.defend`), `auto.grind` tolérant, refus de mêlée écoutés (portée/orientation), abandon d'une cible sans dégâts après 25 s. Validé 15 min sans mort.
+- [x] Parry : en fait utile (permet de parer), pas un défaut. (Si un sort doit être exclu un jour : `training.skip` du fichier de classe.)
+- [~] Overpower seulement après une esquive (journal de combat) et recharge de Charge suivie entre combats : fait. Reste : Victory Rush tenté hors fenêtre (code 67) — suivre l'aura « Victorious » ; Charge refusée pour ligne de vue (47) malgré `move.los` (doodads M2 ou relief).
 - [ ] Soins du guerrier : aucun (pas de nourriture ni de Premiers soins) ; le repos à 75 % réduit les morts mais ralentit. A faire : acheter/manger de la nourriture, Premiers soins (compétence + bandages).
 - [ ] Portée visible : le serveur n'envoie que les monstres proches (~100 yards), donc les chasses « rayon 150 » sur des créatures éloignées échouent vite ; `auto.grind` saute, mais `world.spawns` pourrait guider `hunt` vers les points d'apparition éloignés (déjà fait dans `hunt` ; à vérifier pour `grind`).
 - [x] Danger par classe, rotation (Battle Shout/Charge/Heroic Strike), boucle de `grind.sh` (voir `journal/characters/Claudio.md`).

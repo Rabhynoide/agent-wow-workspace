@@ -4,7 +4,9 @@ package auto
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	modv1 "github.com/agent-wow/agent-wow/pkg/modules/v1"
@@ -46,12 +48,38 @@ type Service struct {
 	corpse chan [4]float32
 	api    api.C
 	jobs   *jobs.Runner[*pb.AutoStatus]
+	guard  atomic.Bool // defend when attacked between jobs
 }
 
 func Register(g grpc.ServiceRegistrar, s modv1.SessionClient) {
 	runner := jobs.NewRunner(&pb.AutoStatus{State: "idle"})
 	runner.Decorate = func(j *job, st *pb.AutoStatus) { st.ElapsedS = uint32(time.Since(j.Start).Seconds()) }
-	pb.RegisterAutoServer(g, &Service{sess: s, corpse: make(chan [4]float32, 4), api: api.C{S: s}, jobs: runner})
+	svc := &Service{sess: s, corpse: make(chan [4]float32, 4), api: api.C{S: s}, jobs: runner}
+	pb.RegisterAutoServer(g, svc)
+	go svc.guardLoop()
+}
+
+// guardLoop defends the character when it is attacked while no auto job runs (a job that failed or
+// finished leaves it standing among monsters: Claudio died that way). It is armed when an auto job
+// ends on its own and disarmed by auto.stop and logout, so a stop by the user stays a stop.
+func (s *Service) guardLoop() {
+	const inCombat = 0x00080000 // UNIT_FLAG_IN_COMBAT
+	ctx := context.Background()
+	for {
+		time.Sleep(2 * time.Second)
+		if !s.guard.Load() || s.jobs.Cur() != nil {
+			continue
+		}
+		b, err := s.api.Brief(ctx)
+		if err != nil || b.Self == nil || b.Self.Dead || b.Self.UnitFlags&inCombat == 0 {
+			continue
+		}
+		if st, err := s.api.CombatStatus(ctx, 0); err != nil || st.State == "running" {
+			continue
+		}
+		slog.Info("attacked while idle: defending")
+		_, _ = s.api.CombatDefend(ctx, 1)
+	}
 }
 
 func (s *Service) OnPacket(_ context.Context, p *modv1.WorldPacket) (*emptypb.Empty, error) {
@@ -76,8 +104,12 @@ func (s *Service) Recover(ctx context.Context, r *pb.StatusRequest) (*pb.AutoSta
 
 // start runs body as the current job and maps its error to the final state.
 func (s *Service) start(ctx context.Context, waitS uint32, initial *pb.AutoStatus, body func(r *run) error) *pb.AutoStatus {
+	s.guard.Store(false)
 	s.jobs.Start(initial, func(j *job) {
 		err := body(&run{s: s, j: j, ctx: j.Ctx})
+		if j.Ctx.Err() == nil {
+			s.guard.Store(true) // ended on its own: watch over the character until the next job
+		}
 		j.Update(func(st *pb.AutoStatus) {
 			switch {
 			case err == nil:
@@ -180,11 +212,13 @@ func (r *run) healerRez(send func(uint32, []byte)) bool {
 }
 
 func (s *Service) BeforeLogout(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+	s.guard.Store(false)
 	s.jobs.Stop()
 	return &emptypb.Empty{}, nil
 }
 
 func (s *Service) Stop(context.Context, *emptypb.Empty) (*pb.AutoStatus, error) {
+	s.guard.Store(false)
 	s.jobs.Stop()
 	return s.jobs.Current(), nil
 }
@@ -216,7 +250,7 @@ func (r *run) grind(req *pb.GrindRequest) error {
 		return fmt.Errorf("recover: %w", err)
 	}
 	r.progress()
-	deaths, idle, lastLevel := 0, 0, uint32(0)
+	deaths, idle, failures, lastLevel := 0, 0, 0, uint32(0)
 	for round := 0; time.Now().Before(deadline); round++ {
 		if r.ctx.Err() != nil {
 			return r.ctx.Err()
@@ -253,9 +287,18 @@ func (r *run) grind(req *pb.GrindRequest) error {
 			if idle++; idle >= len(req.Entries) {
 				return fmt.Errorf("nothing to hunt right now (%v)", err)
 			}
+		case strings.HasPrefix(err.Error(), "combat:") || strings.HasPrefix(err.Error(), "walk to"):
+			// A fight or a walk that went wrong (timeout, unreachable target): next creature. Stop only
+			// when it keeps happening.
+			r.note("round skipped: %v", err)
+			if failures++; failures >= 5 {
+				return fmt.Errorf("stopping after 5 failed rounds: %v", err)
+			}
+			continue
 		default:
 			return err
 		}
+		failures = 0
 	}
 	return fmt.Errorf("time limit")
 }

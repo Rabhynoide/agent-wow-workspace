@@ -14,8 +14,12 @@ rpc:
   rest: /wowagent.combat.v1.Combat/Rest
   status: /wowagent.combat.v1.Combat/Status
   stop: /wowagent.combat.v1.Combat/Stop
+  defend: /wowagent.combat.v1.Combat/Defend
 packets:
   SMSG_LOOT_RESPONSE: /wowagent.combat.v1.Combat/OnPacket
   SMSG_CAST_FAILED: /wowagent.combat.v1.Combat/OnPacket
+  SMSG_ATTACKSWING_NOTINRANGE: /wowagent.combat.v1.Combat/OnPacket
+  SMSG_ATTACKSWING_BADFACING: /wowagent.combat.v1.Combat/OnPacket
+  SMSG_ATTACKERSTATEUPDATE: /wowagent.combat.v1.Combat/OnPacket
 lifecycle:
   before_logout: /wowagent.combat.v1.Combat/BeforeLogout

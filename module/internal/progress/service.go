@@ -569,6 +569,11 @@ func (s *Service) bestUpgrade(ctx context.Context, inv *inventory) *upgrade {
 
 func (s *Service) Gear(ctx context.Context, r *pb.GearRequest) (*pb.GearResult, error) {
 	res := &pb.GearResult{Ok: true}
+	// The server refuses equipment changes in combat (EQUIP_ERR_NOT_IN_COMBAT): later.
+	if b, err := s.api.Brief(ctx); err == nil && b.Self != nil && b.Self.UnitFlags&0x00080000 != 0 {
+		res.Reason = "in combat: gear checked after the fight"
+		return res, nil
+	}
 	for i := 0; i < 8; i++ {
 		inv, err := s.inventory(ctx)
 		if err != nil {

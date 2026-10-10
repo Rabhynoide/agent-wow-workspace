@@ -25,6 +25,7 @@ const (
 	Combat_Rest_FullMethodName         = "/wowagent.combat.v1.Combat/Rest"
 	Combat_Status_FullMethodName       = "/wowagent.combat.v1.Combat/Status"
 	Combat_Stop_FullMethodName         = "/wowagent.combat.v1.Combat/Stop"
+	Combat_Defend_FullMethodName       = "/wowagent.combat.v1.Combat/Defend"
 	Combat_OnPacket_FullMethodName     = "/wowagent.combat.v1.Combat/OnPacket"
 	Combat_BeforeLogout_FullMethodName = "/wowagent.combat.v1.Combat/BeforeLogout"
 )
@@ -37,6 +38,8 @@ type CombatClient interface {
 	Rest(ctx context.Context, in *RestRequest, opts ...grpc.CallOption) (*CombatStatus, error)
 	Status(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*CombatStatus, error)
 	Stop(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*CombatStatus, error)
+	// Fights whatever attacks us until nothing has for 4 s (used by auto's idle guard).
+	Defend(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*CombatStatus, error)
 	OnPacket(ctx context.Context, in *v1.WorldPacket, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	BeforeLogout(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
@@ -89,6 +92,16 @@ func (c *combatClient) Stop(ctx context.Context, in *emptypb.Empty, opts ...grpc
 	return out, nil
 }
 
+func (c *combatClient) Defend(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*CombatStatus, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CombatStatus)
+	err := c.cc.Invoke(ctx, Combat_Defend_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *combatClient) OnPacket(ctx context.Context, in *v1.WorldPacket, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -117,6 +130,8 @@ type CombatServer interface {
 	Rest(context.Context, *RestRequest) (*CombatStatus, error)
 	Status(context.Context, *StatusRequest) (*CombatStatus, error)
 	Stop(context.Context, *emptypb.Empty) (*CombatStatus, error)
+	// Fights whatever attacks us until nothing has for 4 s (used by auto's idle guard).
+	Defend(context.Context, *StatusRequest) (*CombatStatus, error)
 	OnPacket(context.Context, *v1.WorldPacket) (*emptypb.Empty, error)
 	BeforeLogout(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	mustEmbedUnimplementedCombatServer()
@@ -140,6 +155,9 @@ func (UnimplementedCombatServer) Status(context.Context, *StatusRequest) (*Comba
 }
 func (UnimplementedCombatServer) Stop(context.Context, *emptypb.Empty) (*CombatStatus, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Stop not implemented")
+}
+func (UnimplementedCombatServer) Defend(context.Context, *StatusRequest) (*CombatStatus, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Defend not implemented")
 }
 func (UnimplementedCombatServer) OnPacket(context.Context, *v1.WorldPacket) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method OnPacket not implemented")
@@ -240,6 +258,24 @@ func _Combat_Stop_Handler(srv interface{}, ctx context.Context, dec func(interfa
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Combat_Defend_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CombatServer).Defend(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Combat_Defend_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CombatServer).Defend(ctx, req.(*StatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Combat_OnPacket_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(v1.WorldPacket)
 	if err := dec(in); err != nil {
@@ -298,6 +334,10 @@ var Combat_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Stop",
 			Handler:    _Combat_Stop_Handler,
+		},
+		{
+			MethodName: "Defend",
+			Handler:    _Combat_Defend_Handler,
 		},
 		{
 			MethodName: "OnPacket",

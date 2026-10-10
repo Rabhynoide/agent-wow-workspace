@@ -49,6 +49,8 @@ service Combat {
   rpc Rest(RestRequest) returns (CombatStatus);
   rpc Status(StatusRequest) returns (CombatStatus);
   rpc Stop(google.protobuf.Empty) returns (CombatStatus);
+  // Fights whatever attacks us until nothing has for 4 s (used by auto's idle guard).
+  rpc Defend(StatusRequest) returns (CombatStatus);
   rpc OnPacket(agentwow.module.v1.WorldPacket) returns (google.protobuf.Empty);
   rpc BeforeLogout(google.protobuf.Empty) returns (google.protobuf.Empty);
 }

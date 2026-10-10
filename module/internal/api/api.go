@@ -203,6 +203,12 @@ func (c C) CombatStatus(ctx context.Context, waitS uint32) (*combatpb.CombatStat
 	return &r, err
 }
 
+func (c C) CombatDefend(ctx context.Context, waitS uint32) (*combatpb.CombatStatus, error) {
+	var r combatpb.CombatStatus
+	err := invoke.Call(ctx, c.S, "combat", "defend", &combatpb.StatusRequest{WaitS: waitS}, &r)
+	return &r, err
+}
+
 func (c C) CombatStop(ctx context.Context) error {
 	var r combatpb.CombatStatus
 	return invoke.Call(ctx, c.S, "combat", "stop", &emptypb.Empty{}, &r)

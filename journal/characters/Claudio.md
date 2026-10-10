@@ -20,8 +20,20 @@ Corrigés (commit 4b36bc8) :
 1. Rockhide Boars niveau 7-8 chassés par un guerrier de niveau 5 : danger par classe (casters +2, autres +1), repos à 75 % de PV.
 2. Rotation : Battle Shout sans rage (code 85), Charge trop près (128), Heroic Strike relancé (40).
 3. `grind.sh` boucle à vide avec « bags full » : remplacé par `auto.grind`.
-Ouverts (voir BACKLOG « Test du guerrier ») :
-4. « fight timeout » : un combat de 120 s sans kill (cible non atteinte ou non frappée ?), puis mort non expliquée.
-5. L'entraîneur achète des sorts inutiles (Parry passive, 95 pc).
-6. Charge « pas prête » (code 67) répété ; Overpower tenté à l'aveugle.
-7. Loups (525) et coupe-bourses (94) hors de la portée visible autour de Goldshire : les rounds correspondants échouent vite (sauté par `auto.grind`).
+
+## Analyse (Opus, après l'arrêt)
+- La mort finale : après un « fight timeout » (120 s, 0 kill, 100 % PV, 0 rage = jamais au contact), `auto.grind` s'est ARRÊTÉ et le personnage est resté sans job au milieu de 5 loups galeux (corps en -9567,301 ; base : 5 loups à moins de 10 yards). Il est mort sans se défendre.
+- Le « fight timeout » : le serveur refusait nos coups ; les codes relevés pendant le test le confirment (Rend 134 UNIT_NOT_INFRONT, 97 OUT_OF_RANGE ; Charge 1 AFFECTING_COMBAT = état « en combat » en retard). Nous n'écoutions pas SMSG_ATTACKSWING_NOTINRANGE / BADFACING et la position de la cible est approximative.
+- Equipement en combat refusé (EQUIP_ERR_NOT_IN_COMBAT, code 60).
+- Parry acheté : en fait utile (le guerrier peut parer) — pas un défaut.
+
+## Corrections (commit suivant l'analyse)
+4. Garde d'`auto` : quand un job d'auto se termine seul, `auto` surveille le personnage et lance `combat.defend` s'il est attaqué (désarmée par `auto.stop` et la déconnexion).
+5. `auto.grind` ne s'arrête plus sur un combat ou une marche raté : tour suivant ; arrêt après 5 échecs de suite.
+6. Mêlée : écoute de SMSG_ATTACKSWING_NOTINRANGE (rapprochement à 1,5 yard), BADFACING (orientation renvoyée ; et toutes les 2 s), distance 3D ; une cible sans dégâts depuis 25 s est abandonnée (2 min sans la reprendre) au lieu de 120 s.
+7. Overpower seulement après une esquive réelle (SMSG_ATTACKERSTATEUPDATE, état 2) ; temps de recharge de Charge conservé entre les combats ; pas de Charge sur une cible qui nous attaque déjà.
+8. Pas de changement d'équipement en combat.
+
+## Validation (même soir)
+- Chasse `auto.grind` relancée : 15 min sans mort ni arrêt, 2 ventes (124 + 200 pc), réparations, Thunder Clap et Victory Rush appris ; niveau 6 → 3163/3600 XP, 640 pc.
+- Reste : Victory Rush tenté hors fenêtre (67, bénin) ; Charge refusée pour ligne de vue (47) alors que notre `move.los` disait « visible » (cible derrière un relief ou un doodad).

@@ -56,19 +56,29 @@ type Service struct {
 	lastRenew  time.Time
 	lastBuff   time.Time // Fortitude / Inner Fire (30 min); Battle Shout (2 min)
 	lastKill   time.Time // Victory Rush is usable for 20 s after a killing blow
+	lastCharge time.Time // Charge has a 15 s cooldown across fights
+	melee      *meleeLog
+	abandoned  map[uint64]time.Time // targets given up (no damage dealt): not picked again for a while
 }
 
 func Register(g grpc.ServiceRegistrar, s modv1.SessionClient) {
 	guid, _ := strconv.ParseUint(os.Getenv("AGENT_WOW_CHARACTER_GUID"), 10, 64)
 	runner := jobs.NewRunner(&pb.CombatStatus{State: "idle"})
 	runner.Decorate = func(j *job, st *pb.CombatStatus) { st.ElapsedS = uint32(time.Since(j.Start).Seconds()) }
-	pb.RegisterCombatServer(g, &Service{s: s, api: api.C{S: s}, loot: loot.NewTracker(), guid: guid, jobs: runner, failures: map[uint8]castFailure{}})
+	pb.RegisterCombatServer(g, &Service{s: s, api: api.C{S: s}, loot: loot.NewTracker(), guid: guid, jobs: runner, failures: map[uint8]castFailure{},
+		melee: newMeleeLog(), abandoned: map[uint64]time.Time{}})
 }
 
 func (s *Service) OnPacket(_ context.Context, p *modv1.WorldPacket) (*emptypb.Empty, error) {
 	switch p.GetOpcode() {
 	case uint32(opcode.SMSGLootResponse):
 		s.loot.OnPacket(p.GetPayload())
+	case uint32(opcode.SMSGAttackswingNotinrange):
+		s.melee.refusedRange()
+	case uint32(opcode.SMSGAttackswingBadfacing):
+		s.melee.refusedFacing()
+	case uint32(opcode.SMSGAttackerstateupdate):
+		s.melee.attackerState(s.guid, p.GetPayload())
 	case uint32(opcode.SMSGCastFailed):
 		r := wire.NewReader(p.GetPayload())
 		cnt, spell, res := r.U8(), r.U32(), r.U8()
@@ -157,6 +167,12 @@ func (s *Service) cast(ctx context.Context, spell uint32, target uint64) (uint8,
 
 // face turns towards the target when the orientation differs by more than ~6 degrees.
 func (s *Service) face(ctx context.Context, me *statepb.SelfInfo, tx, ty float32) {
+	s.faceTo(ctx, me, tx, ty, false)
+}
+
+// faceTo turns towards the target; force sends the orientation even when ours looks right (the
+// server said we were not facing it).
+func (s *Service) faceTo(ctx context.Context, me *statepb.SelfInfo, tx, ty float32, force bool) {
 	o := math.Atan2(float64(ty-me.Y), float64(tx-me.X))
 	if o < 0 {
 		o += 2 * math.Pi
@@ -165,7 +181,7 @@ func (s *Service) face(ctx context.Context, me *statepb.SelfInfo, tx, ty float32
 	if d > math.Pi {
 		d = 2*math.Pi - d
 	}
-	if d < 0.1 {
+	if d < 0.1 && !force {
 		return
 	}
 	_ = moveio.Send(ctx, s.s, s.guid, uint32(opcode.MSGMoveSetFacing), 0, me.X, me.Y, me.Z, float32(o))
@@ -190,6 +206,47 @@ var sleep = jobs.Sleep
 
 func (s *Service) Kill(ctx context.Context, r *pb.KillRequest) (*pb.CombatStatus, error) {
 	return s.start(ctx, r.WaitS, func(ctx context.Context, j *job) (string, string) { return s.kill(ctx, j, r) }), nil
+}
+
+func (s *Service) Defend(ctx context.Context, r *pb.StatusRequest) (*pb.CombatStatus, error) {
+	return s.start(ctx, r.WaitS, s.defend), nil
+}
+
+// defend fights the units attacking us, one after the other, until none has for 4 seconds.
+func (s *Service) defend(ctx context.Context, j *job) (string, string) {
+	var kills uint32
+	quiet := time.Now()
+	for time.Since(quiet) < 4*time.Second {
+		if ctx.Err() != nil {
+			return "stopped", "cancelled"
+		}
+		snap, err := s.refresh(ctx, j)
+		if err != nil || snap.Self == nil {
+			return "failed", "state unavailable"
+		}
+		if snap.Self.Dead {
+			s.forgetBuffs()
+			return "failed", "dead"
+		}
+		a := s.aggressor(ctx, snap.Self)
+		if a == nil {
+			if !sleep(ctx, time.Second) {
+				return "stopped", "cancelled"
+			}
+			continue
+		}
+		j.Update(func(st *pb.CombatStatus) { st.Doing = fmt.Sprintf("defending vs %d", a.Entry) })
+		dead, why := s.fight(ctx, j, a.Guid)
+		if why != "" {
+			return "failed", why
+		}
+		if dead {
+			kills++
+			j.Update(func(st *pb.CombatStatus) { st.Kills = kills })
+		}
+		quiet = time.Now()
+	}
+	return "done", ""
 }
 
 func (s *Service) Rest(ctx context.Context, r *pb.RestRequest) (*pb.CombatStatus, error) {
@@ -254,6 +311,9 @@ func (s *Service) pickTarget(ctx context.Context, me *statepb.SelfInfo, entry ui
 	}
 	var fallback *statepb.Obj
 	for _, o := range r.Objs {
+		if s.wasAbandoned(o.Guid) {
+			continue
+		}
 		if o.Target == 0 || o.Target == me.Guid {
 			return o, nil
 		}
@@ -450,7 +510,8 @@ func (s *Service) fight(ctx context.Context, j *job, guid uint64) (bool, string)
 		}
 		return dead, why
 	}
-	var busyUntil, lastSwing, lastShoot, lastBlast, painAt, losAt time.Time
+	var busyUntil, lastSwing, lastShoot, lastBlast, painAt, losAt, lastFace time.Time
+	progress, lastHP := time.Now(), uint32(0)
 	selected := false
 	fails := 0
 	meleeUntil := time.Time{}
@@ -501,11 +562,24 @@ func (s *Service) fight(ctx context.Context, j *job, guid uint64) (bool, string)
 			return false, "dead"
 		}
 		hp, mana := pct(me.Hp, me.MaxHp), pct(me.Power, me.MaxPower)
+		if lastHP == 0 || t.Hp < lastHP || s.melee.lastHit(guid).After(progress) {
+			progress = time.Now()
+		}
+		lastHP = t.Hp
+		if time.Since(progress) > noProgress {
+			s.abandon(guid, "no damage dealt", t.Entry)
+			return false, ""
+		}
 		dist := float32(math.Hypot(float64(t.X-me.X), float64(t.Y-me.Y)))
 		outOfMana := smite == 0 || mana < 8 || time.Now().Before(meleeUntil)
 		want := float32(castRange - 2)
+		tooFar, badFacing := s.melee.recent(1500 * time.Millisecond)
 		if outOfMana && shoot == 0 {
 			want = meleeRange - 1
+			if tooFar { // the server refused our swings: closer
+				want = 1.5
+				dist = want + 3
+			}
 		}
 		if dist > want+2 {
 			st, err := s.api.Goto(ctx, t.X, t.Y, t.Z, want, 3)
@@ -532,7 +606,11 @@ func (s *Service) fight(ctx context.Context, j *job, guid uint64) (bool, string)
 			s.packetU64(ctx, uint32(opcode.CMSGSetSelection), guid)
 			selected = true
 		}
-		s.face(ctx, me, t.X, t.Y)
+		force := badFacing || time.Since(lastFace) > 2*time.Second
+		s.faceTo(ctx, me, t.X, t.Y, force)
+		if force {
+			lastFace = time.Now()
+		}
 		if time.Now().After(busyUntil) {
 			// spell, target, time the cast keeps us busy (cast time or global cooldown)
 			var spell uint32
@@ -621,6 +699,23 @@ func (s *Service) lootCorpse(ctx context.Context, j *job, guid uint64) {
 	}
 }
 
+// abandon remembers a target we could not damage, so pickTarget leaves it alone for 2 minutes.
+func (s *Service) abandon(guid uint64, why string, entry uint32) {
+	slog.Info("giving up target", "entry", entry, "why", why)
+	s.mu.Lock()
+	s.abandoned[guid] = time.Now()
+	s.mu.Unlock()
+}
+
+func (s *Service) wasAbandoned(guid uint64) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return time.Since(s.abandoned[guid]) < 2*time.Minute
+}
+
+// noProgress is the time without any damage on the target: our hits (combat log) or its health dropping.
+const noProgress = 25 * time.Second
+
 // visible tells whether we see the target (move.los); unknown counts as visible.
 func (s *Service) visible(ctx context.Context, t *statepb.Obj) bool {
 	ok, err := s.api.LineOfSight(ctx, t.X, t.Y, t.Z)
@@ -673,7 +768,8 @@ func (s *Service) fightWarrior(ctx context.Context, j *job, guid uint64) (bool, 
 	charge, rend, hs := best(known, warrior.Charge), best(known, warrior.Rend), best(known, warrior.HeroicStrike)
 	tc, vr, op := best(known, warrior.ThunderClap), best(known, warrior.VictoryRush), best(known, warrior.Overpower)
 	exe, ms, slam := best(known, warrior.Execute), best(known, warrior.MortalStrike), best(known, warrior.Slam)
-	var gcdUntil, lastSwing, lastCharge, rendAt, tcAt, opTry, vrTry, msAt, hsAt time.Time
+	var gcdUntil, lastSwing, lastFace, rendAt, tcAt, opTry, vrTry, msAt, hsAt time.Time
+	progress, lastHP := time.Now(), uint32(0)
 	shout := best(known, warrior.BattleShout)
 	selected := false
 	started := time.Now()
@@ -706,20 +802,38 @@ func (s *Service) fightWarrior(ctx context.Context, j *job, guid uint64) (bool, 
 		rage := me.Power / 10
 		targetPct := pct(t.Hp, t.MaxHp)
 		dist := float32(math.Hypot(float64(t.X-me.X), float64(t.Y-me.Y)))
+		dist3 := float32(math.Sqrt(float64(dist*dist + (t.Z-me.Z)*(t.Z-me.Z))))
 		now := time.Now()
+		// Give up a target we do not damage (unreachable, evading, wrong position) instead of
+		// standing there for the whole fight timeout.
+		if lastHP == 0 || t.Hp < lastHP || s.melee.lastHit(guid).After(progress) {
+			progress = now
+		}
+		lastHP = t.Hp
+		if now.Sub(progress) > noProgress {
+			s.abandon(guid, "no damage dealt", t.Entry)
+			return false, ""
+		}
 		// Open with Charge (out of combat only): the server moves us next to the target.
-		if charge != 0 && dist >= chargeMin+1 && dist <= chargeMax && me.UnitFlags&inCombatFlag == 0 && now.Sub(lastCharge) > 15*time.Second && s.visible(ctx, t) {
+		if charge != 0 && dist >= chargeMin+1 && dist <= chargeMax && me.UnitFlags&inCombatFlag == 0 && t.Target != me.Guid &&
+			s.since(&s.lastCharge) > 15*time.Second && s.visible(ctx, t) {
 			s.packetU64(ctx, uint32(opcode.CMSGSetSelection), guid)
 			selected = true
 			s.face(ctx, me, t.X, t.Y)
-			lastCharge = now
+			s.mark(&s.lastCharge)
 			if s.tryCast(ctx, charge, guid) {
 				sleep(ctx, 800*time.Millisecond) // the charge itself
 				continue
 			}
 		}
-		if dist > meleeRange+1 {
-			st, err := s.api.Goto(ctx, t.X, t.Y, t.Z, meleeRange-1, 3)
+		// The server refuses swings out of range: get closer than our own estimate says.
+		tooFar, badFacing := s.melee.recent(1500 * time.Millisecond)
+		if dist3 > meleeRange || tooFar {
+			radius := float32(meleeRange - 2)
+			if tooFar {
+				radius = 1.5
+			}
+			st, err := s.api.Goto(ctx, t.X, t.Y, t.Z, radius, 3)
 			if err != nil || st.State == "failed" {
 				return false, fmt.Sprintf("cannot approach target: %v %s", err, st.GetReason())
 			}
@@ -729,7 +843,12 @@ func (s *Service) fightWarrior(ctx context.Context, j *job, guid uint64) (bool, 
 			s.packetU64(ctx, uint32(opcode.CMSGSetSelection), guid)
 			selected = true
 		}
-		s.face(ctx, me, t.X, t.Y)
+		// Re-send our orientation when the server says we are not facing it, and every 2 s anyway.
+		force := badFacing || now.Sub(lastFace) > 2*time.Second
+		s.faceTo(ctx, me, t.X, t.Y, force)
+		if force {
+			lastFace = now
+		}
 		if now.Sub(lastSwing) > 3*time.Second {
 			s.packetU64(ctx, uint32(opcode.CMSGAttackswing), guid)
 			lastSwing = now
@@ -746,8 +865,8 @@ func (s *Service) fightWarrior(ctx context.Context, j *job, guid uint64) (bool, 
 				spell, mark, reactive = vr, &vrTry, true
 			case exe != 0 && targetPct < 20 && rage >= 15:
 				spell = exe
-			case op != 0 && rage >= 5 && now.Sub(opTry) > 2*time.Second:
-				spell, mark, reactive = op, &opTry, true
+			case op != 0 && rage >= 5 && s.melee.dodged(guid, 4*time.Second) && now.Sub(opTry) > time.Second:
+				spell, mark, reactive = op, &opTry, true // only after a dodge (combat log)
 			case rend != 0 && rage >= 10 && targetPct > 50 && now.Sub(rendAt) > 15*time.Second:
 				spell, mark = rend, &rendAt
 			case ms != 0 && rage >= 30 && now.Sub(msAt) > 6*time.Second:

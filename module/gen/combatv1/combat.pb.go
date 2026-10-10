@@ -355,12 +355,13 @@ const file_combat_proto_rawDesc = "" +
 	"\bmana_pct\x18\x06 \x01(\rR\amanaPct\x12\x1b\n" +
 	"\telapsed_s\x18\a \x01(\rR\belapsedS\x12\x14\n" +
 	"\x05doing\x18\b \x01(\tR\x05doing\x12\x12\n" +
-	"\x04coin\x18\t \x01(\x04R\x04coin2\xb4\x03\n" +
+	"\x04coin\x18\t \x01(\x04R\x04coin2\x83\x04\n" +
 	"\x06Combat\x12I\n" +
 	"\x04Kill\x12\x1f.wowagent.combat.v1.KillRequest\x1a .wowagent.combat.v1.CombatStatus\x12I\n" +
 	"\x04Rest\x12\x1f.wowagent.combat.v1.RestRequest\x1a .wowagent.combat.v1.CombatStatus\x12M\n" +
 	"\x06Status\x12!.wowagent.combat.v1.StatusRequest\x1a .wowagent.combat.v1.CombatStatus\x12@\n" +
-	"\x04Stop\x12\x16.google.protobuf.Empty\x1a .wowagent.combat.v1.CombatStatus\x12C\n" +
+	"\x04Stop\x12\x16.google.protobuf.Empty\x1a .wowagent.combat.v1.CombatStatus\x12M\n" +
+	"\x06Defend\x12!.wowagent.combat.v1.StatusRequest\x1a .wowagent.combat.v1.CombatStatus\x12C\n" +
 	"\bOnPacket\x12\x1f.agentwow.module.v1.WorldPacket\x1a\x16.google.protobuf.Empty\x12>\n" +
 	"\fBeforeLogout\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.EmptyB Z\x1ewowagent/gen/combatv1;combatv1b\x06proto3"
 
@@ -390,16 +391,18 @@ var file_combat_proto_depIdxs = []int32{
 	1, // 1: wowagent.combat.v1.Combat.Rest:input_type -> wowagent.combat.v1.RestRequest
 	2, // 2: wowagent.combat.v1.Combat.Status:input_type -> wowagent.combat.v1.StatusRequest
 	4, // 3: wowagent.combat.v1.Combat.Stop:input_type -> google.protobuf.Empty
-	5, // 4: wowagent.combat.v1.Combat.OnPacket:input_type -> agentwow.module.v1.WorldPacket
-	4, // 5: wowagent.combat.v1.Combat.BeforeLogout:input_type -> google.protobuf.Empty
-	3, // 6: wowagent.combat.v1.Combat.Kill:output_type -> wowagent.combat.v1.CombatStatus
-	3, // 7: wowagent.combat.v1.Combat.Rest:output_type -> wowagent.combat.v1.CombatStatus
-	3, // 8: wowagent.combat.v1.Combat.Status:output_type -> wowagent.combat.v1.CombatStatus
-	3, // 9: wowagent.combat.v1.Combat.Stop:output_type -> wowagent.combat.v1.CombatStatus
-	4, // 10: wowagent.combat.v1.Combat.OnPacket:output_type -> google.protobuf.Empty
-	4, // 11: wowagent.combat.v1.Combat.BeforeLogout:output_type -> google.protobuf.Empty
-	6, // [6:12] is the sub-list for method output_type
-	0, // [0:6] is the sub-list for method input_type
+	2, // 4: wowagent.combat.v1.Combat.Defend:input_type -> wowagent.combat.v1.StatusRequest
+	5, // 5: wowagent.combat.v1.Combat.OnPacket:input_type -> agentwow.module.v1.WorldPacket
+	4, // 6: wowagent.combat.v1.Combat.BeforeLogout:input_type -> google.protobuf.Empty
+	3, // 7: wowagent.combat.v1.Combat.Kill:output_type -> wowagent.combat.v1.CombatStatus
+	3, // 8: wowagent.combat.v1.Combat.Rest:output_type -> wowagent.combat.v1.CombatStatus
+	3, // 9: wowagent.combat.v1.Combat.Status:output_type -> wowagent.combat.v1.CombatStatus
+	3, // 10: wowagent.combat.v1.Combat.Stop:output_type -> wowagent.combat.v1.CombatStatus
+	3, // 11: wowagent.combat.v1.Combat.Defend:output_type -> wowagent.combat.v1.CombatStatus
+	4, // 12: wowagent.combat.v1.Combat.OnPacket:output_type -> google.protobuf.Empty
+	4, // 13: wowagent.combat.v1.Combat.BeforeLogout:output_type -> google.protobuf.Empty
+	7, // [7:14] is the sub-list for method output_type
+	0, // [0:7] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
