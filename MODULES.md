@@ -7,6 +7,10 @@ Scripts : `start.sh` (démarre la session), `job.sh` (attend un job async), `gri
 Appel : `scripts/rpc.sh <module.methode> '<json>' [chemin]` (sortie JSON compacte, flottants arrondis). Jobs async : `scripts/job.sh <module.methode> '<json>'` (attend la fin). Logs : `logs/<module>.log`.
 Test navmesh hors-ligne : `cd module && go test ./internal/nav -v`.
 
+## guidecheck  (outil hors jeu, `module/cmd/guidecheck`)
+- `cd module && go run ./cmd/guidecheck -dir ../journal/guides` : valide les guides extraits (format dans `journal/guides/README.md`) contre la base : titre/id de quête, race, classe, niveau minimum, PNJ donneur/rendeur, prérequis, doublons de titre (départagés par PNJ puis classe). Liste les quêtes à faire à la main (exploration, sort à lancer sur une cible, groupe). Code de sortie 1 s'il y a des problèmes.
+- `... -ids -from 5 -to 10` : imprime `{"quests":[...]}` (ordre du guide, quêtes réalisables par `auto`) à donner à `auto.run`. Nécessite la base accessible depuis l'hôte (WORLD_DB_HOST, défaut 192.168.100.7:3306).
+
 ## state  (paquets -> état du monde)
 - `state.brief {}` : self (dont class_id, race, talent_points) + quêtes + free_slots, sans les objets (à préférer).
 - `state.snapshot {}` : self (guid,map,x,y,z,o,level,hp,power,xp,money,target,dead,run_speed), items (slot -1 = sac secondaire ou banque), quêtes (id,state,counts[4] uint16), free_slots (sac à dos + sacs équipés), nb objets.

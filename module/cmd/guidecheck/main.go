@@ -1,0 +1,345 @@
+// Command guidecheck validates extracted leveling guides (journal/guides/*.json) against the world
+// database: quest titles/ids, races, classes, levels, quest givers, prerequisites, and which quests the
+// automation cannot do. With -ids it prints a quest list for auto.run.
+package main
+
+import (
+	"database/sql"
+	"encoding/json"
+	"flag"
+	"fmt"
+	"os"
+	"path/filepath"
+	"regexp"
+	"sort"
+	"strconv"
+	"strings"
+
+	_ "github.com/go-sql-driver/mysql"
+)
+
+type step struct {
+	N       int             `json:"n"`
+	Action  string          `json:"action"`
+	Quest   string          `json:"quest"`
+	QuestID uint32          `json:"quest_id"`
+	NPC     string          `json:"npc"`
+	Level   json.RawMessage `json:"level"`
+	Class   string          `json:"class"`
+	Note    string          `json:"note"`
+}
+
+type guide struct {
+	Source  string `json:"source"`
+	Faction string `json:"faction"`
+	Race    string `json:"race"`
+	Zone    string `json:"zone"`
+	Levels  string `json:"levels"`
+	Steps   []step `json:"steps"`
+}
+
+type quest struct {
+	ID                        uint32
+	Title                     string
+	MinLevel, Level           int
+	Races, Classes            uint32
+	Prev                      uint32
+	Special                   uint32
+	Group                     int
+	Starters, Enders          []string
+	hasObjectives, startsItem bool
+}
+
+var actions = map[string]bool{"accept": true, "turnin": true, "complete": true, "kill": true, "collect": true, "use_object": true,
+	"talk": true, "travel": true, "flight_path": true, "set_hearth": true, "hearth": true, "train": true, "buy": true, "grind": true, "note": true}
+
+var raceIDs = map[string]uint32{"human": 1, "orc": 2, "dwarf": 3, "night elf": 4, "undead": 5, "tauren": 6, "gnome": 7, "troll": 8,
+	"blood elf": 10, "draenei": 11}
+
+var classIDs = map[string]uint32{"warrior": 1, "paladin": 2, "hunter": 3, "rogue": 4, "priest": 5, "death knight": 6, "shaman": 7,
+	"mage": 8, "warlock": 9, "druid": 11}
+
+var firstInt = regexp.MustCompile(`\d+`)
+
+type checker struct {
+	db       *sql.DB
+	cache    map[uint32]*quest
+	problems []string
+	manual   map[uint32]string
+	accepted map[uint32]bool
+	done     map[uint32]bool
+	order    []uint32
+}
+
+func main() {
+	dir := flag.String("dir", "../journal/guides", "directory with the guide files")
+	ids := flag.Bool("ids", false, "print the quest ids for auto.run instead of the report")
+	from := flag.Int("from", 0, "with -ids: first quest min level")
+	to := flag.Int("to", 100, "with -ids: last quest min level")
+	flag.Parse()
+	files, _ := filepath.Glob(filepath.Join(*dir, "*.json"))
+	sort.Strings(files)
+	if len(files) == 0 {
+		fmt.Println("no guide files in", *dir)
+		os.Exit(1)
+	}
+	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s)/%s?timeout=5s&transaction_read_only=1",
+		env("WORLD_DB_USER", "root"), env("WORLD_DB_PASSWORD", "password"), env("WORLD_DB_HOST", "192.168.100.7:3306"), env("WORLD_DB_NAME", "acore_world")))
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	c := &checker{db: db, cache: map[uint32]*quest{}, manual: map[uint32]string{}, accepted: map[uint32]bool{}, done: map[uint32]bool{}}
+	total := 0
+	for _, f := range files {
+		var g guide
+		b, err := os.ReadFile(f)
+		if err == nil {
+			err = json.Unmarshal(b, &g)
+		}
+		if err != nil {
+			c.problems = append(c.problems, fmt.Sprintf("%s: unreadable: %v", filepath.Base(f), err))
+			continue
+		}
+		if g.Steps == nil { // class guides and tip files have another shape
+			continue
+		}
+		total += len(g.Steps)
+		c.check(filepath.Base(f), &g)
+	}
+	if *ids {
+		c.printIDs(*from, *to)
+		return
+	}
+	fmt.Printf("%d files, %d steps, %d quests, %d manual, %d problems\n", len(files), total, len(c.order), len(c.manual), len(c.problems))
+	for _, p := range c.problems {
+		fmt.Println(" !", p)
+	}
+	var man []uint32
+	for id := range c.manual {
+		man = append(man, id)
+	}
+	sort.Slice(man, func(i, j int) bool { return man[i] < man[j] })
+	for _, id := range man {
+		fmt.Printf(" manual: quest %d %q: %s\n", id, c.cache[id].Title, c.manual[id])
+	}
+	if len(c.problems) > 0 {
+		os.Exit(1)
+	}
+}
+
+func env(k, def string) string {
+	if v := os.Getenv(k); v != "" {
+		return v
+	}
+	return def
+}
+
+func (c *checker) problem(file string, s step, format string, a ...any) {
+	c.problems = append(c.problems, fmt.Sprintf("%s #%d %s %q: %s", file, s.N, s.Action, s.Quest, fmt.Sprintf(format, a...)))
+}
+
+func (c *checker) check(file string, g *guide) {
+	race := raceIDs[strings.ToLower(g.Race)]
+	for i, s := range g.Steps {
+		if !actions[s.Action] {
+			c.problem(file, s, "unknown action")
+		}
+		if s.N != i+1 {
+			c.problem(file, s, "step number should be %d", i+1)
+		}
+		if s.Quest == "" && s.QuestID == 0 {
+			continue
+		}
+		q := c.resolve(file, s, race)
+		if q == nil {
+			continue
+		}
+		lvl := 0
+		if m := firstInt.Find(s.Level); m != nil {
+			lvl, _ = strconv.Atoi(string(m))
+		}
+		if race != 0 && q.Races != 0 && q.Races&(1<<(race-1)) == 0 {
+			c.problem(file, s, "quest %d is not available to %s", q.ID, g.Race)
+		}
+		if cls := classIDs[strings.ToLower(s.Class)]; q.Classes != 0 && (cls == 0 || q.Classes&(1<<(cls-1)) == 0) {
+			c.problem(file, s, "quest %d is class restricted (mask %d): set \"class\" on the step", q.ID, q.Classes)
+		}
+		if lvl > 0 && lvl < q.MinLevel && s.Action == "accept" {
+			c.problem(file, s, "quest %d needs level %d, guide level is %d", q.ID, q.MinLevel, lvl)
+		}
+		switch s.Action {
+		case "accept":
+			if s.NPC != "" && len(q.Starters) > 0 && !has(q.Starters, s.NPC) {
+				c.problem(file, s, "quest giver is %v, guide says %q", q.Starters, s.NPC)
+			}
+			if q.Prev != 0 && !c.done[q.Prev] && !c.accepted[q.Prev] {
+				c.problem(file, s, "prerequisite quest %d not done earlier in the route", q.Prev)
+			}
+			if !c.accepted[q.ID] {
+				c.accepted[q.ID] = true
+				c.order = append(c.order, q.ID)
+			}
+			c.classify(q)
+		case "turnin":
+			if s.NPC != "" && len(q.Enders) > 0 && !has(q.Enders, s.NPC) {
+				c.problem(file, s, "turn-in NPC is %v, guide says %q", q.Enders, s.NPC)
+			}
+			if !c.accepted[q.ID] && q.Prev == 0 {
+				c.accepted[q.ID] = true
+				c.order = append(c.order, q.ID)
+			}
+			c.done[q.ID] = true
+		}
+	}
+}
+
+func has(list []string, name string) bool {
+	for _, n := range list {
+		if strings.EqualFold(strings.TrimSpace(n), strings.TrimSpace(name)) {
+			return true
+		}
+	}
+	return false
+}
+
+// classify records why the automation cannot complete a quest.
+func (c *checker) classify(q *quest) {
+	switch {
+	case q.Special&0x2 != 0:
+		c.manual[q.ID] = "exploration or event"
+	case q.Special&0x20 != 0:
+		c.manual[q.ID] = "needs a spell cast on a target"
+	case q.Group > 0:
+		c.manual[q.ID] = fmt.Sprintf("group of %d recommended", q.Group)
+	}
+}
+
+func (c *checker) resolve(file string, s step, race uint32) *quest {
+	if s.QuestID != 0 {
+		q := c.load(s.QuestID)
+		if q == nil {
+			c.problem(file, s, "quest id %d does not exist", s.QuestID)
+			return nil
+		}
+		if s.Quest != "" && !strings.EqualFold(strings.TrimSpace(q.Title), strings.TrimSpace(s.Quest)) {
+			c.problem(file, s, "id %d is %q in the database", s.QuestID, q.Title)
+		}
+		return q
+	}
+	rows, err := c.db.Query("SELECT ID FROM quest_template WHERE LogTitle=?", s.Quest)
+	if err != nil {
+		c.problem(file, s, "database: %v", err)
+		return nil
+	}
+	var found []uint32
+	for rows.Next() {
+		var id uint32
+		if rows.Scan(&id) == nil {
+			found = append(found, id)
+		}
+	}
+	rows.Close()
+	var ok []*quest
+	for _, id := range found {
+		if q := c.load(id); q != nil && (race == 0 || q.Races == 0 || q.Races&(1<<(race-1)) != 0) {
+			ok = append(ok, q)
+		}
+	}
+	// Same title, several quests: tell them apart by the NPC of the step, then by the class.
+	if len(ok) > 1 && s.NPC != "" {
+		var byNPC []*quest
+		for _, q := range ok {
+			if has(q.Starters, s.NPC) || has(q.Enders, s.NPC) {
+				byNPC = append(byNPC, q)
+			}
+		}
+		if len(byNPC) > 0 {
+			ok = byNPC
+		}
+	}
+	if cls := classIDs[strings.ToLower(s.Class)]; len(ok) > 1 && cls != 0 {
+		var byClass []*quest
+		for _, q := range ok {
+			if q.Classes == 0 || q.Classes&(1<<(cls-1)) != 0 {
+				byClass = append(byClass, q)
+			}
+		}
+		if len(byClass) > 0 {
+			ok = byClass
+		}
+	}
+	switch {
+	case len(found) == 0:
+		c.problem(file, s, "no quest with this title in the database")
+	case len(ok) == 1:
+		return ok[0]
+	case len(ok) == 0:
+		c.problem(file, s, "ids %v exist but none is available to this race", found)
+	default:
+		c.problem(file, s, "ambiguous title, ids %v: set quest_id", found)
+	}
+	return nil
+}
+
+func (c *checker) load(id uint32) *quest {
+	if q, ok := c.cache[id]; ok {
+		return q
+	}
+	q := &quest{ID: id}
+	var startItem uint32
+	var prev int32
+	err := c.db.QueryRow(`SELECT q.LogTitle, q.MinLevel, q.QuestLevel, q.AllowableRaces, q.SuggestedGroupNum, q.StartItem,
+		(q.RequiredNpcOrGo1<>0 OR q.RequiredNpcOrGo2<>0 OR q.RequiredNpcOrGo3<>0 OR q.RequiredNpcOrGo4<>0
+		 OR q.RequiredItemId1<>0 OR q.RequiredItemId2<>0 OR q.RequiredItemId3<>0 OR q.RequiredItemId4<>0 OR q.RequiredItemId5<>0 OR q.RequiredItemId6<>0),
+		COALESCE(a.AllowableClasses,0), COALESCE(a.PrevQuestID,0), COALESCE(a.SpecialFlags,0)
+		FROM quest_template q LEFT JOIN quest_template_addon a ON a.ID=q.ID WHERE q.ID=?`, id).
+		Scan(&q.Title, &q.MinLevel, &q.Level, &q.Races, &q.Group, &startItem, &q.hasObjectives, &q.Classes, &prev, &q.Special)
+	if err != nil {
+		c.cache[id] = nil
+		return nil
+	}
+	q.startsItem = startItem != 0
+	if prev > 0 { // negative = "must be active", not a hard prerequisite
+		q.Prev = uint32(prev)
+	}
+	q.Starters = c.names(id, "queststarter")
+	q.Enders = c.names(id, "questender")
+	c.cache[id] = q
+	return q
+}
+
+func (c *checker) names(id uint32, role string) []string {
+	var out []string
+	for _, tbl := range []string{"creature_" + role, "gameobject_" + role} {
+		tpl := "creature_template"
+		if strings.HasPrefix(tbl, "gameobject") {
+			tpl = "gameobject_template"
+		}
+		rows, err := c.db.Query(fmt.Sprintf("SELECT DISTINCT t.name FROM %s g JOIN %s t ON t.entry=g.id WHERE g.quest=?", tbl, tpl), id)
+		if err != nil {
+			continue
+		}
+		for rows.Next() {
+			var n string
+			if rows.Scan(&n) == nil {
+				out = append(out, n)
+			}
+		}
+		rows.Close()
+	}
+	return out
+}
+
+func (c *checker) printIDs(from, to int) {
+	var ids []uint32
+	for _, id := range c.order {
+		q := c.cache[id]
+		if q == nil || c.manual[id] != "" || q.MinLevel < from || q.MinLevel > to {
+			continue
+		}
+		ids = append(ids, id)
+	}
+	b, _ := json.Marshal(map[string]any{"quests": ids})
+	fmt.Println(string(b))
+}

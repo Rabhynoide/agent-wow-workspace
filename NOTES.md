@@ -19,6 +19,9 @@ Je ne peux pas changer de modèle moi-même : je propose `/model <nom>` quand le
 ## Builds et guides (voir BACKLOG « A demander à l'utilisateur »)
 Icy Veins bloque ma lecture (403). Aux paliers de niveau listés dans BACKLOG (9, 19, 39, 49, 59, changement de zone), prévenir l'utilisateur en une ligne pour qu'il colle le guide complet, avant de modifier `priest.Build`, les poids de `gear` ou la rotation de `combat`.
 
+## Guides de leveling
+Les routes de quêtes extraites par Claude Desktop sont dans `journal/guides/` (format : README du dossier). Valider avec `cd module && go run ./cmd/guidecheck -dir ../journal/guides`, jouer avec `... -ids -from <niveau> -to <niveau>` puis `scripts/job.sh auto.run '<json>'`. Les guides ont 2-3 ans (WotLK Classic ≠ 3.3.5) : la base du serveur fait foi, guidecheck signale les écarts.
+
 ## Démarrer / arrêter
 - Démarrer : `scripts/start.sh` (vérifie auth + port, lance `char play` en arrière-plan, attend "world session ready", 1 à 3 min ; une seule ligne en sortie). Lancer la commande Bash avec un timeout de 10 min.
 - Appeler : `scripts/rpc.sh <module.methode> '<json>' [chemin]` (chemin optionnel, ex. `self` ou `self.hp` ; flottants arrondis). Arrêter : `scripts/rpc.sh session.logout` (refusé en combat : attendre).
