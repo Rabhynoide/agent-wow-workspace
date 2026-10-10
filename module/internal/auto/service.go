@@ -20,7 +20,14 @@ import (
 	"wowagent/internal/wire"
 )
 
-const maxWait = 25
+const (
+	// Death.SicknessLevel of the server (worldserver.conf): from this level the spirit healer
+	// applies resurrection sickness (level-10 minutes up to 10 min of reduced stats).
+	sicknessLevel = 11
+	maxWait       = 25
+	// Do not walk further than this (yards) to a class trainer between quests.
+	maxTrainerDist = 1500
+)
 
 type job = jobs.Job[*pb.AutoStatus]
 
@@ -96,6 +103,14 @@ func (r *run) recover() error {
 			return r.ctx.Err()
 		}
 	}
+	// The corpse is often inside the pack that killed us: the spirit healer of the graveyard
+	// brings us back safely, but only while that is free of resurrection sickness (a heavy stat
+	// debuff from sicknessLevel on; reclaiming the corpse never applies it). It still costs durability.
+	if snap.Self.Level < sicknessLevel {
+		if ok := r.healerRez(send); ok {
+			return nil
+		}
+	}
 	for len(r.s.corpse) > 0 {
 		<-r.s.corpse
 	}
@@ -112,7 +127,8 @@ func (r *run) recover() error {
 	if err := r.walk(pos[1], pos[2], pos[3], 15); err != nil {
 		return err
 	}
-	for i := 0; i < 20; i++ {
+	// The reclaim delay grows with repeated deaths (up to 2 minutes): keep trying for 4 minutes.
+	for i := 0; i < 80; i++ {
 		w := &wire.Writer{}
 		w.U64(0)
 		send(uint32(opcode.CMSGReclaimCorpse), w.B)
@@ -124,6 +140,34 @@ func (r *run) recover() error {
 		}
 	}
 	return fmt.Errorf("could not resurrect at corpse")
+}
+
+// healerRez walks to a spirit healer within 150 yards and resurrects there.
+func (r *run) healerRez(send func(uint32, []byte)) bool {
+	const spiritHealerFlag = 0x4000
+	vis, err := r.s.api.Nearby(r.ctx, &statepb.NearbyRequest{Kind: "unit", NpcFlags: spiritHealerFlag, Radius: 150, Max: 1})
+	if err != nil || len(vis.Objs) == 0 {
+		return false
+	}
+	h := vis.Objs[0]
+	r.step("going to the spirit healer (%.0f yards)", h.Dist)
+	if h.Dist > 6 {
+		if err := r.walk(h.X, h.Y, h.Z, 3); err != nil {
+			return false
+		}
+	}
+	for i := 0; i < 5; i++ {
+		w := &wire.Writer{}
+		w.U64(h.Guid)
+		send(uint32(opcode.CMSGSpiritHealerActivate), w.B)
+		if !jobs.Sleep(r.ctx, 2*time.Second) {
+			return false
+		}
+		if b, err := r.s.api.Brief(r.ctx); err == nil && b.Self != nil && !b.Self.Dead {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Service) BeforeLogout(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
@@ -174,6 +218,12 @@ func (r *run) snapshot() (*statepb.BriefResponse, error) {
 }
 
 func (r *run) quests(req *pb.RunRequest) error {
+	if !req.NoProgress {
+		if err := r.recover(); err != nil {
+			return fmt.Errorf("recover: %w", err)
+		}
+		r.progress()
+	}
 	for _, id := range req.Quests {
 		r.j.Update(func(st *pb.AutoStatus) { st.Quest = id })
 		var err error
@@ -181,7 +231,8 @@ func (r *run) quests(req *pb.RunRequest) error {
 			if err = r.recover(); err != nil {
 				return fmt.Errorf("recover: %w", err)
 			}
-			if err = r.doQuest(id, req.Rewards[id]); err == nil || r.ctx.Err() != nil {
+			reward, chosen := req.Rewards[id]
+			if err = r.doQuest(id, reward, chosen); err == nil || r.ctx.Err() != nil {
 				break
 			}
 			if b, e := r.s.api.Brief(r.ctx); e != nil || b.Self == nil || !b.Self.Dead {
@@ -192,8 +243,51 @@ func (r *run) quests(req *pb.RunRequest) error {
 			return fmt.Errorf("quest %d: %w", id, err)
 		}
 		r.j.Update(func(st *pb.AutoStatus) { st.Done = append(st.Done, id) })
+		if !req.NoProgress {
+			r.progress()
+		}
 	}
 	return nil
+}
+
+// progress equips upgrades, spends talent points and visits the class trainer when it has
+// something to teach. Failures are reported in the step but never stop the quest chain.
+func (r *run) progress() {
+	if g, err := r.s.api.Gear(r.ctx); err == nil && len(g.Equipped) > 0 {
+		r.note("equipped %v", g.Equipped)
+	}
+	if t, err := r.s.api.Talents(r.ctx); err == nil && len(t.Learned) > 0 {
+		r.note("talents %v", t.Learned)
+	}
+	chk, err := r.s.api.TrainCheck(r.ctx)
+	if err != nil || chk.Count == 0 || chk.Dist > maxTrainerDist {
+		return
+	}
+	r.step("training at %s: %v", chk.TrainerName, chk.Spells)
+	st, err := r.s.api.Train(r.ctx, 20)
+	for err == nil && st.State == "running" && r.ctx.Err() == nil {
+		st, err = r.s.api.TrainStatus(r.ctx, 20)
+	}
+	if r.ctx.Err() != nil {
+		_ = r.s.api.TrainStop(context.Background())
+		return
+	}
+	if err == nil && len(st.Learned) > 0 {
+		r.note("learned %v", st.Learned)
+	} else if err == nil && st.State == "failed" {
+		r.note("training failed: %s", st.Reason)
+	}
+}
+
+// note records a progress event in the status (kept short: last 10).
+func (r *run) note(format string, a ...any) {
+	msg := fmt.Sprintf(format, a...)
+	r.j.Update(func(st *pb.AutoStatus) {
+		st.Progress = append(st.Progress, msg)
+		if len(st.Progress) > 10 {
+			st.Progress = st.Progress[len(st.Progress)-10:]
+		}
+	})
 }
 
 func inLog(snap *statepb.BriefResponse, id uint32) *statepb.Quest {
@@ -262,7 +356,7 @@ func (r *run) approachNpc(entry uint32, x, y, z float32) error {
 	return nil
 }
 
-func (r *run) doQuest(id uint32, reward uint32) error {
+func (r *run) doQuest(id uint32, reward uint32, chosen bool) error {
 	info, err := r.s.api.QuestInfo(r.ctx, id)
 	if err != nil {
 		return err
@@ -319,6 +413,12 @@ func (r *run) doQuest(id uint32, reward uint32) error {
 	r.step("turn in '%s' at %s", info.Title, en.Name)
 	if err := r.approachNpc(en.Entry, en.X, en.Y, en.Z); err != nil {
 		return err
+	}
+	if !chosen && len(info.RewardChoices) > 1 {
+		if pick, err := r.s.api.PickReward(r.ctx, info.RewardChoices); err == nil {
+			reward = pick.Index
+			r.note("reward %d for quest %d (%s)", info.RewardChoices[reward], id, pick.Reason)
+		}
 	}
 	if res, err := r.s.api.TurnIn(r.ctx, en.Entry, id, reward); err != nil || !res.Ok {
 		return fmt.Errorf("turn-in failed: %v %s", err, res.GetReason())

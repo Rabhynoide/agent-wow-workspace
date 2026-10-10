@@ -8,6 +8,7 @@ requires:
   - quest
   - combat
   - town
+  - progress
 compose:
   file: compose.yaml
   service: module

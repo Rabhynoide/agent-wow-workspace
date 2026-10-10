@@ -60,9 +60,19 @@ func (s *Service) Snapshot(context.Context, *emptypb.Empty) (*pb.SnapshotRespons
 	resp.Quests = questLog(me)
 	resp.FreeSlots = st.freeSlots(me)
 	slotOf := map[uint64]int32{}
+	inBag := map[uint64][2]uint32{} // item guid -> (bag inventory slot, index)
 	for slot := 0; slot <= slotPackLast; slot++ {
-		if g := me.guid(uint16(fInvSlots + 2*slot)); g != 0 {
-			slotOf[g] = int32(slot)
+		g := me.guid(uint16(fInvSlots + 2*slot))
+		if g == 0 {
+			continue
+		}
+		slotOf[g] = int32(slot)
+		if bag := st.objs[g]; slot >= slotBagFirst && slot <= slotBagLast && bag != nil {
+			for i := uint32(0); i < min(bag.u(fBagSlots), 36); i++ {
+				if ig := bag.guid(uint16(fBagSlot1 + 2*i)); ig != 0 {
+					inBag[ig] = [2]uint32{uint32(slot), i}
+				}
+			}
 		}
 	}
 	for _, o := range st.objs {
@@ -71,7 +81,9 @@ func (s *Service) Snapshot(context.Context, *emptypb.Empty) (*pb.SnapshotRespons
 		}
 		it := &pb.Item{Guid: o.Guid, Entry: o.u(fEntry), Count: o.u(fItemCount), Slot: -1, Container: o.guid(fItemHolder)}
 		if sl, ok := slotOf[o.Guid]; ok {
-			it.Slot = sl
+			it.Slot, it.Bag, it.BagSlot = sl, 255, uint32(sl)
+		} else if pos, ok := inBag[o.Guid]; ok {
+			it.Bag, it.BagSlot = pos[0], pos[1]
 		}
 		resp.Items = append(resp.Items, it)
 	}
@@ -92,8 +104,10 @@ func (s *Service) Brief(context.Context, *emptypb.Empty) (*pb.BriefResponse, err
 }
 
 func (st *Store) selfInfo(me *Obj) *pb.SelfInfo {
-	pt := (me.u(fUnitBytes0) >> 24) & 0xff
+	b0 := me.u(fUnitBytes0)
+	pt := (b0 >> 24) & 0xff
 	return &pb.SelfInfo{
+		Race: b0 & 0xff, ClassId: (b0 >> 8) & 0xff, TalentPoints: me.u(fTalentPts),
 		Guid: me.Guid, Map: st.Map, X: me.X, Y: me.Y, Z: me.Z, O: me.O,
 		Level: me.u(fUnitLevel), Hp: me.u(fUnitHealth), MaxHp: me.u(fUnitMaxHP),
 		Power: me.u(fUnitPower1 + uint16(pt)), MaxPower: me.u(fUnitMaxPow1 + uint16(pt)), PowerType: pt,

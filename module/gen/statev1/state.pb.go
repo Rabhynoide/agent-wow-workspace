@@ -24,27 +24,31 @@ const (
 )
 
 type SelfInfo struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Guid          uint64                 `protobuf:"varint,1,opt,name=guid,proto3" json:"guid,omitempty"`
-	Map           uint32                 `protobuf:"varint,2,opt,name=map,proto3" json:"map,omitempty"`
-	X             float32                `protobuf:"fixed32,3,opt,name=x,proto3" json:"x,omitempty"`
-	Y             float32                `protobuf:"fixed32,4,opt,name=y,proto3" json:"y,omitempty"`
-	Z             float32                `protobuf:"fixed32,5,opt,name=z,proto3" json:"z,omitempty"`
-	O             float32                `protobuf:"fixed32,6,opt,name=o,proto3" json:"o,omitempty"`
-	Level         uint32                 `protobuf:"varint,7,opt,name=level,proto3" json:"level,omitempty"`
-	Hp            uint32                 `protobuf:"varint,8,opt,name=hp,proto3" json:"hp,omitempty"`
-	MaxHp         uint32                 `protobuf:"varint,9,opt,name=max_hp,json=maxHp,proto3" json:"max_hp,omitempty"`
-	Power         uint32                 `protobuf:"varint,10,opt,name=power,proto3" json:"power,omitempty"`
-	MaxPower      uint32                 `protobuf:"varint,11,opt,name=max_power,json=maxPower,proto3" json:"max_power,omitempty"`
-	PowerType     uint32                 `protobuf:"varint,12,opt,name=power_type,json=powerType,proto3" json:"power_type,omitempty"`
-	Xp            uint32                 `protobuf:"varint,13,opt,name=xp,proto3" json:"xp,omitempty"`
-	NextXp        uint32                 `protobuf:"varint,14,opt,name=next_xp,json=nextXp,proto3" json:"next_xp,omitempty"`
-	Money         uint32                 `protobuf:"varint,15,opt,name=money,proto3" json:"money,omitempty"`
-	Target        uint64                 `protobuf:"varint,16,opt,name=target,proto3" json:"target,omitempty"`
-	Dead          bool                   `protobuf:"varint,17,opt,name=dead,proto3" json:"dead,omitempty"`
-	RunSpeed      float32                `protobuf:"fixed32,18,opt,name=run_speed,json=runSpeed,proto3" json:"run_speed,omitempty"`
-	UnitFlags     uint32                 `protobuf:"varint,19,opt,name=unit_flags,json=unitFlags,proto3" json:"unit_flags,omitempty"`
-	Ghost         bool                   `protobuf:"varint,20,opt,name=ghost,proto3" json:"ghost,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Guid      uint64                 `protobuf:"varint,1,opt,name=guid,proto3" json:"guid,omitempty"`
+	Map       uint32                 `protobuf:"varint,2,opt,name=map,proto3" json:"map,omitempty"`
+	X         float32                `protobuf:"fixed32,3,opt,name=x,proto3" json:"x,omitempty"`
+	Y         float32                `protobuf:"fixed32,4,opt,name=y,proto3" json:"y,omitempty"`
+	Z         float32                `protobuf:"fixed32,5,opt,name=z,proto3" json:"z,omitempty"`
+	O         float32                `protobuf:"fixed32,6,opt,name=o,proto3" json:"o,omitempty"`
+	Level     uint32                 `protobuf:"varint,7,opt,name=level,proto3" json:"level,omitempty"`
+	Hp        uint32                 `protobuf:"varint,8,opt,name=hp,proto3" json:"hp,omitempty"`
+	MaxHp     uint32                 `protobuf:"varint,9,opt,name=max_hp,json=maxHp,proto3" json:"max_hp,omitempty"`
+	Power     uint32                 `protobuf:"varint,10,opt,name=power,proto3" json:"power,omitempty"`
+	MaxPower  uint32                 `protobuf:"varint,11,opt,name=max_power,json=maxPower,proto3" json:"max_power,omitempty"`
+	PowerType uint32                 `protobuf:"varint,12,opt,name=power_type,json=powerType,proto3" json:"power_type,omitempty"`
+	Xp        uint32                 `protobuf:"varint,13,opt,name=xp,proto3" json:"xp,omitempty"`
+	NextXp    uint32                 `protobuf:"varint,14,opt,name=next_xp,json=nextXp,proto3" json:"next_xp,omitempty"`
+	Money     uint32                 `protobuf:"varint,15,opt,name=money,proto3" json:"money,omitempty"`
+	Target    uint64                 `protobuf:"varint,16,opt,name=target,proto3" json:"target,omitempty"`
+	Dead      bool                   `protobuf:"varint,17,opt,name=dead,proto3" json:"dead,omitempty"`
+	RunSpeed  float32                `protobuf:"fixed32,18,opt,name=run_speed,json=runSpeed,proto3" json:"run_speed,omitempty"`
+	UnitFlags uint32                 `protobuf:"varint,19,opt,name=unit_flags,json=unitFlags,proto3" json:"unit_flags,omitempty"`
+	Ghost     bool                   `protobuf:"varint,20,opt,name=ghost,proto3" json:"ghost,omitempty"`
+	ClassId   uint32                 `protobuf:"varint,21,opt,name=class_id,json=classId,proto3" json:"class_id,omitempty"`
+	Race      uint32                 `protobuf:"varint,22,opt,name=race,proto3" json:"race,omitempty"`
+	// Unspent talent points.
+	TalentPoints  uint32 `protobuf:"varint,23,opt,name=talent_points,json=talentPoints,proto3" json:"talent_points,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -219,13 +223,38 @@ func (x *SelfInfo) GetGhost() bool {
 	return false
 }
 
+func (x *SelfInfo) GetClassId() uint32 {
+	if x != nil {
+		return x.ClassId
+	}
+	return 0
+}
+
+func (x *SelfInfo) GetRace() uint32 {
+	if x != nil {
+		return x.Race
+	}
+	return 0
+}
+
+func (x *SelfInfo) GetTalentPoints() uint32 {
+	if x != nil {
+		return x.TalentPoints
+	}
+	return 0
+}
+
 type Item struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Slot          int32                  `protobuf:"varint,1,opt,name=slot,proto3" json:"slot,omitempty"`
-	Entry         uint32                 `protobuf:"varint,2,opt,name=entry,proto3" json:"entry,omitempty"`
-	Count         uint32                 `protobuf:"varint,3,opt,name=count,proto3" json:"count,omitempty"`
-	Guid          uint64                 `protobuf:"varint,4,opt,name=guid,proto3" json:"guid,omitempty"`
-	Container     uint64                 `protobuf:"varint,5,opt,name=container,proto3" json:"container,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Slot      int32                  `protobuf:"varint,1,opt,name=slot,proto3" json:"slot,omitempty"`
+	Entry     uint32                 `protobuf:"varint,2,opt,name=entry,proto3" json:"entry,omitempty"`
+	Count     uint32                 `protobuf:"varint,3,opt,name=count,proto3" json:"count,omitempty"`
+	Guid      uint64                 `protobuf:"varint,4,opt,name=guid,proto3" json:"guid,omitempty"`
+	Container uint64                 `protobuf:"varint,5,opt,name=container,proto3" json:"container,omitempty"`
+	// Position for item packets: bag 255 = backpack/equipment (bag_slot = inventory slot),
+	// 19..22 = equipped bag (bag_slot = index in that bag). Unset (0/0) for bank items.
+	Bag           uint32 `protobuf:"varint,6,opt,name=bag,proto3" json:"bag,omitempty"`
+	BagSlot       uint32 `protobuf:"varint,7,opt,name=bag_slot,json=bagSlot,proto3" json:"bag_slot,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -291,6 +320,20 @@ func (x *Item) GetGuid() uint64 {
 func (x *Item) GetContainer() uint64 {
 	if x != nil {
 		return x.Container
+	}
+	return 0
+}
+
+func (x *Item) GetBag() uint32 {
+	if x != nil {
+		return x.Bag
+	}
+	return 0
+}
+
+func (x *Item) GetBagSlot() uint32 {
+	if x != nil {
+		return x.BagSlot
 	}
 	return 0
 }
@@ -965,7 +1008,7 @@ var File_state_proto protoreflect.FileDescriptor
 
 const file_state_proto_rawDesc = "" +
 	"\n" +
-	"\vstate.proto\x12\x11wowagent.state.v1\x1a\x1bapi/module/v1/session.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xb4\x03\n" +
+	"\vstate.proto\x12\x11wowagent.state.v1\x1a\x1bapi/module/v1/session.proto\x1a\x1bgoogle/protobuf/empty.proto\"\x88\x04\n" +
 	"\bSelfInfo\x12\x12\n" +
 	"\x04guid\x18\x01 \x01(\x04R\x04guid\x12\x10\n" +
 	"\x03map\x18\x02 \x01(\rR\x03map\x12\f\n" +
@@ -989,13 +1032,18 @@ const file_state_proto_rawDesc = "" +
 	"\trun_speed\x18\x12 \x01(\x02R\brunSpeed\x12\x1d\n" +
 	"\n" +
 	"unit_flags\x18\x13 \x01(\rR\tunitFlags\x12\x14\n" +
-	"\x05ghost\x18\x14 \x01(\bR\x05ghost\"x\n" +
+	"\x05ghost\x18\x14 \x01(\bR\x05ghost\x12\x19\n" +
+	"\bclass_id\x18\x15 \x01(\rR\aclassId\x12\x12\n" +
+	"\x04race\x18\x16 \x01(\rR\x04race\x12#\n" +
+	"\rtalent_points\x18\x17 \x01(\rR\ftalentPoints\"\xa5\x01\n" +
 	"\x04Item\x12\x12\n" +
 	"\x04slot\x18\x01 \x01(\x05R\x04slot\x12\x14\n" +
 	"\x05entry\x18\x02 \x01(\rR\x05entry\x12\x14\n" +
 	"\x05count\x18\x03 \x01(\rR\x05count\x12\x12\n" +
 	"\x04guid\x18\x04 \x01(\x04R\x04guid\x12\x1c\n" +
-	"\tcontainer\x18\x05 \x01(\x04R\tcontainer\"E\n" +
+	"\tcontainer\x18\x05 \x01(\x04R\tcontainer\x12\x10\n" +
+	"\x03bag\x18\x06 \x01(\rR\x03bag\x12\x19\n" +
+	"\bbag_slot\x18\a \x01(\rR\abagSlot\"E\n" +
 	"\x05Quest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\rR\x02id\x12\x14\n" +
 	"\x05state\x18\x02 \x01(\rR\x05state\x12\x16\n" +

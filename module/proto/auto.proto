@@ -7,6 +7,8 @@ import "api/module/v1/session.proto";
 import "google/protobuf/empty.proto";
 
 message RunRequest {
+  // Skip gear/talents/training between quests (they run by default).
+  bool no_progress = 4;
   // Quest ids to complete in order (accept, objectives, turn in).
   repeated uint32 quests = 1;
   // Reward choice index per quest id (default 0).
@@ -29,6 +31,8 @@ message AutoStatus {
   uint32 level = 6;
   uint32 xp = 7;
   uint32 elapsed_s = 8;
+  // Gear, talents, training and reward choices made during the run (last 10).
+  repeated string progress = 9;
 }
 
 service Auto {

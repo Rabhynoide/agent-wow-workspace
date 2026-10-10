@@ -24,14 +24,8 @@ import (
 	"wowagent/internal/jobs"
 	"wowagent/internal/loot"
 	"wowagent/internal/moveio"
+	"wowagent/internal/priest"
 	"wowagent/internal/wire"
-)
-
-// Highest rank first.
-var (
-	smite      = []uint32{25364, 25363, 10934, 10933, 6060, 1004, 984, 598, 591, 585}
-	lesserHeal = []uint32{2053, 2052, 2050}
-	healSpells = []uint32{25314, 10965, 10964, 10963, 6064, 6063, 2055, 2054}
 )
 
 const (
@@ -55,6 +49,9 @@ type Service struct {
 	mu         sync.Mutex
 	castCount  uint8
 	castFailed time.Time
+	lastShield time.Time // Weakened Soul: no new shield for 15 s
+	lastRenew  time.Time
+	lastBuff   time.Time // Fortitude / Inner Fire (30 min)
 }
 
 func Register(g grpc.ServiceRegistrar, s modv1.SessionClient) {
@@ -116,14 +113,7 @@ func pct(a, b uint32) uint32 {
 	return a * 100 / b
 }
 
-func best(known map[uint32]bool, ranks []uint32) uint32 {
-	for _, id := range ranks {
-		if known[id] {
-			return id
-		}
-	}
-	return 0
-}
+var best = priest.Best
 
 func itemCount(items []*statepb.Item, entry uint32) uint32 {
 	var n uint32
@@ -333,6 +323,7 @@ func (s *Service) kill(ctx context.Context, j *job, r *pb.KillRequest) (string, 
 			}
 			continue
 		}
+		s.buff(ctx, me)
 		t, err := s.pickTarget(ctx, snap.Self, r.Entry, radius)
 		if err != nil {
 			return "failed", err.Error()
@@ -362,9 +353,51 @@ func (s *Service) kill(ctx context.Context, j *job, r *pb.KillRequest) (string, 
 	return "failed", "time limit"
 }
 
+// tryCast casts a spell and reports whether the server did not reject it right away.
+func (s *Service) tryCast(ctx context.Context, spell uint32, target uint64) bool {
+	_ = s.cast(ctx, spell, target)
+	sleep(ctx, 400*time.Millisecond)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return time.Since(s.castFailed) >= 800*time.Millisecond
+}
+
+// since returns the time elapsed since a shared timestamp.
+func (s *Service) since(t *time.Time) time.Duration {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return time.Since(*t)
+}
+
+func (s *Service) mark(t *time.Time) {
+	s.mu.Lock()
+	*t = time.Now()
+	s.mu.Unlock()
+}
+
+// buff refreshes Power Word: Fortitude and Inner Fire every 25 minutes (out of combat).
+func (s *Service) buff(ctx context.Context, me *statepb.SelfInfo) {
+	if s.since(&s.lastBuff) < 25*time.Minute || pct(me.Power, me.MaxPower) < 40 {
+		return
+	}
+	known, err := s.api.Spells(ctx)
+	if err != nil {
+		return
+	}
+	for _, ranks := range [][]uint32{priest.Fortitude, priest.InnerFire} {
+		if id := best(known, ranks); id != 0 {
+			s.tryCast(ctx, id, me.Guid)
+			sleep(ctx, 1200*time.Millisecond) // global cooldown
+		}
+	}
+	s.mark(&s.lastBuff)
+}
+
 // fight returns whether the target died; a non-empty reason aborts the job.
+// Priority: heal when low, shield, renew, Shadow Word: Pain once, Mind Blast, Smite;
+// out of mana: wand (Shoot) if one is equipped, else melee.
 func (s *Service) fight(ctx context.Context, j *job, guid uint64) (bool, string) {
-	var lastCast, lastSwing time.Time
+	var busyUntil, lastSwing, lastShoot, lastBlast, painAt time.Time
 	selected := false
 	fails := 0
 	meleeUntil := time.Time{}
@@ -373,10 +406,20 @@ func (s *Service) fight(ctx context.Context, j *job, guid uint64) (bool, string)
 	if err != nil {
 		return false, "spells unavailable"
 	}
-	spell := best(known, smite)
-	heal := best(known, healSpells)
+	smite := best(known, priest.Smite)
+	heal := best(known, priest.Heal)
 	if heal == 0 {
-		heal = best(known, lesserHeal)
+		heal = best(known, priest.LesserHeal)
+	}
+	shield, renew := best(known, priest.Shield), best(known, priest.Renew)
+	pain, blast := best(known, priest.Pain), best(known, priest.MindBlast)
+	shoot := uint32(0)
+	if snap, err := s.api.Snapshot(ctx); err == nil {
+		for _, it := range snap.Items {
+			if it.Bag == 255 && it.BagSlot == 17 { // ranged slot: priests can only use wands
+				shoot = best(known, priest.Shoot)
+			}
+		}
 	}
 	for time.Since(started) < 120*time.Second {
 		if ctx.Err() != nil {
@@ -401,13 +444,16 @@ func (s *Service) fight(ctx context.Context, j *job, guid uint64) (bool, string)
 		}
 		me := snap.Self
 		if me.Dead {
+			s.mu.Lock()
+			s.lastBuff = time.Time{} // buffs are lost on death
+			s.mu.Unlock()
 			return false, "dead"
 		}
-		mana := pct(me.Power, me.MaxPower)
+		hp, mana := pct(me.Hp, me.MaxHp), pct(me.Power, me.MaxPower)
 		dist := float32(math.Hypot(float64(t.X-me.X), float64(t.Y-me.Y)))
-		useMelee := spell == 0 || mana < 8 || time.Now().Before(meleeUntil)
+		outOfMana := smite == 0 || mana < 8 || time.Now().Before(meleeUntil)
 		want := float32(castRange - 2)
-		if useMelee {
+		if outOfMana && shoot == 0 {
 			want = meleeRange - 1
 		}
 		if dist > want+2 {
@@ -422,34 +468,53 @@ func (s *Service) fight(ctx context.Context, j *job, guid uint64) (bool, string)
 			selected = true
 		}
 		s.face(ctx, me, t.X, t.Y)
-		if pct(me.Hp, me.MaxHp) < 40 && mana > 30 {
-			if heal != 0 && time.Since(lastCast) > 2500*time.Millisecond {
-				_ = s.cast(ctx, heal, me.Guid)
-				lastCast = time.Now()
-				sleep(ctx, 2200*time.Millisecond)
+		if time.Now().After(busyUntil) {
+			// spell, target, time the cast keeps us busy (cast time or global cooldown)
+			var spell uint32
+			var target uint64
+			busy := 1600 * time.Millisecond
+			switch {
+			case heal != 0 && hp < 40 && mana >= 12:
+				spell, target, busy = heal, me.Guid, 3100*time.Millisecond
+			case shield != 0 && hp < 80 && mana >= 15 && s.since(&s.lastShield) > 15*time.Second:
+				spell, target = shield, me.Guid
+				s.mark(&s.lastShield)
+			case renew != 0 && hp < 65 && mana >= 15 && s.since(&s.lastRenew) > 15*time.Second:
+				spell, target = renew, me.Guid
+				s.mark(&s.lastRenew)
+			case outOfMana:
+			case pain != 0 && mana >= 20 && pct(t.Hp, t.MaxHp) > 30 && time.Since(painAt) > 18*time.Second:
+				spell, target, painAt = pain, guid, time.Now()
+			case blast != 0 && mana >= 30 && time.Since(lastBlast) > 8*time.Second:
+				spell, target, lastBlast = blast, guid, time.Now()
+			default:
+				spell, target, busy = smite, guid, 2600*time.Millisecond
+			}
+			if spell != 0 {
+				busyUntil = time.Now().Add(busy)
+				if !s.tryCast(ctx, spell, target) {
+					busyUntil = time.Now()
+					if target == guid {
+						if fails++; fails >= 3 {
+							meleeUntil = time.Now().Add(8 * time.Second) // e.g. line of sight: fight in melee for a while
+							fails = 0
+						}
+					}
+				} else {
+					fails = 0
+				}
 				continue
 			}
 		}
-		if useMelee {
-			if time.Since(lastSwing) > 3*time.Second {
+		if outOfMana {
+			if shoot != 0 {
+				if time.Since(lastShoot) > 5*time.Second {
+					_ = s.cast(ctx, shoot, guid)
+					lastShoot = time.Now()
+				}
+			} else if time.Since(lastSwing) > 3*time.Second {
 				s.packetU64(ctx, uint32(opcode.CMSGAttackswing), guid)
 				lastSwing = time.Now()
-			}
-		} else if time.Since(lastCast) > 2300*time.Millisecond {
-			_ = s.cast(ctx, spell, guid)
-			lastCast = time.Now()
-			sleep(ctx, 400*time.Millisecond)
-			s.mu.Lock()
-			failed := time.Since(s.castFailed) < 800*time.Millisecond
-			s.mu.Unlock()
-			if failed {
-				if fails++; fails >= 3 {
-					meleeUntil = time.Now().Add(8 * time.Second)
-					fails = 0
-				}
-				lastCast = time.Now().Add(-1500 * time.Millisecond)
-			} else {
-				fails = 0
 			}
 		}
 		if !sleep(ctx, 300*time.Millisecond) {

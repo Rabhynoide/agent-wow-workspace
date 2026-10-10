@@ -1,0 +1,28 @@
+api_version: 1
+enabled: true
+description: Makes the character stronger (class trainer spells, talents, gear, quest reward choice)
+requires:
+  - state
+  - world
+  - move
+compose:
+  file: compose.yaml
+  service: module
+grpc:
+  descriptor_set: module.pb
+rpc:
+  train_check: /wowagent.progress.v1.Progress/TrainCheck
+  train: /wowagent.progress.v1.Progress/Train
+  status: /wowagent.progress.v1.Progress/Status
+  stop: /wowagent.progress.v1.Progress/Stop
+  talents: /wowagent.progress.v1.Progress/Talents
+  gear: /wowagent.progress.v1.Progress/Gear
+  pick_reward: /wowagent.progress.v1.Progress/PickReward
+packets:
+  SMSG_TRAINER_LIST: /wowagent.progress.v1.Progress/OnPacket
+  SMSG_TRAINER_BUY_SUCCEEDED: /wowagent.progress.v1.Progress/OnPacket
+  SMSG_TRAINER_BUY_FAILED: /wowagent.progress.v1.Progress/OnPacket
+  SMSG_TALENTS_INFO: /wowagent.progress.v1.Progress/OnPacket
+  SMSG_INVENTORY_CHANGE_FAILURE: /wowagent.progress.v1.Progress/OnPacket
+lifecycle:
+  before_logout: /wowagent.progress.v1.Progress/BeforeLogout

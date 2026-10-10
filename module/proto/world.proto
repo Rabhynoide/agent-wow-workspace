@@ -63,6 +63,11 @@ message QuestObjective {
   uint32 counter = 5;
 }
 
+message ItemStat {
+  uint32 type = 1;
+  int32 value = 2;
+}
+
 message QuestInfo {
   uint32 id = 1;
   string title = 2;
@@ -77,6 +82,8 @@ message QuestInfo {
   repeated QuestNpc starters = 11;
   repeated QuestNpc enders = 12;
   string objectives_text = 13;
+  // Items offered as a choice at turn-in (index = reward argument of quest.turnin).
+  repeated uint32 reward_choices = 14;
 }
 
 message QuestInfoResponse {
@@ -132,6 +139,13 @@ message ItemInfo {
   uint32 sell_price = 9;
   uint32 buy_price = 10;
   uint32 stackable = 11;
+  uint32 armor = 12;
+  // Weapon damage per second (first damage range).
+  float dps = 13;
+  repeated ItemStat stats = 14;
+  // -1 = any class/race, else bitmask (1 << (id - 1)).
+  int32 allowable_class = 15;
+  int32 allowable_race = 16;
 }
 
 message ItemInfoResponse {
@@ -173,6 +187,38 @@ message ItemSourcesResponse {
   repeated ItemSource sources = 1;
 }
 
+message ClassTrainersRequest {
+  uint32 class_id = 1;
+  uint32 map = 2;
+  float x = 3;
+  float y = 4;
+  // Default 3.
+  uint32 max = 5;
+}
+
+message TrainerSpell {
+  uint32 spell = 1;
+  uint32 cost = 2;
+  uint32 req_level = 3;
+  repeated uint32 req_ability = 4;
+}
+
+message ClassTrainer {
+  uint32 entry = 1;
+  string name = 2;
+  uint32 map = 3;
+  float x = 4;
+  float y = 5;
+  float z = 6;
+  float dist = 7;
+  uint32 trainer_id = 8;
+  repeated TrainerSpell spells = 9;
+}
+
+message ClassTrainersResponse {
+  repeated ClassTrainer trainers = 1;
+}
+
 service World {
   rpc ItemSources(ItemSourcesRequest) returns (ItemSourcesResponse);
   rpc FindNpc(FindNpcRequest) returns (FindNpcResponse);
@@ -181,5 +227,6 @@ service World {
   rpc Spawns(SpawnsRequest) returns (SpawnsResponse);
   rpc ItemInfo(ItemInfoRequest) returns (ItemInfoResponse);
   rpc Creature(CreatureInfoRequest) returns (CreatureInfo);
+  rpc ClassTrainers(ClassTrainersRequest) returns (ClassTrainersResponse);
   rpc BeforeLogout(google.protobuf.Empty) returns (google.protobuf.Empty);
 }

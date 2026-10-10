@@ -13,6 +13,7 @@ rpc:
   spawns: /wowagent.world.v1.World/Spawns
   item_info: /wowagent.world.v1.World/ItemInfo
   creature: /wowagent.world.v1.World/Creature
+  class_trainers: /wowagent.world.v1.World/ClassTrainers
   item_sources: /wowagent.world.v1.World/ItemSources
 lifecycle:
   before_logout: /wowagent.world.v1.World/BeforeLogout

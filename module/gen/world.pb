@@ -4,7 +4,7 @@
 EmptyB}
 com.google.protobufB
 EmptyProtoPZ.google.golang.org/protobuf/types/known/emptypbø¢GPBªGoogle.Protobuf.WellKnownTypesbproto3
-ì
+ü#
 world.protowowagent.world.v1google/protobuf/empty.proto"Î
 FindNpcRequest
 name (	Rname
@@ -47,7 +47,10 @@ map_filter (R	mapFilter
 entry (Rentry
 name (	Rname
 count (Rcount
-counter (Rcounter"ã
+counter (Rcounter"4
+ItemStat
+type (Rtype
+value (Rvalue"Š
 	QuestInfo
 id (Rid
 title (	Rtitle
@@ -68,7 +71,8 @@ objectives
 objectives7
 starters (2.wowagent.world.v1.QuestNpcRstarters3
 enders (2.wowagent.world.v1.QuestNpcRenders'
-objectives_text (	RobjectivesText"I
+objectives_text (	RobjectivesText%
+reward_choices (RrewardChoices"I
 QuestInfoResponse4
 quests (2.wowagent.world.v1.QuestInfoRquests"+
 QuestsForNpcRequest
@@ -93,7 +97,7 @@ objectives7
 spawns (2.wowagent.world.v1.SpawnRspawns";
 ItemInfoRequest
 entry (Rentry
-name (	Rname"Ç
+name (	Rname"ò
 ItemInfo
 entry (Rentry
 name (	Rname
@@ -108,7 +112,12 @@ item_level (R	itemLevel%
 sell_price	 (R	sellPrice
 	buy_price
  (RbuyPrice
-	stackable (R	stackable"E
+	stackable (R	stackable
+armor (Rarmor
+dps (Rdps1
+stats (2.wowagent.world.v1.ItemStatRstats'
+allowable_class (RallowableClass%
+allowable_race (RallowableRace"E
 ItemInfoResponse1
 items (2.wowagent.world.v1.ItemInfoRitems"+
 CreatureInfoRequest
@@ -136,7 +145,32 @@ ItemSource
 	max_level (RmaxLevel
 chance (Rchance"N
 ItemSourcesResponse7
-sources (2.wowagent.world.v1.ItemSourceRsources2©
+sources (2.wowagent.world.v1.ItemSourceRsources"q
+ClassTrainersRequest
+class_id (RclassId
+map (Rmap
+x (Rx
+y (Ry
+max (Rmax"v
+TrainerSpell
+spell (Rspell
+cost (Rcost
+	req_level (RreqLevel
+req_ability (R
+reqAbility"à
+ClassTrainer
+entry (Rentry
+name (	Rname
+map (Rmap
+x (Rx
+y (Ry
+z (Rz
+dist (Rdist
+
+trainer_id (R	trainerId7
+spells	 (2.wowagent.world.v1.TrainerSpellRspells"T
+ClassTrainersResponse;
+trainers (2.wowagent.world.v1.ClassTrainerRtrainers2
 World\
 ItemSources%.wowagent.world.v1.ItemSourcesRequest&.wowagent.world.v1.ItemSourcesResponseP
 FindNpc!.wowagent.world.v1.FindNpcRequest".wowagent.world.v1.FindNpcResponseV
@@ -144,5 +178,6 @@ ItemSource
 QuestsForNpc&.wowagent.world.v1.QuestsForNpcRequest'.wowagent.world.v1.QuestsForNpcResponseM
 Spawns .wowagent.world.v1.SpawnsRequest!.wowagent.world.v1.SpawnsResponseS
 ItemInfo".wowagent.world.v1.ItemInfoRequest#.wowagent.world.v1.ItemInfoResponseS
-Creature&.wowagent.world.v1.CreatureInfoRequest.wowagent.world.v1.CreatureInfo>
+Creature&.wowagent.world.v1.CreatureInfoRequest.wowagent.world.v1.CreatureInfob
+ClassTrainers'.wowagent.world.v1.ClassTrainersRequest(.wowagent.world.v1.ClassTrainersResponse>
 BeforeLogout.google.protobuf.Empty.google.protobuf.EmptyBZwowagent/gen/worldv1;worldv1bproto3

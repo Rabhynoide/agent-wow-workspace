@@ -205,6 +205,9 @@ func (s *Service) QuestInfo(ctx context.Context, r *pb.QuestInfoRequest) (*pb.Qu
 	for i := 1; i <= 6; i++ {
 		cols += fmt.Sprintf(", q.RequiredItemId%d, q.RequiredItemCount%d", i, i)
 	}
+	for i := 1; i <= 6; i++ {
+		cols += fmt.Sprintf(", q.RewardChoiceItemID%d", i)
+	}
 	q := "SELECT " + cols + " FROM quest_template q LEFT JOIN quest_template_addon a ON a.ID=q.ID WHERE "
 	var args []any
 	if r.Id != 0 {
@@ -229,6 +232,7 @@ func (s *Service) QuestInfo(ctx context.Context, r *pb.QuestInfoRequest) (*pb.Qu
 		var npcN [4]uint32
 		var item [6]uint32
 		var itemN [6]uint32
+		var choice [6]uint32
 		dest := []any{&qi.Id, &qi.Title, &qi.Level, &qi.MinLevel, &qi.ZoneOrSort, &qi.PrevQuest, &qi.NextQuest, &qi.RewardXpId, &qi.RewardMoney, &qi.ObjectivesText}
 		for i := 0; i < 4; i++ {
 			dest = append(dest, &npc[i], &npcN[i])
@@ -236,10 +240,18 @@ func (s *Service) QuestInfo(ctx context.Context, r *pb.QuestInfoRequest) (*pb.Qu
 		for i := 0; i < 6; i++ {
 			dest = append(dest, &item[i], &itemN[i])
 		}
+		for i := 0; i < 6; i++ {
+			dest = append(dest, &choice[i])
+		}
 		if err := rows.Scan(dest...); err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 		out.Quests = append(out.Quests, qi)
+		for _, c := range choice {
+			if c != 0 {
+				qi.RewardChoices = append(qi.RewardChoices, c)
+			}
+		}
 		for i := 0; i < 4; i++ {
 			switch {
 			case npc[i] > 0:
@@ -293,8 +305,17 @@ func (s *Service) QuestsForNpc(ctx context.Context, r *pb.QuestsForNpcRequest) (
 	return out, nil
 }
 
+var statCols = func() string {
+	var b strings.Builder
+	for i := 1; i <= 10; i++ {
+		fmt.Fprintf(&b, ", stat_type%d, stat_value%d", i, i)
+	}
+	return b.String()
+}()
+
 func (s *Service) ItemInfo(ctx context.Context, r *pb.ItemInfoRequest) (*pb.ItemInfoResponse, error) {
-	q := "SELECT entry, name, Quality, ItemLevel, RequiredLevel, class, subclass, InventoryType, SellPrice, BuyPrice, stackable FROM item_template WHERE "
+	q := "SELECT entry, name, Quality, ItemLevel, RequiredLevel, class, subclass, InventoryType, SellPrice, BuyPrice, stackable, " +
+		"armor, dmg_min1, dmg_max1, delay, AllowableClass, AllowableRace" + statCols + " FROM item_template WHERE "
 	var arg any
 	if r.Entry != 0 {
 		q += "entry=?"
@@ -313,8 +334,24 @@ func (s *Service) ItemInfo(ctx context.Context, r *pb.ItemInfoRequest) (*pb.Item
 	out := &pb.ItemInfoResponse{}
 	for rows.Next() {
 		it := &pb.ItemInfo{}
-		if err := rows.Scan(&it.Entry, &it.Name, &it.Quality, &it.ItemLevel, &it.RequiredLevel, &it.Class, &it.Subclass, &it.InventoryType, &it.SellPrice, &it.BuyPrice, &it.Stackable); err != nil {
+		var dmin, dmax float32
+		var delay uint32
+		var st [20]int32
+		dest := []any{&it.Entry, &it.Name, &it.Quality, &it.ItemLevel, &it.RequiredLevel, &it.Class, &it.Subclass, &it.InventoryType, &it.SellPrice, &it.BuyPrice, &it.Stackable,
+			&it.Armor, &dmin, &dmax, &delay, &it.AllowableClass, &it.AllowableRace}
+		for i := range st {
+			dest = append(dest, &st[i])
+		}
+		if err := rows.Scan(dest...); err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
+		}
+		if delay > 0 {
+			it.Dps = (dmin + dmax) / 2 / (float32(delay) / 1000)
+		}
+		for i := 0; i < 10; i++ {
+			if st[2*i] != 0 && st[2*i+1] != 0 {
+				it.Stats = append(it.Stats, &pb.ItemStat{Type: uint32(st[2*i]), Value: st[2*i+1]})
+			}
 		}
 		out.Items = append(out.Items, it)
 	}
@@ -355,6 +392,48 @@ func (s *Service) ItemSources(ctx context.Context, r *pb.ItemSourcesRequest) (*p
 			}
 		}
 		rows.Close()
+	}
+	return out, nil
+}
+
+// ClassTrainers lists the nearest class trainers of a map with the spells of their trainer list.
+func (s *Service) ClassTrainers(ctx context.Context, r *pb.ClassTrainersRequest) (*pb.ClassTrainersResponse, error) {
+	rows, err := s.query(ctx, "SELECT ct.entry, ct.name, c.map, c.position_x, c.position_y, c.position_z, "+
+		"SQRT(POW(c.position_x-?,2)+POW(c.position_y-?,2)) AS dist, t.Id FROM creature_default_trainer d "+
+		"JOIN trainer t ON t.Id=d.TrainerId JOIN creature_template ct ON ct.entry=d.CreatureId JOIN creature c ON c.id=ct.entry "+
+		"WHERE t.Type=0 AND t.Requirement=? AND c.map=? ORDER BY dist LIMIT "+fmt.Sprint(limit(r.Max, 3)),
+		r.X, r.Y, r.ClassId, r.Map)
+	if err != nil {
+		return nil, err
+	}
+	out := &pb.ClassTrainersResponse{}
+	for rows.Next() {
+		t := &pb.ClassTrainer{}
+		if err := rows.Scan(&t.Entry, &t.Name, &t.Map, &t.X, &t.Y, &t.Z, &t.Dist, &t.TrainerId); err != nil {
+			rows.Close()
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		out.Trainers = append(out.Trainers, t)
+	}
+	rows.Close()
+	for _, t := range out.Trainers {
+		sp, err := s.query(ctx, "SELECT SpellId, MoneyCost, ReqLevel, ReqAbility1, ReqAbility2, ReqAbility3 FROM trainer_spell WHERE TrainerId=? ORDER BY ReqLevel, SpellId", t.TrainerId)
+		if err != nil {
+			return nil, err
+		}
+		for sp.Next() {
+			ts := &pb.TrainerSpell{}
+			var ra [3]uint32
+			if sp.Scan(&ts.Spell, &ts.Cost, &ts.ReqLevel, &ra[0], &ra[1], &ra[2]) == nil {
+				for _, a := range ra {
+					if a != 0 {
+						ts.ReqAbility = append(ts.ReqAbility, a)
+					}
+				}
+				t.Spells = append(t.Spells, ts)
+			}
+		}
+		sp.Close()
 	}
 	return out, nil
 }

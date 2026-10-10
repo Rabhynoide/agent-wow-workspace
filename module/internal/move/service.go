@@ -344,6 +344,7 @@ func (s *Service) run(j *job, rt *route, speed float32, flags uint32) {
 	}
 	lastBeat := time.Now()
 	lastTick := time.Now()
+	lastAlive := time.Now()
 	t := time.NewTicker(tick)
 	defer t.Stop()
 	for {
@@ -365,6 +366,14 @@ func (s *Service) run(j *job, rt *route, speed float32, flags uint32) {
 		}
 		s.rmu.Unlock()
 		now := time.Now()
+		// Stop walking when the character dies (otherwise the body "walks" on in our position model).
+		if now.Sub(lastAlive) >= time.Second {
+			lastAlive = now
+			if b, err := s.api.Brief(ctx); err == nil && b.Self != nil && b.Self.Dead && !b.Self.Ghost {
+				finish("failed", "character died")
+				return
+			}
+		}
 		step := speed * float32(now.Sub(lastTick).Seconds())
 		lastTick = now
 		for step > 0 && seg < len(path) {

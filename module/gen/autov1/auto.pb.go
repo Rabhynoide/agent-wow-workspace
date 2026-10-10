@@ -25,6 +25,8 @@ const (
 
 type RunRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
+	// Skip gear/talents/training between quests (they run by default).
+	NoProgress bool `protobuf:"varint,4,opt,name=no_progress,json=noProgress,proto3" json:"no_progress,omitempty"`
 	// Quest ids to complete in order (accept, objectives, turn in).
 	Quests []uint32 `protobuf:"varint,1,rep,packed,name=quests,proto3" json:"quests,omitempty"`
 	// Reward choice index per quest id (default 0).
@@ -63,6 +65,13 @@ func (x *RunRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use RunRequest.ProtoReflect.Descriptor instead.
 func (*RunRequest) Descriptor() ([]byte, []int) {
 	return file_auto_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *RunRequest) GetNoProgress() bool {
+	if x != nil {
+		return x.NoProgress
+	}
+	return false
 }
 
 func (x *RunRequest) GetQuests() []uint32 {
@@ -133,14 +142,16 @@ func (x *StatusRequest) GetWaitS() uint32 {
 type AutoStatus struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// idle | running | done | failed | stopped
-	State         string   `protobuf:"bytes,1,opt,name=state,proto3" json:"state,omitempty"`
-	Reason        string   `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
-	Quest         uint32   `protobuf:"varint,3,opt,name=quest,proto3" json:"quest,omitempty"`
-	Step          string   `protobuf:"bytes,4,opt,name=step,proto3" json:"step,omitempty"`
-	Done          []uint32 `protobuf:"varint,5,rep,packed,name=done,proto3" json:"done,omitempty"`
-	Level         uint32   `protobuf:"varint,6,opt,name=level,proto3" json:"level,omitempty"`
-	Xp            uint32   `protobuf:"varint,7,opt,name=xp,proto3" json:"xp,omitempty"`
-	ElapsedS      uint32   `protobuf:"varint,8,opt,name=elapsed_s,json=elapsedS,proto3" json:"elapsed_s,omitempty"`
+	State    string   `protobuf:"bytes,1,opt,name=state,proto3" json:"state,omitempty"`
+	Reason   string   `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	Quest    uint32   `protobuf:"varint,3,opt,name=quest,proto3" json:"quest,omitempty"`
+	Step     string   `protobuf:"bytes,4,opt,name=step,proto3" json:"step,omitempty"`
+	Done     []uint32 `protobuf:"varint,5,rep,packed,name=done,proto3" json:"done,omitempty"`
+	Level    uint32   `protobuf:"varint,6,opt,name=level,proto3" json:"level,omitempty"`
+	Xp       uint32   `protobuf:"varint,7,opt,name=xp,proto3" json:"xp,omitempty"`
+	ElapsedS uint32   `protobuf:"varint,8,opt,name=elapsed_s,json=elapsedS,proto3" json:"elapsed_s,omitempty"`
+	// Gear, talents, training and reward choices made during the run (last 10).
+	Progress      []string `protobuf:"bytes,9,rep,name=progress,proto3" json:"progress,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -231,14 +242,23 @@ func (x *AutoStatus) GetElapsedS() uint32 {
 	return 0
 }
 
+func (x *AutoStatus) GetProgress() []string {
+	if x != nil {
+		return x.Progress
+	}
+	return nil
+}
+
 var File_auto_proto protoreflect.FileDescriptor
 
 const file_auto_proto_rawDesc = "" +
 	"\n" +
 	"\n" +
-	"auto.proto\x12\x10wowagent.auto.v1\x1a\x1bapi/module/v1/session.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xbc\x01\n" +
+	"auto.proto\x12\x10wowagent.auto.v1\x1a\x1bapi/module/v1/session.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xdd\x01\n" +
 	"\n" +
-	"RunRequest\x12\x16\n" +
+	"RunRequest\x12\x1f\n" +
+	"\vno_progress\x18\x04 \x01(\bR\n" +
+	"noProgress\x12\x16\n" +
 	"\x06quests\x18\x01 \x03(\rR\x06quests\x12C\n" +
 	"\arewards\x18\x02 \x03(\v2).wowagent.auto.v1.RunRequest.RewardsEntryR\arewards\x12\x15\n" +
 	"\x06wait_s\x18\x03 \x01(\rR\x05waitS\x1a:\n" +
@@ -246,7 +266,7 @@ const file_auto_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\rR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\rR\x05value:\x028\x01\"&\n" +
 	"\rStatusRequest\x12\x15\n" +
-	"\x06wait_s\x18\x01 \x01(\rR\x05waitS\"\xbb\x01\n" +
+	"\x06wait_s\x18\x01 \x01(\rR\x05waitS\"\xd7\x01\n" +
 	"\n" +
 	"AutoStatus\x12\x14\n" +
 	"\x05state\x18\x01 \x01(\tR\x05state\x12\x16\n" +
@@ -256,7 +276,8 @@ const file_auto_proto_rawDesc = "" +
 	"\x04done\x18\x05 \x03(\rR\x04done\x12\x14\n" +
 	"\x05level\x18\x06 \x01(\rR\x05level\x12\x0e\n" +
 	"\x02xp\x18\a \x01(\rR\x02xp\x12\x1b\n" +
-	"\telapsed_s\x18\b \x01(\rR\belapsedS2\x9f\x03\n" +
+	"\telapsed_s\x18\b \x01(\rR\belapsedS\x12\x1a\n" +
+	"\bprogress\x18\t \x03(\tR\bprogress2\x9f\x03\n" +
 	"\x04Auto\x12H\n" +
 	"\aRecover\x12\x1f.wowagent.auto.v1.StatusRequest\x1a\x1c.wowagent.auto.v1.AutoStatus\x12C\n" +
 	"\bOnPacket\x12\x1f.agentwow.module.v1.WorldPacket\x1a\x16.google.protobuf.Empty\x12A\n" +

@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package wowagent.progress.v1;
+option go_package = "wowagent/gen/progressv1;progressv1";
+
+import "api/module/v1/session.proto";
+import "google/protobuf/empty.proto";
+
+message TrainCheckResult {
+  // Spells the nearest class trainer would teach now (level and money permitting).
+  uint32 count = 1;
+  uint32 cost = 2;
+  repeated string spells = 3;
+  uint32 trainer = 4;
+  string trainer_name = 5;
+  float dist = 6;
+  // Spells learnable at this level but too expensive.
+  uint32 unaffordable = 7;
+  string reason = 8;
+}
+
+message TrainRequest {
+  uint32 wait_s = 1;
+}
+
+message StatusRequest {
+  uint32 wait_s = 1;
+}
+
+message TrainStatus {
+  // idle | running | done | failed | stopped
+  string state = 1;
+  string reason = 2;
+  string doing = 3;
+  repeated string learned = 4;
+  uint32 spent = 5;
+  uint32 elapsed_s = 6;
+}
+
+message TalentsRequest {
+  bool dry_run = 1;
+}
+
+message TalentsResult {
+  bool ok = 1;
+  string reason = 2;
+  // "Name rank" learned (or planned with dry_run).
+  repeated string learned = 3;
+  uint32 points_left = 4;
+}
+
+message GearRequest {
+  bool dry_run = 1;
+}
+
+message GearResult {
+  bool ok = 1;
+  string reason = 2;
+  // "Name (+gain)" equipped (or planned with dry_run).
+  repeated string equipped = 3;
+}
+
+message PickRewardRequest {
+  repeated uint32 items = 1;
+}
+
+message PickRewardResult {
+  uint32 index = 1;
+  float gain = 2;
+  string reason = 3;
+}
+
+service Progress {
+  rpc TrainCheck(google.protobuf.Empty) returns (TrainCheckResult);
+  rpc Train(TrainRequest) returns (TrainStatus);
+  rpc Status(StatusRequest) returns (TrainStatus);
+  rpc Stop(google.protobuf.Empty) returns (TrainStatus);
+  rpc Talents(TalentsRequest) returns (TalentsResult);
+  rpc Gear(GearRequest) returns (GearResult);
+  rpc PickReward(PickRewardRequest) returns (PickRewardResult);
+  rpc OnPacket(agentwow.module.v1.WorldPacket) returns (google.protobuf.Empty);
+  rpc BeforeLogout(google.protobuf.Empty) returns (google.protobuf.Empty);
+}

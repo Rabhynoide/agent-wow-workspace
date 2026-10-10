@@ -516,6 +516,58 @@ func (x *QuestObjective) GetCounter() uint32 {
 	return 0
 }
 
+type ItemStat struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Type          uint32                 `protobuf:"varint,1,opt,name=type,proto3" json:"type,omitempty"`
+	Value         int32                  `protobuf:"varint,2,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ItemStat) Reset() {
+	*x = ItemStat{}
+	mi := &file_world_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ItemStat) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ItemStat) ProtoMessage() {}
+
+func (x *ItemStat) ProtoReflect() protoreflect.Message {
+	mi := &file_world_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ItemStat.ProtoReflect.Descriptor instead.
+func (*ItemStat) Descriptor() ([]byte, []int) {
+	return file_world_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ItemStat) GetType() uint32 {
+	if x != nil {
+		return x.Type
+	}
+	return 0
+}
+
+func (x *ItemStat) GetValue() int32 {
+	if x != nil {
+		return x.Value
+	}
+	return 0
+}
+
 type QuestInfo struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	Id             uint32                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -531,13 +583,15 @@ type QuestInfo struct {
 	Starters       []*QuestNpc            `protobuf:"bytes,11,rep,name=starters,proto3" json:"starters,omitempty"`
 	Enders         []*QuestNpc            `protobuf:"bytes,12,rep,name=enders,proto3" json:"enders,omitempty"`
 	ObjectivesText string                 `protobuf:"bytes,13,opt,name=objectives_text,json=objectivesText,proto3" json:"objectives_text,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Items offered as a choice at turn-in (index = reward argument of quest.turnin).
+	RewardChoices []uint32 `protobuf:"varint,14,rep,packed,name=reward_choices,json=rewardChoices,proto3" json:"reward_choices,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *QuestInfo) Reset() {
 	*x = QuestInfo{}
-	mi := &file_world_proto_msgTypes[6]
+	mi := &file_world_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -549,7 +603,7 @@ func (x *QuestInfo) String() string {
 func (*QuestInfo) ProtoMessage() {}
 
 func (x *QuestInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_world_proto_msgTypes[6]
+	mi := &file_world_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -562,7 +616,7 @@ func (x *QuestInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QuestInfo.ProtoReflect.Descriptor instead.
 func (*QuestInfo) Descriptor() ([]byte, []int) {
-	return file_world_proto_rawDescGZIP(), []int{6}
+	return file_world_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *QuestInfo) GetId() uint32 {
@@ -656,6 +710,13 @@ func (x *QuestInfo) GetObjectivesText() string {
 	return ""
 }
 
+func (x *QuestInfo) GetRewardChoices() []uint32 {
+	if x != nil {
+		return x.RewardChoices
+	}
+	return nil
+}
+
 type QuestInfoResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Quests        []*QuestInfo           `protobuf:"bytes,1,rep,name=quests,proto3" json:"quests,omitempty"`
@@ -665,7 +726,7 @@ type QuestInfoResponse struct {
 
 func (x *QuestInfoResponse) Reset() {
 	*x = QuestInfoResponse{}
-	mi := &file_world_proto_msgTypes[7]
+	mi := &file_world_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -677,7 +738,7 @@ func (x *QuestInfoResponse) String() string {
 func (*QuestInfoResponse) ProtoMessage() {}
 
 func (x *QuestInfoResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_world_proto_msgTypes[7]
+	mi := &file_world_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -690,7 +751,7 @@ func (x *QuestInfoResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QuestInfoResponse.ProtoReflect.Descriptor instead.
 func (*QuestInfoResponse) Descriptor() ([]byte, []int) {
-	return file_world_proto_rawDescGZIP(), []int{7}
+	return file_world_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *QuestInfoResponse) GetQuests() []*QuestInfo {
@@ -709,7 +770,7 @@ type QuestsForNpcRequest struct {
 
 func (x *QuestsForNpcRequest) Reset() {
 	*x = QuestsForNpcRequest{}
-	mi := &file_world_proto_msgTypes[8]
+	mi := &file_world_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -721,7 +782,7 @@ func (x *QuestsForNpcRequest) String() string {
 func (*QuestsForNpcRequest) ProtoMessage() {}
 
 func (x *QuestsForNpcRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_world_proto_msgTypes[8]
+	mi := &file_world_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -734,7 +795,7 @@ func (x *QuestsForNpcRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QuestsForNpcRequest.ProtoReflect.Descriptor instead.
 func (*QuestsForNpcRequest) Descriptor() ([]byte, []int) {
-	return file_world_proto_rawDescGZIP(), []int{8}
+	return file_world_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *QuestsForNpcRequest) GetEntry() uint32 {
@@ -758,7 +819,7 @@ type QuestRef struct {
 
 func (x *QuestRef) Reset() {
 	*x = QuestRef{}
-	mi := &file_world_proto_msgTypes[9]
+	mi := &file_world_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -770,7 +831,7 @@ func (x *QuestRef) String() string {
 func (*QuestRef) ProtoMessage() {}
 
 func (x *QuestRef) ProtoReflect() protoreflect.Message {
-	mi := &file_world_proto_msgTypes[9]
+	mi := &file_world_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -783,7 +844,7 @@ func (x *QuestRef) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QuestRef.ProtoReflect.Descriptor instead.
 func (*QuestRef) Descriptor() ([]byte, []int) {
-	return file_world_proto_rawDescGZIP(), []int{9}
+	return file_world_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *QuestRef) GetId() uint32 {
@@ -830,7 +891,7 @@ type QuestsForNpcResponse struct {
 
 func (x *QuestsForNpcResponse) Reset() {
 	*x = QuestsForNpcResponse{}
-	mi := &file_world_proto_msgTypes[10]
+	mi := &file_world_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -842,7 +903,7 @@ func (x *QuestsForNpcResponse) String() string {
 func (*QuestsForNpcResponse) ProtoMessage() {}
 
 func (x *QuestsForNpcResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_world_proto_msgTypes[10]
+	mi := &file_world_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -855,7 +916,7 @@ func (x *QuestsForNpcResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QuestsForNpcResponse.ProtoReflect.Descriptor instead.
 func (*QuestsForNpcResponse) Descriptor() ([]byte, []int) {
-	return file_world_proto_rawDescGZIP(), []int{10}
+	return file_world_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *QuestsForNpcResponse) GetQuests() []*QuestRef {
@@ -881,7 +942,7 @@ type SpawnsRequest struct {
 
 func (x *SpawnsRequest) Reset() {
 	*x = SpawnsRequest{}
-	mi := &file_world_proto_msgTypes[11]
+	mi := &file_world_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -893,7 +954,7 @@ func (x *SpawnsRequest) String() string {
 func (*SpawnsRequest) ProtoMessage() {}
 
 func (x *SpawnsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_world_proto_msgTypes[11]
+	mi := &file_world_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -906,7 +967,7 @@ func (x *SpawnsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpawnsRequest.ProtoReflect.Descriptor instead.
 func (*SpawnsRequest) Descriptor() ([]byte, []int) {
-	return file_world_proto_rawDescGZIP(), []int{11}
+	return file_world_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *SpawnsRequest) GetEntry() uint32 {
@@ -967,7 +1028,7 @@ type SpawnsResponse struct {
 
 func (x *SpawnsResponse) Reset() {
 	*x = SpawnsResponse{}
-	mi := &file_world_proto_msgTypes[12]
+	mi := &file_world_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -979,7 +1040,7 @@ func (x *SpawnsResponse) String() string {
 func (*SpawnsResponse) ProtoMessage() {}
 
 func (x *SpawnsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_world_proto_msgTypes[12]
+	mi := &file_world_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -992,7 +1053,7 @@ func (x *SpawnsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpawnsResponse.ProtoReflect.Descriptor instead.
 func (*SpawnsResponse) Descriptor() ([]byte, []int) {
-	return file_world_proto_rawDescGZIP(), []int{12}
+	return file_world_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *SpawnsResponse) GetSpawns() []*Spawn {
@@ -1012,7 +1073,7 @@ type ItemInfoRequest struct {
 
 func (x *ItemInfoRequest) Reset() {
 	*x = ItemInfoRequest{}
-	mi := &file_world_proto_msgTypes[13]
+	mi := &file_world_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1024,7 +1085,7 @@ func (x *ItemInfoRequest) String() string {
 func (*ItemInfoRequest) ProtoMessage() {}
 
 func (x *ItemInfoRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_world_proto_msgTypes[13]
+	mi := &file_world_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1037,7 +1098,7 @@ func (x *ItemInfoRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ItemInfoRequest.ProtoReflect.Descriptor instead.
 func (*ItemInfoRequest) Descriptor() ([]byte, []int) {
-	return file_world_proto_rawDescGZIP(), []int{13}
+	return file_world_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ItemInfoRequest) GetEntry() uint32 {
@@ -1067,13 +1128,20 @@ type ItemInfo struct {
 	SellPrice     uint32                 `protobuf:"varint,9,opt,name=sell_price,json=sellPrice,proto3" json:"sell_price,omitempty"`
 	BuyPrice      uint32                 `protobuf:"varint,10,opt,name=buy_price,json=buyPrice,proto3" json:"buy_price,omitempty"`
 	Stackable     uint32                 `protobuf:"varint,11,opt,name=stackable,proto3" json:"stackable,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Armor         uint32                 `protobuf:"varint,12,opt,name=armor,proto3" json:"armor,omitempty"`
+	// Weapon damage per second (first damage range).
+	Dps   float32     `protobuf:"fixed32,13,opt,name=dps,proto3" json:"dps,omitempty"`
+	Stats []*ItemStat `protobuf:"bytes,14,rep,name=stats,proto3" json:"stats,omitempty"`
+	// -1 = any class/race, else bitmask (1 << (id - 1)).
+	AllowableClass int32 `protobuf:"varint,15,opt,name=allowable_class,json=allowableClass,proto3" json:"allowable_class,omitempty"`
+	AllowableRace  int32 `protobuf:"varint,16,opt,name=allowable_race,json=allowableRace,proto3" json:"allowable_race,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *ItemInfo) Reset() {
 	*x = ItemInfo{}
-	mi := &file_world_proto_msgTypes[14]
+	mi := &file_world_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1085,7 +1153,7 @@ func (x *ItemInfo) String() string {
 func (*ItemInfo) ProtoMessage() {}
 
 func (x *ItemInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_world_proto_msgTypes[14]
+	mi := &file_world_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1098,7 +1166,7 @@ func (x *ItemInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ItemInfo.ProtoReflect.Descriptor instead.
 func (*ItemInfo) Descriptor() ([]byte, []int) {
-	return file_world_proto_rawDescGZIP(), []int{14}
+	return file_world_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ItemInfo) GetEntry() uint32 {
@@ -1178,6 +1246,41 @@ func (x *ItemInfo) GetStackable() uint32 {
 	return 0
 }
 
+func (x *ItemInfo) GetArmor() uint32 {
+	if x != nil {
+		return x.Armor
+	}
+	return 0
+}
+
+func (x *ItemInfo) GetDps() float32 {
+	if x != nil {
+		return x.Dps
+	}
+	return 0
+}
+
+func (x *ItemInfo) GetStats() []*ItemStat {
+	if x != nil {
+		return x.Stats
+	}
+	return nil
+}
+
+func (x *ItemInfo) GetAllowableClass() int32 {
+	if x != nil {
+		return x.AllowableClass
+	}
+	return 0
+}
+
+func (x *ItemInfo) GetAllowableRace() int32 {
+	if x != nil {
+		return x.AllowableRace
+	}
+	return 0
+}
+
 type ItemInfoResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Items         []*ItemInfo            `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
@@ -1187,7 +1290,7 @@ type ItemInfoResponse struct {
 
 func (x *ItemInfoResponse) Reset() {
 	*x = ItemInfoResponse{}
-	mi := &file_world_proto_msgTypes[15]
+	mi := &file_world_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1199,7 +1302,7 @@ func (x *ItemInfoResponse) String() string {
 func (*ItemInfoResponse) ProtoMessage() {}
 
 func (x *ItemInfoResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_world_proto_msgTypes[15]
+	mi := &file_world_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1212,7 +1315,7 @@ func (x *ItemInfoResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ItemInfoResponse.ProtoReflect.Descriptor instead.
 func (*ItemInfoResponse) Descriptor() ([]byte, []int) {
-	return file_world_proto_rawDescGZIP(), []int{15}
+	return file_world_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ItemInfoResponse) GetItems() []*ItemInfo {
@@ -1231,7 +1334,7 @@ type CreatureInfoRequest struct {
 
 func (x *CreatureInfoRequest) Reset() {
 	*x = CreatureInfoRequest{}
-	mi := &file_world_proto_msgTypes[16]
+	mi := &file_world_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1243,7 +1346,7 @@ func (x *CreatureInfoRequest) String() string {
 func (*CreatureInfoRequest) ProtoMessage() {}
 
 func (x *CreatureInfoRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_world_proto_msgTypes[16]
+	mi := &file_world_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1256,7 +1359,7 @@ func (x *CreatureInfoRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreatureInfoRequest.ProtoReflect.Descriptor instead.
 func (*CreatureInfoRequest) Descriptor() ([]byte, []int) {
-	return file_world_proto_rawDescGZIP(), []int{16}
+	return file_world_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *CreatureInfoRequest) GetEntry() uint32 {
@@ -1284,7 +1387,7 @@ type CreatureInfo struct {
 
 func (x *CreatureInfo) Reset() {
 	*x = CreatureInfo{}
-	mi := &file_world_proto_msgTypes[17]
+	mi := &file_world_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1296,7 +1399,7 @@ func (x *CreatureInfo) String() string {
 func (*CreatureInfo) ProtoMessage() {}
 
 func (x *CreatureInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_world_proto_msgTypes[17]
+	mi := &file_world_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1309,7 +1412,7 @@ func (x *CreatureInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreatureInfo.ProtoReflect.Descriptor instead.
 func (*CreatureInfo) Descriptor() ([]byte, []int) {
-	return file_world_proto_rawDescGZIP(), []int{17}
+	return file_world_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *CreatureInfo) GetEntry() uint32 {
@@ -1391,7 +1494,7 @@ type ItemSourcesRequest struct {
 
 func (x *ItemSourcesRequest) Reset() {
 	*x = ItemSourcesRequest{}
-	mi := &file_world_proto_msgTypes[18]
+	mi := &file_world_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1403,7 +1506,7 @@ func (x *ItemSourcesRequest) String() string {
 func (*ItemSourcesRequest) ProtoMessage() {}
 
 func (x *ItemSourcesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_world_proto_msgTypes[18]
+	mi := &file_world_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1416,7 +1519,7 @@ func (x *ItemSourcesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ItemSourcesRequest.ProtoReflect.Descriptor instead.
 func (*ItemSourcesRequest) Descriptor() ([]byte, []int) {
-	return file_world_proto_rawDescGZIP(), []int{18}
+	return file_world_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ItemSourcesRequest) GetEntry() uint32 {
@@ -1441,7 +1544,7 @@ type ItemSource struct {
 
 func (x *ItemSource) Reset() {
 	*x = ItemSource{}
-	mi := &file_world_proto_msgTypes[19]
+	mi := &file_world_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1453,7 +1556,7 @@ func (x *ItemSource) String() string {
 func (*ItemSource) ProtoMessage() {}
 
 func (x *ItemSource) ProtoReflect() protoreflect.Message {
-	mi := &file_world_proto_msgTypes[19]
+	mi := &file_world_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1466,7 +1569,7 @@ func (x *ItemSource) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ItemSource.ProtoReflect.Descriptor instead.
 func (*ItemSource) Descriptor() ([]byte, []int) {
-	return file_world_proto_rawDescGZIP(), []int{19}
+	return file_world_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *ItemSource) GetKind() string {
@@ -1520,7 +1623,7 @@ type ItemSourcesResponse struct {
 
 func (x *ItemSourcesResponse) Reset() {
 	*x = ItemSourcesResponse{}
-	mi := &file_world_proto_msgTypes[20]
+	mi := &file_world_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1532,7 +1635,7 @@ func (x *ItemSourcesResponse) String() string {
 func (*ItemSourcesResponse) ProtoMessage() {}
 
 func (x *ItemSourcesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_world_proto_msgTypes[20]
+	mi := &file_world_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1545,12 +1648,309 @@ func (x *ItemSourcesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ItemSourcesResponse.ProtoReflect.Descriptor instead.
 func (*ItemSourcesResponse) Descriptor() ([]byte, []int) {
-	return file_world_proto_rawDescGZIP(), []int{20}
+	return file_world_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *ItemSourcesResponse) GetSources() []*ItemSource {
 	if x != nil {
 		return x.Sources
+	}
+	return nil
+}
+
+type ClassTrainersRequest struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	ClassId uint32                 `protobuf:"varint,1,opt,name=class_id,json=classId,proto3" json:"class_id,omitempty"`
+	Map     uint32                 `protobuf:"varint,2,opt,name=map,proto3" json:"map,omitempty"`
+	X       float32                `protobuf:"fixed32,3,opt,name=x,proto3" json:"x,omitempty"`
+	Y       float32                `protobuf:"fixed32,4,opt,name=y,proto3" json:"y,omitempty"`
+	// Default 3.
+	Max           uint32 `protobuf:"varint,5,opt,name=max,proto3" json:"max,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClassTrainersRequest) Reset() {
+	*x = ClassTrainersRequest{}
+	mi := &file_world_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClassTrainersRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClassTrainersRequest) ProtoMessage() {}
+
+func (x *ClassTrainersRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_world_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClassTrainersRequest.ProtoReflect.Descriptor instead.
+func (*ClassTrainersRequest) Descriptor() ([]byte, []int) {
+	return file_world_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *ClassTrainersRequest) GetClassId() uint32 {
+	if x != nil {
+		return x.ClassId
+	}
+	return 0
+}
+
+func (x *ClassTrainersRequest) GetMap() uint32 {
+	if x != nil {
+		return x.Map
+	}
+	return 0
+}
+
+func (x *ClassTrainersRequest) GetX() float32 {
+	if x != nil {
+		return x.X
+	}
+	return 0
+}
+
+func (x *ClassTrainersRequest) GetY() float32 {
+	if x != nil {
+		return x.Y
+	}
+	return 0
+}
+
+func (x *ClassTrainersRequest) GetMax() uint32 {
+	if x != nil {
+		return x.Max
+	}
+	return 0
+}
+
+type TrainerSpell struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Spell         uint32                 `protobuf:"varint,1,opt,name=spell,proto3" json:"spell,omitempty"`
+	Cost          uint32                 `protobuf:"varint,2,opt,name=cost,proto3" json:"cost,omitempty"`
+	ReqLevel      uint32                 `protobuf:"varint,3,opt,name=req_level,json=reqLevel,proto3" json:"req_level,omitempty"`
+	ReqAbility    []uint32               `protobuf:"varint,4,rep,packed,name=req_ability,json=reqAbility,proto3" json:"req_ability,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TrainerSpell) Reset() {
+	*x = TrainerSpell{}
+	mi := &file_world_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TrainerSpell) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TrainerSpell) ProtoMessage() {}
+
+func (x *TrainerSpell) ProtoReflect() protoreflect.Message {
+	mi := &file_world_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TrainerSpell.ProtoReflect.Descriptor instead.
+func (*TrainerSpell) Descriptor() ([]byte, []int) {
+	return file_world_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *TrainerSpell) GetSpell() uint32 {
+	if x != nil {
+		return x.Spell
+	}
+	return 0
+}
+
+func (x *TrainerSpell) GetCost() uint32 {
+	if x != nil {
+		return x.Cost
+	}
+	return 0
+}
+
+func (x *TrainerSpell) GetReqLevel() uint32 {
+	if x != nil {
+		return x.ReqLevel
+	}
+	return 0
+}
+
+func (x *TrainerSpell) GetReqAbility() []uint32 {
+	if x != nil {
+		return x.ReqAbility
+	}
+	return nil
+}
+
+type ClassTrainer struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Entry         uint32                 `protobuf:"varint,1,opt,name=entry,proto3" json:"entry,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Map           uint32                 `protobuf:"varint,3,opt,name=map,proto3" json:"map,omitempty"`
+	X             float32                `protobuf:"fixed32,4,opt,name=x,proto3" json:"x,omitempty"`
+	Y             float32                `protobuf:"fixed32,5,opt,name=y,proto3" json:"y,omitempty"`
+	Z             float32                `protobuf:"fixed32,6,opt,name=z,proto3" json:"z,omitempty"`
+	Dist          float32                `protobuf:"fixed32,7,opt,name=dist,proto3" json:"dist,omitempty"`
+	TrainerId     uint32                 `protobuf:"varint,8,opt,name=trainer_id,json=trainerId,proto3" json:"trainer_id,omitempty"`
+	Spells        []*TrainerSpell        `protobuf:"bytes,9,rep,name=spells,proto3" json:"spells,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClassTrainer) Reset() {
+	*x = ClassTrainer{}
+	mi := &file_world_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClassTrainer) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClassTrainer) ProtoMessage() {}
+
+func (x *ClassTrainer) ProtoReflect() protoreflect.Message {
+	mi := &file_world_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClassTrainer.ProtoReflect.Descriptor instead.
+func (*ClassTrainer) Descriptor() ([]byte, []int) {
+	return file_world_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *ClassTrainer) GetEntry() uint32 {
+	if x != nil {
+		return x.Entry
+	}
+	return 0
+}
+
+func (x *ClassTrainer) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ClassTrainer) GetMap() uint32 {
+	if x != nil {
+		return x.Map
+	}
+	return 0
+}
+
+func (x *ClassTrainer) GetX() float32 {
+	if x != nil {
+		return x.X
+	}
+	return 0
+}
+
+func (x *ClassTrainer) GetY() float32 {
+	if x != nil {
+		return x.Y
+	}
+	return 0
+}
+
+func (x *ClassTrainer) GetZ() float32 {
+	if x != nil {
+		return x.Z
+	}
+	return 0
+}
+
+func (x *ClassTrainer) GetDist() float32 {
+	if x != nil {
+		return x.Dist
+	}
+	return 0
+}
+
+func (x *ClassTrainer) GetTrainerId() uint32 {
+	if x != nil {
+		return x.TrainerId
+	}
+	return 0
+}
+
+func (x *ClassTrainer) GetSpells() []*TrainerSpell {
+	if x != nil {
+		return x.Spells
+	}
+	return nil
+}
+
+type ClassTrainersResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Trainers      []*ClassTrainer        `protobuf:"bytes,1,rep,name=trainers,proto3" json:"trainers,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClassTrainersResponse) Reset() {
+	*x = ClassTrainersResponse{}
+	mi := &file_world_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClassTrainersResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClassTrainersResponse) ProtoMessage() {}
+
+func (x *ClassTrainersResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_world_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClassTrainersResponse.ProtoReflect.Descriptor instead.
+func (*ClassTrainersResponse) Descriptor() ([]byte, []int) {
+	return file_world_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *ClassTrainersResponse) GetTrainers() []*ClassTrainer {
+	if x != nil {
+		return x.Trainers
 	}
 	return nil
 }
@@ -1601,7 +2001,10 @@ const file_world_proto_rawDesc = "" +
 	"\x05entry\x18\x02 \x01(\rR\x05entry\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x14\n" +
 	"\x05count\x18\x04 \x01(\rR\x05count\x12\x18\n" +
-	"\acounter\x18\x05 \x01(\rR\acounter\"\xe3\x03\n" +
+	"\acounter\x18\x05 \x01(\rR\acounter\"4\n" +
+	"\bItemStat\x12\x12\n" +
+	"\x04type\x18\x01 \x01(\rR\x04type\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\x05R\x05value\"\x8a\x04\n" +
 	"\tQuestInfo\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\rR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x14\n" +
@@ -1622,7 +2025,8 @@ const file_world_proto_rawDesc = "" +
 	"objectives\x127\n" +
 	"\bstarters\x18\v \x03(\v2\x1b.wowagent.world.v1.QuestNpcR\bstarters\x123\n" +
 	"\x06enders\x18\f \x03(\v2\x1b.wowagent.world.v1.QuestNpcR\x06enders\x12'\n" +
-	"\x0fobjectives_text\x18\r \x01(\tR\x0eobjectivesText\"I\n" +
+	"\x0fobjectives_text\x18\r \x01(\tR\x0eobjectivesText\x12%\n" +
+	"\x0ereward_choices\x18\x0e \x03(\rR\rrewardChoices\"I\n" +
 	"\x11QuestInfoResponse\x124\n" +
 	"\x06quests\x18\x01 \x03(\v2\x1c.wowagent.world.v1.QuestInfoR\x06quests\"+\n" +
 	"\x13QuestsForNpcRequest\x12\x14\n" +
@@ -1647,7 +2051,7 @@ const file_world_proto_rawDesc = "" +
 	"\x06spawns\x18\x01 \x03(\v2\x18.wowagent.world.v1.SpawnR\x06spawns\";\n" +
 	"\x0fItemInfoRequest\x12\x14\n" +
 	"\x05entry\x18\x01 \x01(\rR\x05entry\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\"\xc7\x02\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"\xf2\x03\n" +
 	"\bItemInfo\x12\x14\n" +
 	"\x05entry\x18\x01 \x01(\rR\x05entry\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
@@ -1662,7 +2066,12 @@ const file_world_proto_rawDesc = "" +
 	"sell_price\x18\t \x01(\rR\tsellPrice\x12\x1b\n" +
 	"\tbuy_price\x18\n" +
 	" \x01(\rR\bbuyPrice\x12\x1c\n" +
-	"\tstackable\x18\v \x01(\rR\tstackable\"E\n" +
+	"\tstackable\x18\v \x01(\rR\tstackable\x12\x14\n" +
+	"\x05armor\x18\f \x01(\rR\x05armor\x12\x10\n" +
+	"\x03dps\x18\r \x01(\x02R\x03dps\x121\n" +
+	"\x05stats\x18\x0e \x03(\v2\x1b.wowagent.world.v1.ItemStatR\x05stats\x12'\n" +
+	"\x0fallowable_class\x18\x0f \x01(\x05R\x0eallowableClass\x12%\n" +
+	"\x0eallowable_race\x18\x10 \x01(\x05R\rallowableRace\"E\n" +
 	"\x10ItemInfoResponse\x121\n" +
 	"\x05items\x18\x01 \x03(\v2\x1b.wowagent.world.v1.ItemInfoR\x05items\"+\n" +
 	"\x13CreatureInfoRequest\x12\x14\n" +
@@ -1690,7 +2099,32 @@ const file_world_proto_rawDesc = "" +
 	"\tmax_level\x18\x05 \x01(\rR\bmaxLevel\x12\x16\n" +
 	"\x06chance\x18\x06 \x01(\x02R\x06chance\"N\n" +
 	"\x13ItemSourcesResponse\x127\n" +
-	"\asources\x18\x01 \x03(\v2\x1d.wowagent.world.v1.ItemSourceR\asources2\xa9\x05\n" +
+	"\asources\x18\x01 \x03(\v2\x1d.wowagent.world.v1.ItemSourceR\asources\"q\n" +
+	"\x14ClassTrainersRequest\x12\x19\n" +
+	"\bclass_id\x18\x01 \x01(\rR\aclassId\x12\x10\n" +
+	"\x03map\x18\x02 \x01(\rR\x03map\x12\f\n" +
+	"\x01x\x18\x03 \x01(\x02R\x01x\x12\f\n" +
+	"\x01y\x18\x04 \x01(\x02R\x01y\x12\x10\n" +
+	"\x03max\x18\x05 \x01(\rR\x03max\"v\n" +
+	"\fTrainerSpell\x12\x14\n" +
+	"\x05spell\x18\x01 \x01(\rR\x05spell\x12\x12\n" +
+	"\x04cost\x18\x02 \x01(\rR\x04cost\x12\x1b\n" +
+	"\treq_level\x18\x03 \x01(\rR\breqLevel\x12\x1f\n" +
+	"\vreq_ability\x18\x04 \x03(\rR\n" +
+	"reqAbility\"\xe0\x01\n" +
+	"\fClassTrainer\x12\x14\n" +
+	"\x05entry\x18\x01 \x01(\rR\x05entry\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x10\n" +
+	"\x03map\x18\x03 \x01(\rR\x03map\x12\f\n" +
+	"\x01x\x18\x04 \x01(\x02R\x01x\x12\f\n" +
+	"\x01y\x18\x05 \x01(\x02R\x01y\x12\f\n" +
+	"\x01z\x18\x06 \x01(\x02R\x01z\x12\x12\n" +
+	"\x04dist\x18\a \x01(\x02R\x04dist\x12\x1d\n" +
+	"\n" +
+	"trainer_id\x18\b \x01(\rR\ttrainerId\x127\n" +
+	"\x06spells\x18\t \x03(\v2\x1f.wowagent.world.v1.TrainerSpellR\x06spells\"T\n" +
+	"\x15ClassTrainersResponse\x12;\n" +
+	"\btrainers\x18\x01 \x03(\v2\x1f.wowagent.world.v1.ClassTrainerR\btrainers2\x8d\x06\n" +
 	"\x05World\x12\\\n" +
 	"\vItemSources\x12%.wowagent.world.v1.ItemSourcesRequest\x1a&.wowagent.world.v1.ItemSourcesResponse\x12P\n" +
 	"\aFindNpc\x12!.wowagent.world.v1.FindNpcRequest\x1a\".wowagent.world.v1.FindNpcResponse\x12V\n" +
@@ -1698,7 +2132,8 @@ const file_world_proto_rawDesc = "" +
 	"\fQuestsForNpc\x12&.wowagent.world.v1.QuestsForNpcRequest\x1a'.wowagent.world.v1.QuestsForNpcResponse\x12M\n" +
 	"\x06Spawns\x12 .wowagent.world.v1.SpawnsRequest\x1a!.wowagent.world.v1.SpawnsResponse\x12S\n" +
 	"\bItemInfo\x12\".wowagent.world.v1.ItemInfoRequest\x1a#.wowagent.world.v1.ItemInfoResponse\x12S\n" +
-	"\bCreature\x12&.wowagent.world.v1.CreatureInfoRequest\x1a\x1f.wowagent.world.v1.CreatureInfo\x12>\n" +
+	"\bCreature\x12&.wowagent.world.v1.CreatureInfoRequest\x1a\x1f.wowagent.world.v1.CreatureInfo\x12b\n" +
+	"\rClassTrainers\x12'.wowagent.world.v1.ClassTrainersRequest\x1a(.wowagent.world.v1.ClassTrainersResponse\x12>\n" +
 	"\fBeforeLogout\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.EmptyB\x1eZ\x1cwowagent/gen/worldv1;worldv1b\x06proto3"
 
 var (
@@ -1713,62 +2148,72 @@ func file_world_proto_rawDescGZIP() []byte {
 	return file_world_proto_rawDescData
 }
 
-var file_world_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_world_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
 var file_world_proto_goTypes = []any{
-	(*FindNpcRequest)(nil),       // 0: wowagent.world.v1.FindNpcRequest
-	(*Spawn)(nil),                // 1: wowagent.world.v1.Spawn
-	(*FindNpcResponse)(nil),      // 2: wowagent.world.v1.FindNpcResponse
-	(*QuestInfoRequest)(nil),     // 3: wowagent.world.v1.QuestInfoRequest
-	(*QuestNpc)(nil),             // 4: wowagent.world.v1.QuestNpc
-	(*QuestObjective)(nil),       // 5: wowagent.world.v1.QuestObjective
-	(*QuestInfo)(nil),            // 6: wowagent.world.v1.QuestInfo
-	(*QuestInfoResponse)(nil),    // 7: wowagent.world.v1.QuestInfoResponse
-	(*QuestsForNpcRequest)(nil),  // 8: wowagent.world.v1.QuestsForNpcRequest
-	(*QuestRef)(nil),             // 9: wowagent.world.v1.QuestRef
-	(*QuestsForNpcResponse)(nil), // 10: wowagent.world.v1.QuestsForNpcResponse
-	(*SpawnsRequest)(nil),        // 11: wowagent.world.v1.SpawnsRequest
-	(*SpawnsResponse)(nil),       // 12: wowagent.world.v1.SpawnsResponse
-	(*ItemInfoRequest)(nil),      // 13: wowagent.world.v1.ItemInfoRequest
-	(*ItemInfo)(nil),             // 14: wowagent.world.v1.ItemInfo
-	(*ItemInfoResponse)(nil),     // 15: wowagent.world.v1.ItemInfoResponse
-	(*CreatureInfoRequest)(nil),  // 16: wowagent.world.v1.CreatureInfoRequest
-	(*CreatureInfo)(nil),         // 17: wowagent.world.v1.CreatureInfo
-	(*ItemSourcesRequest)(nil),   // 18: wowagent.world.v1.ItemSourcesRequest
-	(*ItemSource)(nil),           // 19: wowagent.world.v1.ItemSource
-	(*ItemSourcesResponse)(nil),  // 20: wowagent.world.v1.ItemSourcesResponse
-	(*emptypb.Empty)(nil),        // 21: google.protobuf.Empty
+	(*FindNpcRequest)(nil),        // 0: wowagent.world.v1.FindNpcRequest
+	(*Spawn)(nil),                 // 1: wowagent.world.v1.Spawn
+	(*FindNpcResponse)(nil),       // 2: wowagent.world.v1.FindNpcResponse
+	(*QuestInfoRequest)(nil),      // 3: wowagent.world.v1.QuestInfoRequest
+	(*QuestNpc)(nil),              // 4: wowagent.world.v1.QuestNpc
+	(*QuestObjective)(nil),        // 5: wowagent.world.v1.QuestObjective
+	(*ItemStat)(nil),              // 6: wowagent.world.v1.ItemStat
+	(*QuestInfo)(nil),             // 7: wowagent.world.v1.QuestInfo
+	(*QuestInfoResponse)(nil),     // 8: wowagent.world.v1.QuestInfoResponse
+	(*QuestsForNpcRequest)(nil),   // 9: wowagent.world.v1.QuestsForNpcRequest
+	(*QuestRef)(nil),              // 10: wowagent.world.v1.QuestRef
+	(*QuestsForNpcResponse)(nil),  // 11: wowagent.world.v1.QuestsForNpcResponse
+	(*SpawnsRequest)(nil),         // 12: wowagent.world.v1.SpawnsRequest
+	(*SpawnsResponse)(nil),        // 13: wowagent.world.v1.SpawnsResponse
+	(*ItemInfoRequest)(nil),       // 14: wowagent.world.v1.ItemInfoRequest
+	(*ItemInfo)(nil),              // 15: wowagent.world.v1.ItemInfo
+	(*ItemInfoResponse)(nil),      // 16: wowagent.world.v1.ItemInfoResponse
+	(*CreatureInfoRequest)(nil),   // 17: wowagent.world.v1.CreatureInfoRequest
+	(*CreatureInfo)(nil),          // 18: wowagent.world.v1.CreatureInfo
+	(*ItemSourcesRequest)(nil),    // 19: wowagent.world.v1.ItemSourcesRequest
+	(*ItemSource)(nil),            // 20: wowagent.world.v1.ItemSource
+	(*ItemSourcesResponse)(nil),   // 21: wowagent.world.v1.ItemSourcesResponse
+	(*ClassTrainersRequest)(nil),  // 22: wowagent.world.v1.ClassTrainersRequest
+	(*TrainerSpell)(nil),          // 23: wowagent.world.v1.TrainerSpell
+	(*ClassTrainer)(nil),          // 24: wowagent.world.v1.ClassTrainer
+	(*ClassTrainersResponse)(nil), // 25: wowagent.world.v1.ClassTrainersResponse
+	(*emptypb.Empty)(nil),         // 26: google.protobuf.Empty
 }
 var file_world_proto_depIdxs = []int32{
 	1,  // 0: wowagent.world.v1.FindNpcResponse.spawns:type_name -> wowagent.world.v1.Spawn
 	5,  // 1: wowagent.world.v1.QuestInfo.objectives:type_name -> wowagent.world.v1.QuestObjective
 	4,  // 2: wowagent.world.v1.QuestInfo.starters:type_name -> wowagent.world.v1.QuestNpc
 	4,  // 3: wowagent.world.v1.QuestInfo.enders:type_name -> wowagent.world.v1.QuestNpc
-	6,  // 4: wowagent.world.v1.QuestInfoResponse.quests:type_name -> wowagent.world.v1.QuestInfo
-	9,  // 5: wowagent.world.v1.QuestsForNpcResponse.quests:type_name -> wowagent.world.v1.QuestRef
+	7,  // 4: wowagent.world.v1.QuestInfoResponse.quests:type_name -> wowagent.world.v1.QuestInfo
+	10, // 5: wowagent.world.v1.QuestsForNpcResponse.quests:type_name -> wowagent.world.v1.QuestRef
 	1,  // 6: wowagent.world.v1.SpawnsResponse.spawns:type_name -> wowagent.world.v1.Spawn
-	14, // 7: wowagent.world.v1.ItemInfoResponse.items:type_name -> wowagent.world.v1.ItemInfo
-	19, // 8: wowagent.world.v1.ItemSourcesResponse.sources:type_name -> wowagent.world.v1.ItemSource
-	18, // 9: wowagent.world.v1.World.ItemSources:input_type -> wowagent.world.v1.ItemSourcesRequest
-	0,  // 10: wowagent.world.v1.World.FindNpc:input_type -> wowagent.world.v1.FindNpcRequest
-	3,  // 11: wowagent.world.v1.World.QuestInfo:input_type -> wowagent.world.v1.QuestInfoRequest
-	8,  // 12: wowagent.world.v1.World.QuestsForNpc:input_type -> wowagent.world.v1.QuestsForNpcRequest
-	11, // 13: wowagent.world.v1.World.Spawns:input_type -> wowagent.world.v1.SpawnsRequest
-	13, // 14: wowagent.world.v1.World.ItemInfo:input_type -> wowagent.world.v1.ItemInfoRequest
-	16, // 15: wowagent.world.v1.World.Creature:input_type -> wowagent.world.v1.CreatureInfoRequest
-	21, // 16: wowagent.world.v1.World.BeforeLogout:input_type -> google.protobuf.Empty
-	20, // 17: wowagent.world.v1.World.ItemSources:output_type -> wowagent.world.v1.ItemSourcesResponse
-	2,  // 18: wowagent.world.v1.World.FindNpc:output_type -> wowagent.world.v1.FindNpcResponse
-	7,  // 19: wowagent.world.v1.World.QuestInfo:output_type -> wowagent.world.v1.QuestInfoResponse
-	10, // 20: wowagent.world.v1.World.QuestsForNpc:output_type -> wowagent.world.v1.QuestsForNpcResponse
-	12, // 21: wowagent.world.v1.World.Spawns:output_type -> wowagent.world.v1.SpawnsResponse
-	15, // 22: wowagent.world.v1.World.ItemInfo:output_type -> wowagent.world.v1.ItemInfoResponse
-	17, // 23: wowagent.world.v1.World.Creature:output_type -> wowagent.world.v1.CreatureInfo
-	21, // 24: wowagent.world.v1.World.BeforeLogout:output_type -> google.protobuf.Empty
-	17, // [17:25] is the sub-list for method output_type
-	9,  // [9:17] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	6,  // 7: wowagent.world.v1.ItemInfo.stats:type_name -> wowagent.world.v1.ItemStat
+	15, // 8: wowagent.world.v1.ItemInfoResponse.items:type_name -> wowagent.world.v1.ItemInfo
+	20, // 9: wowagent.world.v1.ItemSourcesResponse.sources:type_name -> wowagent.world.v1.ItemSource
+	23, // 10: wowagent.world.v1.ClassTrainer.spells:type_name -> wowagent.world.v1.TrainerSpell
+	24, // 11: wowagent.world.v1.ClassTrainersResponse.trainers:type_name -> wowagent.world.v1.ClassTrainer
+	19, // 12: wowagent.world.v1.World.ItemSources:input_type -> wowagent.world.v1.ItemSourcesRequest
+	0,  // 13: wowagent.world.v1.World.FindNpc:input_type -> wowagent.world.v1.FindNpcRequest
+	3,  // 14: wowagent.world.v1.World.QuestInfo:input_type -> wowagent.world.v1.QuestInfoRequest
+	9,  // 15: wowagent.world.v1.World.QuestsForNpc:input_type -> wowagent.world.v1.QuestsForNpcRequest
+	12, // 16: wowagent.world.v1.World.Spawns:input_type -> wowagent.world.v1.SpawnsRequest
+	14, // 17: wowagent.world.v1.World.ItemInfo:input_type -> wowagent.world.v1.ItemInfoRequest
+	17, // 18: wowagent.world.v1.World.Creature:input_type -> wowagent.world.v1.CreatureInfoRequest
+	22, // 19: wowagent.world.v1.World.ClassTrainers:input_type -> wowagent.world.v1.ClassTrainersRequest
+	26, // 20: wowagent.world.v1.World.BeforeLogout:input_type -> google.protobuf.Empty
+	21, // 21: wowagent.world.v1.World.ItemSources:output_type -> wowagent.world.v1.ItemSourcesResponse
+	2,  // 22: wowagent.world.v1.World.FindNpc:output_type -> wowagent.world.v1.FindNpcResponse
+	8,  // 23: wowagent.world.v1.World.QuestInfo:output_type -> wowagent.world.v1.QuestInfoResponse
+	11, // 24: wowagent.world.v1.World.QuestsForNpc:output_type -> wowagent.world.v1.QuestsForNpcResponse
+	13, // 25: wowagent.world.v1.World.Spawns:output_type -> wowagent.world.v1.SpawnsResponse
+	16, // 26: wowagent.world.v1.World.ItemInfo:output_type -> wowagent.world.v1.ItemInfoResponse
+	18, // 27: wowagent.world.v1.World.Creature:output_type -> wowagent.world.v1.CreatureInfo
+	25, // 28: wowagent.world.v1.World.ClassTrainers:output_type -> wowagent.world.v1.ClassTrainersResponse
+	26, // 29: wowagent.world.v1.World.BeforeLogout:output_type -> google.protobuf.Empty
+	21, // [21:30] is the sub-list for method output_type
+	12, // [12:21] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_world_proto_init() }
@@ -1782,7 +2227,7 @@ func file_world_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_world_proto_rawDesc), len(file_world_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   21,
+			NumMessages:   26,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

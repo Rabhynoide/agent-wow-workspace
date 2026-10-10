@@ -31,11 +31,13 @@ EmptyProtoPZ.google.golang.org/protobuf/types/known/emptypbø¢GPBªGoogle.P
 SendPacket%.agentwow.module.v1.SendPacketRequest.google.protobuf.EmptyE
 GetClock.google.protobuf.Empty!.agentwow.module.v1.ClockResponsea
 InvokeModule'.agentwow.module.v1.InvokeModuleRequest(.agentwow.module.v1.InvokeModuleResponseB5Z3github.com/agent-wow/agent-wow/pkg/modules/v1;modv1bproto3
-Å
+‚
 
-auto.protowowagent.auto.v1api/module/v1/session.protogoogle/protobuf/empty.proto"¼
+auto.protowowagent.auto.v1api/module/v1/session.protogoogle/protobuf/empty.proto"Ý
 
-RunRequest
+RunRequest
+no_progress (R
+noProgress
 quests (RquestsC
 rewards (2).wowagent.auto.v1.RunRequest.RewardsEntryRrewards
 wait_s (RwaitS:
@@ -43,7 +45,7 @@ RunRequest
 key (Rkey
 value (Rvalue:8"&
 StatusRequest
-wait_s (RwaitS"»
+wait_s (RwaitS"×
 
 AutoStatus
 state (	Rstate
@@ -53,7 +55,8 @@ AutoStatus
 done (Rdone
 level (Rlevel
 xp (Rxp
-	elapsed_s (RelapsedS2Ÿ
+	elapsed_s (RelapsedS
+progress	 (	Rprogress2Ÿ
 AutoH
 Recover.wowagent.auto.v1.StatusRequest.wowagent.auto.v1.AutoStatusC
 OnPacket.agentwow.module.v1.WorldPacket.google.protobuf.EmptyA

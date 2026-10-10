@@ -27,6 +27,10 @@ message SelfInfo {
   float run_speed = 18;
   uint32 unit_flags = 19;
   bool ghost = 20;
+  uint32 class_id = 21;
+  uint32 race = 22;
+  // Unspent talent points.
+  uint32 talent_points = 23;
 }
 
 message Item {
@@ -35,6 +39,10 @@ message Item {
   uint32 count = 3;
   uint64 guid = 4;
   uint64 container = 5;
+  // Position for item packets: bag 255 = backpack/equipment (bag_slot = inventory slot),
+  // 19..22 = equipped bag (bag_slot = index in that bag). Unset (0/0) for bank items.
+  uint32 bag = 6;
+  uint32 bag_slot = 7;
 }
 
 message Quest {

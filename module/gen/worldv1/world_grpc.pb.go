@@ -20,14 +20,15 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	World_ItemSources_FullMethodName  = "/wowagent.world.v1.World/ItemSources"
-	World_FindNpc_FullMethodName      = "/wowagent.world.v1.World/FindNpc"
-	World_QuestInfo_FullMethodName    = "/wowagent.world.v1.World/QuestInfo"
-	World_QuestsForNpc_FullMethodName = "/wowagent.world.v1.World/QuestsForNpc"
-	World_Spawns_FullMethodName       = "/wowagent.world.v1.World/Spawns"
-	World_ItemInfo_FullMethodName     = "/wowagent.world.v1.World/ItemInfo"
-	World_Creature_FullMethodName     = "/wowagent.world.v1.World/Creature"
-	World_BeforeLogout_FullMethodName = "/wowagent.world.v1.World/BeforeLogout"
+	World_ItemSources_FullMethodName   = "/wowagent.world.v1.World/ItemSources"
+	World_FindNpc_FullMethodName       = "/wowagent.world.v1.World/FindNpc"
+	World_QuestInfo_FullMethodName     = "/wowagent.world.v1.World/QuestInfo"
+	World_QuestsForNpc_FullMethodName  = "/wowagent.world.v1.World/QuestsForNpc"
+	World_Spawns_FullMethodName        = "/wowagent.world.v1.World/Spawns"
+	World_ItemInfo_FullMethodName      = "/wowagent.world.v1.World/ItemInfo"
+	World_Creature_FullMethodName      = "/wowagent.world.v1.World/Creature"
+	World_ClassTrainers_FullMethodName = "/wowagent.world.v1.World/ClassTrainers"
+	World_BeforeLogout_FullMethodName  = "/wowagent.world.v1.World/BeforeLogout"
 )
 
 // WorldClient is the client API for World service.
@@ -41,6 +42,7 @@ type WorldClient interface {
 	Spawns(ctx context.Context, in *SpawnsRequest, opts ...grpc.CallOption) (*SpawnsResponse, error)
 	ItemInfo(ctx context.Context, in *ItemInfoRequest, opts ...grpc.CallOption) (*ItemInfoResponse, error)
 	Creature(ctx context.Context, in *CreatureInfoRequest, opts ...grpc.CallOption) (*CreatureInfo, error)
+	ClassTrainers(ctx context.Context, in *ClassTrainersRequest, opts ...grpc.CallOption) (*ClassTrainersResponse, error)
 	BeforeLogout(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
@@ -122,6 +124,16 @@ func (c *worldClient) Creature(ctx context.Context, in *CreatureInfoRequest, opt
 	return out, nil
 }
 
+func (c *worldClient) ClassTrainers(ctx context.Context, in *ClassTrainersRequest, opts ...grpc.CallOption) (*ClassTrainersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ClassTrainersResponse)
+	err := c.cc.Invoke(ctx, World_ClassTrainers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *worldClient) BeforeLogout(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -143,6 +155,7 @@ type WorldServer interface {
 	Spawns(context.Context, *SpawnsRequest) (*SpawnsResponse, error)
 	ItemInfo(context.Context, *ItemInfoRequest) (*ItemInfoResponse, error)
 	Creature(context.Context, *CreatureInfoRequest) (*CreatureInfo, error)
+	ClassTrainers(context.Context, *ClassTrainersRequest) (*ClassTrainersResponse, error)
 	BeforeLogout(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	mustEmbedUnimplementedWorldServer()
 }
@@ -174,6 +187,9 @@ func (UnimplementedWorldServer) ItemInfo(context.Context, *ItemInfoRequest) (*It
 }
 func (UnimplementedWorldServer) Creature(context.Context, *CreatureInfoRequest) (*CreatureInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Creature not implemented")
+}
+func (UnimplementedWorldServer) ClassTrainers(context.Context, *ClassTrainersRequest) (*ClassTrainersResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ClassTrainers not implemented")
 }
 func (UnimplementedWorldServer) BeforeLogout(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method BeforeLogout not implemented")
@@ -325,6 +341,24 @@ func _World_Creature_Handler(srv interface{}, ctx context.Context, dec func(inte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _World_ClassTrainers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ClassTrainersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorldServer).ClassTrainers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: World_ClassTrainers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorldServer).ClassTrainers(ctx, req.(*ClassTrainersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _World_BeforeLogout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
@@ -377,6 +411,10 @@ var World_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Creature",
 			Handler:    _World_Creature_Handler,
+		},
+		{
+			MethodName: "ClassTrainers",
+			Handler:    _World_ClassTrainers_Handler,
 		},
 		{
 			MethodName: "BeforeLogout",

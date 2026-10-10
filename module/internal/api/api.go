@@ -4,12 +4,14 @@ package api
 import (
 	"context"
 	"fmt"
+	"time"
 
 	modv1 "github.com/agent-wow/agent-wow/pkg/modules/v1"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	combatpb "wowagent/gen/combatv1"
 	movepb "wowagent/gen/movev1"
+	progresspb "wowagent/gen/progressv1"
 	questpb "wowagent/gen/questv1"
 	statepb "wowagent/gen/statev1"
 	townpb "wowagent/gen/townv1"
@@ -94,6 +96,45 @@ func (c C) GotoWait(ctx context.Context, x, y, z, radius float32, maxS int) (*mo
 	return st, err
 }
 
+// Walk goes to the point and fails unless it arrives.
+func (c C) Walk(ctx context.Context, x, y, z, radius float32) error {
+	st, err := c.GotoWait(ctx, x, y, z, radius, 240)
+	if err != nil {
+		return err
+	}
+	if st.State != "arrived" {
+		return fmt.Errorf("walk to (%.0f,%.0f): %s %s", x, y, st.State, st.Reason)
+	}
+	return nil
+}
+
+// ApproachNpc walks to the spawn point, then follows the NPC (entry) if it wandered off,
+// until it is within 4 yards. It returns the NPC when visible.
+func (c C) ApproachNpc(ctx context.Context, entry uint32, x, y, z float32) (*statepb.Obj, error) {
+	if err := c.Walk(ctx, x, y, z, 3); err != nil {
+		return nil, err
+	}
+	var o *statepb.Obj
+	for i := 0; i < 4; i++ {
+		vis, err := c.Nearby(ctx, &statepb.NearbyRequest{Kind: "unit", Entry: entry, Radius: 80, Max: 1})
+		if err != nil || len(vis.Objs) == 0 {
+			return o, nil
+		}
+		if o = vis.Objs[0]; o.Dist <= 4 {
+			return o, nil
+		}
+		if err := c.Walk(ctx, o.X, o.Y, o.Z, 2.5); err != nil {
+			return nil, err
+		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(500 * time.Millisecond):
+		}
+	}
+	return o, nil
+}
+
 // ---- world / quest / combat -------------------------------------------------
 
 func (c C) QuestInfo(ctx context.Context, id uint32) (*worldpb.QuestInfo, error) {
@@ -175,6 +216,55 @@ func (c C) ItemInfo(ctx context.Context, entry uint32) (*worldpb.ItemInfo, error
 		return nil, fmt.Errorf("unknown item %d", entry)
 	}
 	return r.Items[0], nil
+}
+
+func (c C) ClassTrainers(ctx context.Context, class, mapID uint32, x, y float32) ([]*worldpb.ClassTrainer, error) {
+	var r worldpb.ClassTrainersResponse
+	err := invoke.Call(ctx, c.S, "world", "class_trainers", &worldpb.ClassTrainersRequest{ClassId: class, Map: mapID, X: x, Y: y}, &r)
+	return r.Trainers, err
+}
+
+// ---- progress ---------------------------------------------------------------
+
+func (c C) TrainCheck(ctx context.Context) (*progresspb.TrainCheckResult, error) {
+	var r progresspb.TrainCheckResult
+	err := invoke.Call(ctx, c.S, "progress", "train_check", &emptypb.Empty{}, &r)
+	return &r, err
+}
+
+func (c C) Train(ctx context.Context, waitS uint32) (*progresspb.TrainStatus, error) {
+	var r progresspb.TrainStatus
+	err := invoke.Call(ctx, c.S, "progress", "train", &progresspb.TrainRequest{WaitS: waitS}, &r)
+	return &r, err
+}
+
+func (c C) TrainStatus(ctx context.Context, waitS uint32) (*progresspb.TrainStatus, error) {
+	var r progresspb.TrainStatus
+	err := invoke.Call(ctx, c.S, "progress", "status", &progresspb.StatusRequest{WaitS: waitS}, &r)
+	return &r, err
+}
+
+func (c C) TrainStop(ctx context.Context) error {
+	var r progresspb.TrainStatus
+	return invoke.Call(ctx, c.S, "progress", "stop", &emptypb.Empty{}, &r)
+}
+
+func (c C) Talents(ctx context.Context) (*progresspb.TalentsResult, error) {
+	var r progresspb.TalentsResult
+	err := invoke.Call(ctx, c.S, "progress", "talents", &progresspb.TalentsRequest{}, &r)
+	return &r, err
+}
+
+func (c C) Gear(ctx context.Context) (*progresspb.GearResult, error) {
+	var r progresspb.GearResult
+	err := invoke.Call(ctx, c.S, "progress", "gear", &progresspb.GearRequest{}, &r)
+	return &r, err
+}
+
+func (c C) PickReward(ctx context.Context, items []uint32) (*progresspb.PickRewardResult, error) {
+	var r progresspb.PickRewardResult
+	err := invoke.Call(ctx, c.S, "progress", "pick_reward", &progresspb.PickRewardRequest{Items: items}, &r)
+	return &r, err
 }
 
 func (c C) SellJunk(ctx context.Context) (*townpb.SellResult, error) {

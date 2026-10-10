@@ -31,8 +31,8 @@ EmptyProtoPZ.google.golang.org/protobuf/types/known/emptypbø¢GPBªGoogle.P
 SendPacket%.agentwow.module.v1.SendPacketRequest.google.protobuf.EmptyE
 GetClock.google.protobuf.Empty!.agentwow.module.v1.ClockResponsea
 InvokeModule'.agentwow.module.v1.InvokeModuleRequest(.agentwow.module.v1.InvokeModuleResponseB5Z3github.com/agent-wow/agent-wow/pkg/modules/v1;modv1bproto3
-«
-state.protowowagent.state.v1api/module/v1/session.protogoogle/protobuf/empty.proto"´
+­
+state.protowowagent.state.v1api/module/v1/session.protogoogle/protobuf/empty.proto"ˆ
 SelfInfo
 guid (Rguid
 map (Rmap
@@ -56,13 +56,18 @@ power_type (R	powerType
 	run_speed (RrunSpeed
 
 unit_flags (R	unitFlags
-ghost (Rghost"x
+ghost (Rghost
+class_id (RclassId
+race (Rrace#
+talent_points (RtalentPoints"¥
 Item
 slot (Rslot
 entry (Rentry
 count (Rcount
 guid (Rguid
-	container (R	container"E
+	container (R	container
+bag (Rbag
+bag_slot (RbagSlot"E
 Quest
 id (Rid
 state (Rstate

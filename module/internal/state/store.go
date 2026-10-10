@@ -33,6 +33,7 @@ const (
 	fQuestLog    = 158
 	fInvSlots    = 324
 	fPlayerFlags = 150
+	fTalentPts   = 1020 // PLAYER_CHARACTER_POINTS1
 	fXP          = 634
 	fNextXP      = 635
 	fCoinage     = 1170
