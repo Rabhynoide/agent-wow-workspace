@@ -47,6 +47,12 @@ Légende : [ ] à faire, [~] partiel, [x] fait.
 - [ ] Manger/boire : `combat.rest` ne mange ni ne boit ; la nourriture gardée ne sert à rien tant que ce n'est pas fait (gain de temps de repos).
 - [ ] Argent pour l'entraînement : `progress.train` achète du moins cher au plus cher ; si l'argent manque, noter le déficit dans le statut.
 
+## Déplacement (idées des bots du serveur, 2026-10-10)
+- [x] Lissage du chemin collé à la surface (port de `findSmoothPath`/`moveAlongSurface`) : fait, testé hors ligne et en jeu (auberge de Goldshire, poursuite en combat). A valider visuellement lors du « gros test » (escaliers, ponts, virages serrés).
+- [ ] Hauteurs vmaps (bâtiments, ponts, rochers) comme `Map::GetHeight` du serveur : copier `vmaps` depuis ac-worldserver dans `assets/vmaps`, lire l'arbre BIH et les modèles, choisir entre hauteur terrain et vmap. Donne aussi la ligne de vue (placement pour lancer un sort). Opus.
+- [ ] Idées mod-playerbots (src/Ai, mouvements) : suivre une cible (distance/angle), vérifier qu'une destination est atteignable avant d'y aller, se débloquer.
+- [ ] Évitement des monstres hostiles dans l'A* (coût autour des monstres). Opus.
+
 ## Sécurité du personnage (morts répétées constatées le 2026-10-10)
 - [ ] Pathfinding qui évite les monstres hostiles (idée utilisateur) : aujourd'hui `move` va tout droit dans le couloir navmesh, y compris au milieu d'un camp (ex. kobolds de la mine de Fargodeep : 3 morts de suite). A faire : (1) coût supplémentaire dans l'A* autour des monstres connus (positions de spawn `creature` de la base + unités vivantes vues par `state`), rayon d'aggro ≈ 20 yards + 1 yard par niveau d'écart (hostiles seulement : niveau > niveau du joueur - 3 ou faction hostile) ; (2) option `avoid_hostiles` dans `move.goto` (activée par défaut dans `auto`) ; (3) si aucun chemin sûr, échouer avec la raison plutôt que traverser. Niveau requis : Opus (navmesh + hostilité).
 - [ ] `auto.collect` / `auto.hunt` : choisir la source d'objet selon le niveau (ne pas chasser des mobs de niveau > joueur + 1 ; ex. quêtes 60 et 47 ne se font que sur des kobolds 5-8 dans la mine : à reporter au niveau 7+). Passer aussi un indicateur « trop dangereux » dans le statut.

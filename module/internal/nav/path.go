@@ -178,7 +178,8 @@ func closestOnSeg(p, a, b V3) V3 {
 
 type link struct {
 	to     polyRef
-	pa, pb V3 // portal segment (left, right as seen leaving the source polygon)
+	pa, pb V3  // portal segment (left, right as seen leaving the source polygon)
+	edge   int // edge of the source polygon (vertex edge -> edge+1)
 }
 
 func oppositeSide(s uint16) uint16 { return (s + 4) & 7 }
@@ -202,7 +203,7 @@ func (m *Mesh) links(r polyRef, f Filter) []link {
 		if nei&extLink == 0 {
 			idx := int32(nei) - 1
 			if f.ok(&t.polys[idx]) {
-				out = append(out, link{polyRef{r.tx, r.ty, idx}, va, vb})
+				out = append(out, link{polyRef{r.tx, r.ty, idx}, va, vb, i})
 			}
 			continue
 		}
@@ -227,7 +228,7 @@ func (m *Mesh) links(r polyRef, f Filter) []link {
 				}
 				ua, ub := nt.vert(np.verts[k]), nt.vert(np.verts[(k+1)%nn])
 				if lo, hi, ok := overlapSlab(side, va, vb, ua, ub, t.climb); ok {
-					out = append(out, link{polyRef{r.tx + sideOffset[side][0], r.ty + sideOffset[side][1], int32(j)}, lo, hi})
+					out = append(out, link{polyRef{r.tx + sideOffset[side][0], r.ty + sideOffset[side][1], int32(j)}, lo, hi, i})
 				}
 			}
 		}
@@ -295,16 +296,33 @@ func (m *Mesh) Path(from, to V3, f Filter) ([]V3, error) {
 
 // PathCorridor is Path plus the polygons the path runs through (used to resolve heights between layers).
 func (m *Mesh) PathCorridor(from, to V3, f Filter) ([]V3, []polyRef, error) {
+	sPt, ePt, chain, err := m.corridor(from, to, f)
+	if err != nil {
+		return nil, nil, err
+	}
+	refs := make([]polyRef, len(chain))
+	for i, n := range chain {
+		refs[i] = n.ref
+	}
+	if len(chain) == 1 {
+		return []V3{sPt, ePt}, refs, nil
+	}
+	return funnel(sPt, ePt, chain), refs, nil
+}
+
+// corridor runs A* over the polygons: start and end points snapped on the mesh, and the chain of
+// nodes from the start polygon to the end polygon (each with the portal used to enter it).
+func (m *Mesh) corridor(from, to V3, f Filter) (V3, V3, []*node, error) {
 	sRef, sPt, ok := m.NearestPoly(from, f, 6, 3)
 	if !ok {
-		return nil, nil, ErrNoStartPoly
+		return V3{}, V3{}, nil, ErrNoStartPoly
 	}
 	eRef, ePt, ok := m.NearestPoly(to, f, 6, 3)
 	if !ok {
-		return nil, nil, ErrNoEndPoly
+		return V3{}, V3{}, nil, ErrNoEndPoly
 	}
 	if sRef == eRef {
-		return []V3{sPt, ePt}, []polyRef{sRef}, nil
+		return sPt, ePt, []*node{{ref: sRef, pos: sPt}}, nil
 	}
 	best := map[polyRef]*node{}
 	open := &pq{}
@@ -322,7 +340,7 @@ func (m *Mesh) PathCorridor(from, to V3, f Filter) ([]V3, []polyRef, error) {
 		}
 		closed[cur.ref] = true
 		if expansions++; expansions > 400000 {
-			return nil, nil, ErrNoPath
+			return V3{}, V3{}, nil, ErrNoPath
 		}
 		for _, l := range m.links(cur.ref, f) {
 			if closed[l.to] {
@@ -346,7 +364,7 @@ func (m *Mesh) PathCorridor(from, to V3, f Filter) ([]V3, []polyRef, error) {
 		}
 	}
 	if goal == nil {
-		return nil, nil, ErrNoPath
+		return V3{}, V3{}, nil, ErrNoPath
 	}
 	var chain []*node
 	for n := goal; n != nil; n = n.parent {
@@ -355,11 +373,7 @@ func (m *Mesh) PathCorridor(from, to V3, f Filter) ([]V3, []polyRef, error) {
 	for i, j := 0, len(chain)-1; i < j; i, j = i+1, j-1 {
 		chain[i], chain[j] = chain[j], chain[i]
 	}
-	refs := make([]polyRef, len(chain))
-	for i, n := range chain {
-		refs[i] = n.ref
-	}
-	return funnel(sPt, ePt, chain), refs, nil
+	return sPt, ePt, chain, nil
 }
 
 func triArea2(a, b, c V3) float32 {

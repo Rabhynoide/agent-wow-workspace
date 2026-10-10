@@ -195,16 +195,43 @@ func (s *Service) plan(mapID uint32, from [3]float32, x, y, z float32) ([][3]flo
 	if err != nil {
 		return nil, 0, err
 	}
-	pts, corridor, err := m.PathCorridor(nav.ToRecast(from[0], from[1], from[2]), nav.ToRecast(x, y, z), nav.GroundOnly)
-	if err != nil {
-		return nil, 0, err
+	src, dst := nav.ToRecast(from[0], from[1], from[2]), nav.ToRecast(x, y, z)
+	tm := s.terrainFor(mapID)
+	var dense [][3]float32
+	// Points every 2 yards that slide along the walkable polygons (the server's own smoothing), heights
+	// from the polygon reached; the old funnel + interpolation is the fallback.
+	if pts, err := m.SmoothPath(src, dst, nav.GroundOnly, nav.SmoothStep, nav.SmoothSlop); err == nil {
+		dense = onGround(pts, tm)
+	} else {
+		slog.Info("smooth path failed, using the funnel path", "err", err)
+		pts, corridor, err := m.PathCorridor(src, dst, nav.GroundOnly)
+		if err != nil {
+			return nil, 0, err
+		}
+		dense = densify(m, tm, pts, corridor)
 	}
-	dense := densify(m, s.terrainFor(mapID), pts, corridor)
 	var l float32
 	for i := 1; i < len(dense); i++ {
 		l += dist(dense[i-1], dense[i])
 	}
 	return dense, l, nil
+}
+
+// onGround converts navmesh points to WoW space; outdoors the real terrain height replaces the navmesh
+// one when they agree within 0.8 yard (the navmesh is up to a yard off), indoors and on bridges the
+// navmesh height is kept. Heights are then low-passed so stairs become ramps.
+func onGround(pts []nav.V3, tm *terrain.Maps) [][3]float32 {
+	out := make([][3]float32, 0, len(pts))
+	for _, v := range pts {
+		x, y, z := v.ToWoW()
+		if tm != nil {
+			if th, ok := tm.Height(x, y); ok && math.Abs(float64(th-z)) < 0.8 {
+				z = th
+			}
+		}
+		out = append(out, [3]float32{x, y, z})
+	}
+	return smoothZ(out)
 }
 
 func dist(a, b [3]float32) float32 {
