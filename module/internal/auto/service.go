@@ -29,8 +29,11 @@ const (
 	// Do not walk further than this (yards) to a class trainer between quests: the walk does not
 	// avoid monsters yet.
 	maxTrainerDist = 400
-	// Monsters more than this many levels above the character, or elites, are not hunted.
-	dangerLevels = 2
+	// Monsters more than this many levels above the character, or elites, are not hunted: classes that
+	// heal or shield themselves (priest, mage, warlock) get 2 levels, melee classes without a heal 1
+	// (a level-5 warrior died twice on level 7-8 boars).
+	dangerLevelsCaster = 2
+	dangerLevelsMelee  = 1
 	// Repair when an equipped item falls below this durability (percent).
 	repairBelow = 60
 )
@@ -192,6 +195,69 @@ func (s *Service) Status(ctx context.Context, r *pb.StatusRequest) (*pb.AutoStat
 
 func (s *Service) Run(ctx context.Context, r *pb.RunRequest) (*pb.AutoStatus, error) {
 	return s.start(ctx, r.WaitS, &pb.AutoStatus{State: "running"}, func(run *run) error { return run.quests(r) }), nil
+}
+
+// Grind hunts the given creatures in turn until the level is reached, with everything auto.run does
+// around a fight: vendor visits (sell, repair), resurrection, trainer, talents, gear.
+func (s *Service) Grind(ctx context.Context, r *pb.GrindRequest) (*pb.AutoStatus, error) {
+	return s.start(ctx, r.WaitS, &pb.AutoStatus{State: "running"}, func(run *run) error { return run.grind(r) }), nil
+}
+
+func (r *run) grind(req *pb.GrindRequest) error {
+	if len(req.Entries) == 0 {
+		return fmt.Errorf("no creature entries to hunt")
+	}
+	limit := time.Duration(req.MaxS) * time.Second
+	if limit == 0 {
+		limit = 1500 * time.Second
+	}
+	deadline := time.Now().Add(limit)
+	if err := r.recover(); err != nil {
+		return fmt.Errorf("recover: %w", err)
+	}
+	r.progress()
+	deaths, idle, lastLevel := 0, 0, uint32(0)
+	for round := 0; time.Now().Before(deadline); round++ {
+		if r.ctx.Err() != nil {
+			return r.ctx.Err()
+		}
+		b, err := r.s.api.Brief(r.ctx)
+		if err != nil || b.Self == nil {
+			return fmt.Errorf("state unavailable")
+		}
+		if b.Self.Dead {
+			if deaths++; deaths > 3 {
+				return fmt.Errorf("stopping: died %d times", deaths)
+			}
+			if err := r.recover(); err != nil {
+				return fmt.Errorf("recover: %w", err)
+			}
+			continue
+		}
+		if req.UntilLevel > 0 && b.Self.Level >= req.UntilLevel {
+			return nil
+		}
+		if lastLevel != 0 && b.Self.Level > lastLevel {
+			r.progress() // new level: gear, talents, trainer
+		}
+		lastLevel = b.Self.Level
+		r.j.Update(func(st *pb.AutoStatus) { st.Level, st.Xp = b.Self.Level, b.Self.Xp })
+		entry := req.Entries[round%len(req.Entries)]
+		err = r.hunt(entry, fmt.Sprintf("creature %d", entry), 4, 0, 0)
+		switch {
+		case err == nil:
+			idle = 0
+		case strings.Contains(err.Error(), "dead"):
+			idle = 0 // handled at the top of the loop
+		case strings.Contains(err.Error(), "no live entry"), strings.Contains(err.Error(), "too dangerous"), strings.Contains(err.Error(), "no spawn found"):
+			if idle++; idle >= len(req.Entries) {
+				return fmt.Errorf("nothing to hunt right now (%v)", err)
+			}
+		default:
+			return err
+		}
+	}
+	return fmt.Errorf("time limit")
 }
 
 // ---- quest logic -----------------------------------------------------------
@@ -476,11 +542,16 @@ func (r *run) objectives(info *worldpb.QuestInfo, q *statepb.Quest) error {
 }
 
 // tooDangerous explains why a creature should not be hunted at this level ("" when it is fine).
-func tooDangerous(sp *worldpb.Spawn, level uint32) string {
+func tooDangerous(sp *worldpb.Spawn, level, class uint32) string {
+	margin := uint32(dangerLevelsMelee)
+	switch class {
+	case 5, 8, 9: // priest, mage, warlock
+		margin = dangerLevelsCaster
+	}
 	switch {
 	case sp.Rank == 1 || sp.Rank == 2 || sp.Rank == 3:
 		return fmt.Sprintf("%s is an elite (rank %d)", sp.Name, sp.Rank)
-	case sp.MinLevel > level+dangerLevels:
+	case sp.MinLevel > level+margin:
 		return fmt.Sprintf("%s is level %d-%d (character %d)", sp.Name, sp.MinLevel, sp.MaxLevel, level)
 	}
 	return ""
@@ -496,7 +567,7 @@ func (r *run) hunt(entry uint32, name string, count, itemEntry, itemCount uint32
 	if err != nil || len(sp) == 0 {
 		return fmt.Errorf("no spawn found for %s (%d)", name, entry)
 	}
-	if why := tooDangerous(sp[0], me.Level); why != "" {
+	if why := tooDangerous(sp[0], me.Level, me.ClassId); why != "" {
 		return fmt.Errorf("too dangerous for now: %s", why)
 	}
 	r.step("hunt %s x%d", name, count)
@@ -648,7 +719,7 @@ func (r *run) collect(o *worldpb.QuestObjective) error {
 		if err != nil || len(sp) == 0 {
 			continue
 		}
-		if why := tooDangerous(sp[0], me.Level); why != "" {
+		if why := tooDangerous(sp[0], me.Level, me.ClassId); why != "" {
 			risky = append(risky, why)
 			continue
 		}

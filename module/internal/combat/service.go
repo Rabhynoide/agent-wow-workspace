@@ -335,7 +335,12 @@ func (s *Service) kill(ctx context.Context, j *job, r *pb.KillRequest) (string, 
 			return "failed", "bags full"
 		}
 		me := snap.Self
-		if pct(me.Hp, me.MaxHp) < 55 || (me.PowerType == 0 && pct(me.Power, me.MaxPower) < 25) {
+		// Classes without a heal need more health before the next pull.
+		restBelow := uint32(55)
+		if me.ClassId == warrior.ClassID {
+			restBelow = 75
+		}
+		if pct(me.Hp, me.MaxHp) < restBelow || (me.PowerType == 0 && pct(me.Power, me.MaxPower) < 25) {
 			if st, why := s.rest(ctx, j, 90, 70, 90); st != "done" {
 				return st, why
 			}
@@ -644,10 +649,12 @@ func (s *Service) warriorBuff(ctx context.Context, me *statepb.SelfInfo) {
 	if shout == 0 {
 		return
 	}
-	if me.Power < 100 { // rage is stored x10
-		if br := best(known, warrior.Bloodrage); br != 0 && s.tryCast(ctx, br, me.Guid) {
-			sleep(ctx, 1500*time.Millisecond)
+	if me.Power < 100 { // rage is stored x10; Battle Shout costs 10
+		br := best(known, warrior.Bloodrage)
+		if br == 0 || !s.tryCast(ctx, br, me.Guid) {
+			return // no rage out of combat: the shout is cast in the fight, with the first rage
 		}
+		sleep(ctx, 1500*time.Millisecond)
 	}
 	if s.tryCast(ctx, shout, me.Guid) {
 		s.mark(&s.lastBuff)
@@ -667,6 +674,7 @@ func (s *Service) fightWarrior(ctx context.Context, j *job, guid uint64) (bool, 
 	tc, vr, op := best(known, warrior.ThunderClap), best(known, warrior.VictoryRush), best(known, warrior.Overpower)
 	exe, ms, slam := best(known, warrior.Execute), best(known, warrior.MortalStrike), best(known, warrior.Slam)
 	var gcdUntil, lastSwing, lastCharge, rendAt, tcAt, opTry, vrTry, msAt, hsAt time.Time
+	shout := best(known, warrior.BattleShout)
 	selected := false
 	started := time.Now()
 	for time.Since(started) < 120*time.Second {
@@ -700,7 +708,7 @@ func (s *Service) fightWarrior(ctx context.Context, j *job, guid uint64) (bool, 
 		dist := float32(math.Hypot(float64(t.X-me.X), float64(t.Y-me.Y)))
 		now := time.Now()
 		// Open with Charge (out of combat only): the server moves us next to the target.
-		if charge != 0 && dist >= chargeMin && dist <= chargeMax && me.UnitFlags&inCombatFlag == 0 && now.Sub(lastCharge) > 15*time.Second && s.visible(ctx, t) {
+		if charge != 0 && dist >= chargeMin+1 && dist <= chargeMax && me.UnitFlags&inCombatFlag == 0 && now.Sub(lastCharge) > 15*time.Second && s.visible(ctx, t) {
 			s.packetU64(ctx, uint32(opcode.CMSGSetSelection), guid)
 			selected = true
 			s.face(ctx, me, t.X, t.Y)
@@ -731,6 +739,9 @@ func (s *Service) fightWarrior(ctx context.Context, j *job, guid uint64) (bool, 
 			var mark *time.Time
 			reactive := false // only usable after an event (dodge, kill): failures are expected
 			switch {
+			case shout != 0 && rage >= 10 && s.since(&s.lastBuff) > battleShoutTime:
+				spell = shout
+				s.mark(&s.lastBuff)
 			case vr != 0 && s.since(&s.lastKill) < 18*time.Second && now.Sub(vrTry) > 2*time.Second:
 				spell, mark, reactive = vr, &vrTry, true
 			case exe != 0 && targetPct < 20 && rage >= 15:
@@ -768,7 +779,7 @@ func (s *Service) fightWarrior(ctx context.Context, j *job, guid uint64) (bool, 
 		if me.Level >= 41 {
 			spare = 60 // Slam and Mortal Strike need the rage
 		}
-		if hs != 0 && rage >= spare && time.Since(hsAt) > 2500*time.Millisecond {
+		if hs != 0 && rage >= spare && time.Since(hsAt) > 3500*time.Millisecond { // one per swing (2-3.6 s)
 			_, _ = s.cast(ctx, hs, guid)
 			hsAt = time.Now()
 		}

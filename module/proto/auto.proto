@@ -21,6 +21,17 @@ message StatusRequest {
   uint32 wait_s = 1;
 }
 
+message GrindRequest {
+  // Creature entries to hunt in turn (4 kills each), e.g. the monsters around the character.
+  repeated uint32 entries = 1;
+  // Stop when the character reaches this level.
+  uint32 until_level = 2;
+  // Seconds to block before returning the status (default 20, max 25).
+  uint32 wait_s = 3;
+  // Time limit of the whole grind (default 1500 s).
+  uint32 max_s = 4;
+}
+
 message AutoStatus {
   // idle | running | done | failed | stopped
   string state = 1;
@@ -39,6 +50,7 @@ service Auto {
   rpc Recover(StatusRequest) returns (AutoStatus);
   rpc OnPacket(agentwow.module.v1.WorldPacket) returns (google.protobuf.Empty);
   rpc Run(RunRequest) returns (AutoStatus);
+  rpc Grind(GrindRequest) returns (AutoStatus);
   rpc Status(StatusRequest) returns (AutoStatus);
   rpc Stop(google.protobuf.Empty) returns (AutoStatus);
   rpc BeforeLogout(google.protobuf.Empty) returns (google.protobuf.Empty);

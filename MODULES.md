@@ -3,7 +3,7 @@
 Sources Go partagées : `module/` (un seul go.mod, un binaire par module dans `module/cmd/<nom>`).
 Manifestes + descripteurs : `modules/<nom>/` (module.yaml, compose.yaml, module.pb).
 Régénérer protos : `cd module && make generate` (met à jour `modules/*/module.pb`). Les images se reconstruisent au `char play`.
-Scripts : `start.sh` (démarre la session), `job.sh` (attend un job async), `grind.sh <niveau> <entrée>...` (enchaîne les chasses, repos, résurrection, arrêt après 3 morts / 25 min).
+Scripts : `start.sh <Nom>` (démarre la session), `job.sh` (attend un job async), `grind.sh <niveau> <entrée>...` (appelle `auto.grind` : chasse en tournant sur les créatures, 4 kills chacune, avec vente, réparation, résurrection ; arrêt après 3 morts, 25 min ou rien à chasser).
 Appel : `scripts/rpc.sh <module.methode> '<json>' [chemin]` (sortie JSON compacte, flottants arrondis). Jobs async : `scripts/job.sh <module.methode> '<json>'` (attend la fin). Logs : `logs/<module>.log`.
 Tests hors ligne : `cd module && go test ./...` (les tests de nav, vmap, terrain, dbc, classdata, priest, warrior utilisent `assets/` s'il est présent, sinon ils sont sautés).
 Données `assets/` (hors git) : `mmaps`, `maps`, `vmaps`, `dbc` (copiés du conteneur du serveur), `zygor/repo` (guides tiers), `routes` (générées).
@@ -56,8 +56,9 @@ Données `assets/` (hors git) : `mmaps`, `maps`, `vmaps`, `dbc` (copiés du cont
 
 ## auto  (requires: state, world, move, quest, combat, town, progress) — orchestrateur
 - `auto.run {quests:[ids], rewards:{id:index}, no_progress, wait_s}` : au départ et après chaque quête (sauf `no_progress`) : `progress.gear`, `progress.talents`, et entraînement si l'entraîneur a des sorts à apprendre à moins de 400 yards ; récompense choisie par `progress.pick_reward` si absente de `rewards` ; événements dans `progress` du statut. Puis pour chaque quête : va au donneur, accepte, objectifs (kill / objets via la source la plus proche sur la carte / objets de décor), rend. Suit les PNJ qui se déplacent. Reprend après une mort. Gère sac plein.
+- `auto.grind {entries:[créatures], until_level, max_s(1500), wait_s}` : chasse jusqu'au niveau voulu avec tout ce que fait `auto.run` autour d'un combat (vente/réparation, résurrection, entraîneur, talents, équipement au changement de niveau). Les créatures introuvables à portée ou trop dangereuses sont sautées ; échec si aucune ne convient.
 - `auto.status {wait_s}`, `auto.stop {}`, `auto.recover {wait_s}` (libérer l'âme, puis, aux niveaux 1-10 seulement, ressusciter chez l'esprit guérisseur du cimetière s'il est à moins de 150 yards (malus de résurrection dès le niveau 11 : jamais utilisé ensuite) ; sinon courir au corps et le réclamer en insistant 4 minutes).
-- Danger : `hunt`/`collect` refusent les monstres élites ou de niveau > niveau + 2 (« too dangerous for now »), mais ne voient pas les groupes (ex. kobolds de la mine) : voir BACKLOG. Entraîneur seulement à moins de 400 yards. Talents par lots de 10.
+- Danger : `hunt`/`collect` refusent les monstres élites ou de niveau > niveau + 2 pour prêtre/mage/démoniste, + 1 pour les autres classes (« too dangerous for now »), mais ne voient pas les groupes (ex. kobolds de la mine) : voir BACKLOG. Entraîneur seulement à moins de 400 yards. Talents par lots de 10.
 - Limites : pas de quête à groupe/élite, une carte à la fois.
 
 ## progress  (requires: state, world, move) — rendre le personnage plus fort

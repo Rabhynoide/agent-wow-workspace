@@ -139,6 +139,78 @@ func (x *StatusRequest) GetWaitS() uint32 {
 	return 0
 }
 
+type GrindRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Creature entries to hunt in turn (4 kills each), e.g. the monsters around the character.
+	Entries []uint32 `protobuf:"varint,1,rep,packed,name=entries,proto3" json:"entries,omitempty"`
+	// Stop when the character reaches this level.
+	UntilLevel uint32 `protobuf:"varint,2,opt,name=until_level,json=untilLevel,proto3" json:"until_level,omitempty"`
+	// Seconds to block before returning the status (default 20, max 25).
+	WaitS uint32 `protobuf:"varint,3,opt,name=wait_s,json=waitS,proto3" json:"wait_s,omitempty"`
+	// Time limit of the whole grind (default 1500 s).
+	MaxS          uint32 `protobuf:"varint,4,opt,name=max_s,json=maxS,proto3" json:"max_s,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GrindRequest) Reset() {
+	*x = GrindRequest{}
+	mi := &file_auto_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GrindRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GrindRequest) ProtoMessage() {}
+
+func (x *GrindRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_auto_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GrindRequest.ProtoReflect.Descriptor instead.
+func (*GrindRequest) Descriptor() ([]byte, []int) {
+	return file_auto_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *GrindRequest) GetEntries() []uint32 {
+	if x != nil {
+		return x.Entries
+	}
+	return nil
+}
+
+func (x *GrindRequest) GetUntilLevel() uint32 {
+	if x != nil {
+		return x.UntilLevel
+	}
+	return 0
+}
+
+func (x *GrindRequest) GetWaitS() uint32 {
+	if x != nil {
+		return x.WaitS
+	}
+	return 0
+}
+
+func (x *GrindRequest) GetMaxS() uint32 {
+	if x != nil {
+		return x.MaxS
+	}
+	return 0
+}
+
 type AutoStatus struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// idle | running | done | failed | stopped
@@ -158,7 +230,7 @@ type AutoStatus struct {
 
 func (x *AutoStatus) Reset() {
 	*x = AutoStatus{}
-	mi := &file_auto_proto_msgTypes[2]
+	mi := &file_auto_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -170,7 +242,7 @@ func (x *AutoStatus) String() string {
 func (*AutoStatus) ProtoMessage() {}
 
 func (x *AutoStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_auto_proto_msgTypes[2]
+	mi := &file_auto_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -183,7 +255,7 @@ func (x *AutoStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AutoStatus.ProtoReflect.Descriptor instead.
 func (*AutoStatus) Descriptor() ([]byte, []int) {
-	return file_auto_proto_rawDescGZIP(), []int{2}
+	return file_auto_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *AutoStatus) GetState() string {
@@ -266,7 +338,13 @@ const file_auto_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\rR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\rR\x05value:\x028\x01\"&\n" +
 	"\rStatusRequest\x12\x15\n" +
-	"\x06wait_s\x18\x01 \x01(\rR\x05waitS\"\xd7\x01\n" +
+	"\x06wait_s\x18\x01 \x01(\rR\x05waitS\"u\n" +
+	"\fGrindRequest\x12\x18\n" +
+	"\aentries\x18\x01 \x03(\rR\aentries\x12\x1f\n" +
+	"\vuntil_level\x18\x02 \x01(\rR\n" +
+	"untilLevel\x12\x15\n" +
+	"\x06wait_s\x18\x03 \x01(\rR\x05waitS\x12\x13\n" +
+	"\x05max_s\x18\x04 \x01(\rR\x04maxS\"\xd7\x01\n" +
 	"\n" +
 	"AutoStatus\x12\x14\n" +
 	"\x05state\x18\x01 \x01(\tR\x05state\x12\x16\n" +
@@ -277,11 +355,12 @@ const file_auto_proto_rawDesc = "" +
 	"\x05level\x18\x06 \x01(\rR\x05level\x12\x0e\n" +
 	"\x02xp\x18\a \x01(\rR\x02xp\x12\x1b\n" +
 	"\telapsed_s\x18\b \x01(\rR\belapsedS\x12\x1a\n" +
-	"\bprogress\x18\t \x03(\tR\bprogress2\x9f\x03\n" +
+	"\bprogress\x18\t \x03(\tR\bprogress2\xe6\x03\n" +
 	"\x04Auto\x12H\n" +
 	"\aRecover\x12\x1f.wowagent.auto.v1.StatusRequest\x1a\x1c.wowagent.auto.v1.AutoStatus\x12C\n" +
 	"\bOnPacket\x12\x1f.agentwow.module.v1.WorldPacket\x1a\x16.google.protobuf.Empty\x12A\n" +
-	"\x03Run\x12\x1c.wowagent.auto.v1.RunRequest\x1a\x1c.wowagent.auto.v1.AutoStatus\x12G\n" +
+	"\x03Run\x12\x1c.wowagent.auto.v1.RunRequest\x1a\x1c.wowagent.auto.v1.AutoStatus\x12E\n" +
+	"\x05Grind\x12\x1e.wowagent.auto.v1.GrindRequest\x1a\x1c.wowagent.auto.v1.AutoStatus\x12G\n" +
 	"\x06Status\x12\x1f.wowagent.auto.v1.StatusRequest\x1a\x1c.wowagent.auto.v1.AutoStatus\x12<\n" +
 	"\x04Stop\x12\x16.google.protobuf.Empty\x1a\x1c.wowagent.auto.v1.AutoStatus\x12>\n" +
 	"\fBeforeLogout\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.EmptyB\x1cZ\x1awowagent/gen/autov1;autov1b\x06proto3"
@@ -298,31 +377,34 @@ func file_auto_proto_rawDescGZIP() []byte {
 	return file_auto_proto_rawDescData
 }
 
-var file_auto_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_auto_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_auto_proto_goTypes = []any{
 	(*RunRequest)(nil),     // 0: wowagent.auto.v1.RunRequest
 	(*StatusRequest)(nil),  // 1: wowagent.auto.v1.StatusRequest
-	(*AutoStatus)(nil),     // 2: wowagent.auto.v1.AutoStatus
-	nil,                    // 3: wowagent.auto.v1.RunRequest.RewardsEntry
-	(*v1.WorldPacket)(nil), // 4: agentwow.module.v1.WorldPacket
-	(*emptypb.Empty)(nil),  // 5: google.protobuf.Empty
+	(*GrindRequest)(nil),   // 2: wowagent.auto.v1.GrindRequest
+	(*AutoStatus)(nil),     // 3: wowagent.auto.v1.AutoStatus
+	nil,                    // 4: wowagent.auto.v1.RunRequest.RewardsEntry
+	(*v1.WorldPacket)(nil), // 5: agentwow.module.v1.WorldPacket
+	(*emptypb.Empty)(nil),  // 6: google.protobuf.Empty
 }
 var file_auto_proto_depIdxs = []int32{
-	3, // 0: wowagent.auto.v1.RunRequest.rewards:type_name -> wowagent.auto.v1.RunRequest.RewardsEntry
+	4, // 0: wowagent.auto.v1.RunRequest.rewards:type_name -> wowagent.auto.v1.RunRequest.RewardsEntry
 	1, // 1: wowagent.auto.v1.Auto.Recover:input_type -> wowagent.auto.v1.StatusRequest
-	4, // 2: wowagent.auto.v1.Auto.OnPacket:input_type -> agentwow.module.v1.WorldPacket
+	5, // 2: wowagent.auto.v1.Auto.OnPacket:input_type -> agentwow.module.v1.WorldPacket
 	0, // 3: wowagent.auto.v1.Auto.Run:input_type -> wowagent.auto.v1.RunRequest
-	1, // 4: wowagent.auto.v1.Auto.Status:input_type -> wowagent.auto.v1.StatusRequest
-	5, // 5: wowagent.auto.v1.Auto.Stop:input_type -> google.protobuf.Empty
-	5, // 6: wowagent.auto.v1.Auto.BeforeLogout:input_type -> google.protobuf.Empty
-	2, // 7: wowagent.auto.v1.Auto.Recover:output_type -> wowagent.auto.v1.AutoStatus
-	5, // 8: wowagent.auto.v1.Auto.OnPacket:output_type -> google.protobuf.Empty
-	2, // 9: wowagent.auto.v1.Auto.Run:output_type -> wowagent.auto.v1.AutoStatus
-	2, // 10: wowagent.auto.v1.Auto.Status:output_type -> wowagent.auto.v1.AutoStatus
-	2, // 11: wowagent.auto.v1.Auto.Stop:output_type -> wowagent.auto.v1.AutoStatus
-	5, // 12: wowagent.auto.v1.Auto.BeforeLogout:output_type -> google.protobuf.Empty
-	7, // [7:13] is the sub-list for method output_type
-	1, // [1:7] is the sub-list for method input_type
+	2, // 4: wowagent.auto.v1.Auto.Grind:input_type -> wowagent.auto.v1.GrindRequest
+	1, // 5: wowagent.auto.v1.Auto.Status:input_type -> wowagent.auto.v1.StatusRequest
+	6, // 6: wowagent.auto.v1.Auto.Stop:input_type -> google.protobuf.Empty
+	6, // 7: wowagent.auto.v1.Auto.BeforeLogout:input_type -> google.protobuf.Empty
+	3, // 8: wowagent.auto.v1.Auto.Recover:output_type -> wowagent.auto.v1.AutoStatus
+	6, // 9: wowagent.auto.v1.Auto.OnPacket:output_type -> google.protobuf.Empty
+	3, // 10: wowagent.auto.v1.Auto.Run:output_type -> wowagent.auto.v1.AutoStatus
+	3, // 11: wowagent.auto.v1.Auto.Grind:output_type -> wowagent.auto.v1.AutoStatus
+	3, // 12: wowagent.auto.v1.Auto.Status:output_type -> wowagent.auto.v1.AutoStatus
+	3, // 13: wowagent.auto.v1.Auto.Stop:output_type -> wowagent.auto.v1.AutoStatus
+	6, // 14: wowagent.auto.v1.Auto.BeforeLogout:output_type -> google.protobuf.Empty
+	8, // [8:15] is the sub-list for method output_type
+	1, // [1:8] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
 	1, // [1:1] is the sub-list for extension extendee
 	0, // [0:1] is the sub-list for field type_name
@@ -339,7 +421,7 @@ func file_auto_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_auto_proto_rawDesc), len(file_auto_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

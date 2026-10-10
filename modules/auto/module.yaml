@@ -16,6 +16,7 @@ grpc:
   descriptor_set: module.pb
 rpc:
   run: /wowagent.auto.v1.Auto/Run
+  grind: /wowagent.auto.v1.Auto/Grind
   status: /wowagent.auto.v1.Auto/Status
   stop: /wowagent.auto.v1.Auto/Stop
   recover: /wowagent.auto.v1.Auto/Recover

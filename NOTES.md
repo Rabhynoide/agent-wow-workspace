@@ -10,6 +10,10 @@ Les sections « Etat du personnage » et « Pièges » parlent de Claudia (prêt
 6. Guerrier : rotation de base (Charge, Battle Shout + Bloodrage, Victory Rush, Execute, Overpower, Rend, Thunder Clap avant 20, Heroic Strike avec la rage en trop, Mortal Strike / Slam plus tard). Pas de postures (quêtes de classe 10 et 30 à faire, mais la posture n'est pas utilisée), pas de Premiers soins, pas de nourriture : `combat.rest` attend les PV.
 7. Classes sans fichier dans `journal/classes/` : pas de talents automatiques ; combat de prêtre (sorts absents) = attaque automatique seulement.
 
+## Etat du personnage : Claudio (guerrier humain, GUID 3, test du 2026-10-10)
+- Créé de zéro pour le test de leveling jusqu'au niveau 10 (objectif de l'utilisateur). Niveau 6 au 2026-10-10 après Northshire complet, 54, 2158, 106, 111, 107 ; quête 86 (viande de sanglier) refusée : ses sources sont trop fortes (Rockhide 7-8, Longsnout 10-11). Deux morts sur les Rockhide Boars avant la règle de danger +1.
+- Sorts : Battle Shout, Charge, Rend, Heroic Strike (+ postures de base). Rotation guerrier en place (voir MODULES « combat »). Journal de test : voir `journal/characters/Claudio.md`.
+
 ## Etat du personnage : Claudia (fin de session 2026-10-10)
 - Humain prêtre (guid 1), niveau 6, XP 1818/3600, 29 cuivres, 171 PV max, équipement réparé à 100 %. Sorts : Châtiment 2, Soins inférieurs 2, Bouclier, Mot de l'ombre : Douleur, Robustesse. Position : Elwynn, sud-ouest de Goldshire (~-9540,67), map 0. Session fermée.
 - Quêtes faites : Northshire, 54 « Report to Goldshire », 2158 « Rest and Relaxation », chaîne Maclure (85, 86, 106, 84, 111, 107). Dans le journal : 60 (Kobold Candles) — NE PAS la faire avant 8+ (kobolds en groupes dans la mine).
@@ -58,6 +62,7 @@ Icy Veins bloque ma lecture (403). Aux paliers de niveau listés dans BACKLOG (9
 - Un `move.goto` s'arrête maintenant si le personnage meurt (avant, le corps « marchait » dans le modèle de position).
 - Le délai de récupération du corps grandit avec les morts rapprochées (jusqu'à ~2 min) : `recover` insiste 4 minutes.
 - `auto` refuse les monstres élites ou de plus de 2 niveaux au-dessus (« too dangerous for now ») mais pas les GROUPES de monstres de niveau correct (mine de Fargodeep) : choisir les quêtes en conséquence.
+- Un script shell qui boucle sur `combat.kill` peut tourner à vide quand le sac est plein (« bags full » instantané) : lancer la chasse par `auto.grind` (via `grind.sh`), jamais par `combat.kill` en boucle. Pour tuer un script : `pkill -f "grind[.]sh"` (les crochets évitent de se tuer soi-même).
 - `kill -f` / `pkill -f scripts/...` dans une commande Bash qui contient ce motif tue aussi la commande elle-même (code 144) : utiliser `rpc.sh combat.stop` / `auto.stop` / `move.stop`.
 - Appels module : timeout 30 s => actions longues en jobs asynchrones (wait_s <= 25).
 - Démarrage de 9 modules (images Docker) > 2 min : toujours `--module-timeout 8m` (`scripts/start.sh` le fait).
