@@ -176,9 +176,11 @@ func (s *Store) monsterMove(r *wire.Reader) {
 	r.U32()
 	typ := r.U8()
 	o := s.objs[guid]
-	if o == nil || r.Err || guid == s.self {
+	if o == nil || r.Err {
 		return
 	}
+	// Our own character moves by spline only when the server drives it (Charge, knockback, fear...):
+	// keep our position model in sync with the destination.
 	o.X, o.Y, o.Z, o.HasPos = x, y, z, true
 	switch typ {
 	case 1:

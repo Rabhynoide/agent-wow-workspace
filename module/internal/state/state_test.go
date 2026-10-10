@@ -142,3 +142,14 @@ func TestDurabilityIsTheWorstEquippedItem(t *testing.T) {
 		t.Fatalf("durability = %d, want 50", got)
 	}
 }
+
+func TestServerDrivenSelfMove(t *testing.T) {
+	st := NewStore(1)
+	me := st.obj(1, TypePlayer)
+	me.X, me.Y, me.Z = 1, 2, 3
+	// Charge: the server moves us along a spline towards the target.
+	st.Handle(opMonsterMove, append(monsterMove(1, 0, [][3]float32{{20, 30, 4}}), 0, 0, 0, 0))
+	if me.X != 20 || me.Y != 30 || me.Z != 4 {
+		t.Fatalf("self position = %v %v %v, want the charge destination", me.X, me.Y, me.Z)
+	}
+}

@@ -1,5 +1,5 @@
-// Package priest holds the priest class data used by combat and progress: spell ranks
-// (highest first) and the leveling talent build. Both are checked against Spell.dbc/Talent.dbc in tests.
+// Package priest holds the priest spell ranks used by combat (highest first), checked against
+// Spell.dbc in tests. The talent build is in journal/classes/priest.yaml.
 package priest
 
 const ClassID = 5
@@ -30,49 +30,4 @@ func Best(known map[uint32]bool, ranks []uint32) uint32 {
 		}
 	}
 	return 0
-}
-
-// TalentStep raises a talent (by its spell name) to Rank.
-type TalentStep struct {
-	Name string
-	Rank int
-}
-
-// Build is the Shadow leveling build in learning order (one point per level from level 10, 71 points
-// at level 80). Order from the Highground Gaming / Icy Veins WotLK Classic leveling guides; the first
-// 30 points (levels 10-40) are the ones that matter for solo questing. Replayed against Talent.dbc
-// by TestBuild (tier requirements, prerequisites, maximum ranks).
-var Build = []TalentStep{
-	{"Spirit Tap", 3}, // 10-12
-	{"Darkness", 2},   // 13-14
-	{"Shadow Focus", 3},
-	{"Darkness", 4},
-	{"Mind Flay", 1}, // 20
-	{"Darkness", 5},
-	{"Improved Shadow Word: Pain", 2},
-	{"Improved Mind Blast", 1},
-	{"Shadow Weaving", 3}, // 25-27
-	{"Shadow Reach", 2},
-	{"Improved Mind Blast", 5}, // 30-33
-	{"Vampiric Embrace", 1},
-	{"Mind Melt", 2},
-	{"Improved Devouring Plague", 3},
-	{"Shadowform", 1}, // 40
-	{"Improved Spirit Tap", 2},
-	{"Shadow Power", 2},
-	{"Misery", 3},
-	{"Improved Shadowform", 2},
-	{"Vampiric Touch", 1}, // 50
-	{"Pain and Suffering", 3},
-	{"Psychic Horror", 1},
-	{"Twisted Faith", 5},
-	{"Dispersion", 1}, // 60
-	// Discipline for the last points.
-	{"Twin Disciplines", 5},
-	{"Improved Inner Fire", 3},
-	{"Improved Power Word: Fortitude", 2},
-	{"Meditation", 3},
-	{"Focused Mind", 3},
-	{"Improved Vampiric Embrace", 2},
-	{"Shadow Power", 4}, // 79-80
 }

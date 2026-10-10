@@ -20,11 +20,11 @@ import (
 	statepb "wowagent/gen/statev1"
 	worldpb "wowagent/gen/worldv1"
 	"wowagent/internal/api"
+	"wowagent/internal/classdata"
 	"wowagent/internal/dbc"
 	"wowagent/internal/gear"
 	"wowagent/internal/jobs"
 	"wowagent/internal/moveio"
-	"wowagent/internal/priest"
 	"wowagent/internal/wire"
 )
 
@@ -49,10 +49,11 @@ type Service struct {
 	api  api.C
 	jobs *jobs.Runner[*pb.TrainStatus]
 
-	dbcDir   string
-	dataOnce sync.Once
-	data     *dbc.Data
-	dataErr  error
+	dbcDir     string
+	classesDir string
+	dataOnce   sync.Once
+	data       *dbc.Data
+	dataErr    error
 
 	trainerList chan []trainerSpell
 	bought      chan buyResult
@@ -68,9 +69,13 @@ func Register(g grpc.ServiceRegistrar, s modv1.SessionClient) {
 	if dir == "" {
 		dir = "/dbc"
 	}
+	classes := os.Getenv("CLASSES_DIR")
+	if classes == "" {
+		classes = "/classes"
+	}
 	runner := jobs.NewRunner(&pb.TrainStatus{State: "idle"})
 	runner.Decorate = func(j *job, st *pb.TrainStatus) { st.ElapsedS = uint32(time.Since(j.Start).Seconds()) }
-	pb.RegisterProgressServer(g, &Service{s: s, api: api.C{S: s}, jobs: runner, dbcDir: dir,
+	pb.RegisterProgressServer(g, &Service{s: s, api: api.C{S: s}, jobs: runner, dbcDir: dir, classesDir: classes,
 		trainerList: make(chan []trainerSpell, 1), bought: make(chan buyResult, 8),
 		talents: map[uint32]int{}, skip: map[uint32]uint32{}, items: map[uint32]*worldpb.ItemInfo{}})
 }
@@ -201,11 +206,18 @@ func (s *Service) planTraining(ctx context.Context) (*statepb.SelfInfo, *plan, e
 		return me, p, nil
 	}
 	d, _ := s.dbcData()
+	cf, err := classdata.Load(s.classesDir, me.ClassId) // training.skip: spells not worth their gold
+	if err != nil {
+		slog.Warn("class file unavailable: no training.skip, no talents", "dir", s.classesDir, "err", err)
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	money := me.Money
 	for _, ts := range trainers[0].Spells {
 		if ts.ReqLevel > me.Level || s.skip[ts.Spell] == me.Level {
+			continue
+		}
+		if cf != nil && d != nil && d.Spells[ts.Spell] != nil && cf.Skip(d.Spells[ts.Spell].Name) {
 			continue
 		}
 		learned := []uint32{ts.Spell}
@@ -333,10 +345,14 @@ func (s *Service) buyAll(j *job, me *statepb.SelfInfo, npc *statepb.Obj) error {
 	}
 	listed := map[uint32]bool{}
 	var buy []trainerSpell
+	cf, _ := classdata.Load(s.classesDir, me.ClassId)
+	d, _ := s.dbcData()
 	s.mu.Lock()
 	for _, ts := range list {
 		listed[ts.spell] = true
 		switch {
+		case ts.state == 0 && cf != nil && d != nil && d.Spells[ts.spell] != nil && cf.Skip(d.Spells[ts.spell].Name):
+			// training.skip of the class file
 		case ts.state == 0:
 			buy = append(buy, ts)
 		case ts.state == 1 && ts.reqLevel <= me.Level:
@@ -415,8 +431,9 @@ func (s *Service) Talents(ctx context.Context, r *pb.TalentsRequest) (*pb.Talent
 	if me.TalentPoints == 0 {
 		return res, nil
 	}
-	if me.ClassId != priest.ClassID {
-		return &pb.TalentsResult{Reason: "no talent build for this class", PointsLeft: me.TalentPoints}, nil
+	cf, err := classdata.Load(s.classesDir, me.ClassId)
+	if err != nil {
+		return &pb.TalentsResult{Reason: "no class file: " + err.Error(), PointsLeft: me.TalentPoints}, nil
 	}
 	d, err := s.dbcData()
 	if err != nil {
@@ -427,10 +444,10 @@ func (s *Service) Talents(ctx context.Context, r *pb.TalentsRequest) (*pb.Talent
 		return &pb.TalentsResult{Reason: err.Error(), PointsLeft: me.TalentPoints}, nil
 	}
 	planned := map[uint32]int{}
-	for _, step := range priest.Build {
-		t := d.TalentBySpellName(priest.ClassID, step.Name)
+	for _, step := range cf.Build() {
+		t := d.TalentBySpellName(me.ClassId, step.Talent)
 		if t == nil {
-			return &pb.TalentsResult{Reason: "unknown talent " + step.Name, PointsLeft: res.PointsLeft}, nil
+			return &pb.TalentsResult{Reason: "unknown talent " + step.Talent, PointsLeft: res.PointsLeft}, nil
 		}
 		for {
 			rank := max(s.talentRank(t, known), planned[t.ID])
@@ -446,7 +463,7 @@ func (s *Service) Talents(ctx context.Context, r *pb.TalentsRequest) (*pb.Talent
 			}
 			planned[t.ID] = rank + 1
 			res.PointsLeft--
-			res.Learned = append(res.Learned, fmt.Sprintf("%s %d", step.Name, rank+1))
+			res.Learned = append(res.Learned, fmt.Sprintf("%s %d", step.Talent, rank+1))
 		}
 		if res.PointsLeft == 0 || len(res.Learned) >= maxTalentsPerCall {
 			break
@@ -542,7 +559,7 @@ func (s *Service) bestUpgrade(ctx context.Context, inv *inventory) *upgrade {
 		if !gear.Usable(info, inv.me.ClassId, inv.me.Race, inv.me.Level, inv.known) {
 			continue
 		}
-		slot, g := gear.Gain(info, inv.equipped)
+		slot, g := gear.Gain(info, inv.equipped, gear.ProfileFor(inv.me.ClassId))
 		if slot >= 0 && g > 0.05 && (best == nil || g > best.gain) {
 			best = &upgrade{it, info, slot, g}
 		}
@@ -621,7 +638,7 @@ func (s *Service) PickReward(ctx context.Context, r *pb.PickRewardRequest) (*pb.
 		if !gear.Usable(info, inv.me.ClassId, inv.me.Race, inv.me.Level, inv.known) {
 			continue
 		}
-		if _, g := gear.Gain(info, inv.equipped); g > bestGain {
+		if _, g := gear.Gain(info, inv.equipped, gear.ProfileFor(inv.me.ClassId)); g > bestGain {
 			best, bestGain = i, g
 		}
 	}

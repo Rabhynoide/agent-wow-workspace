@@ -38,39 +38,6 @@ func TestSpellRanks(t *testing.T) {
 	}
 }
 
-// TestBuild replays the build with the server rules: tier needs 5 points per row in the tree,
-// prerequisites need their rank, ranks never exceed the maximum, total fits 71 points.
-func TestBuild(t *testing.T) {
-	d := load(t)
-	rank := map[uint32]int{}
-	spent := map[uint32]int{}
-	total := 0
-	for _, st := range Build {
-		tal := d.TalentBySpellName(ClassID, st.Name)
-		if tal == nil {
-			t.Fatalf("unknown talent %q", st.Name)
-		}
-		if st.Rank > tal.MaxRank() {
-			t.Fatalf("%s: rank %d > max %d", st.Name, st.Rank, tal.MaxRank())
-		}
-		for rank[tal.ID] < st.Rank {
-			if spent[tal.Tab] < int(tal.Row)*5 {
-				t.Fatalf("%s row %d: only %d points in tree", st.Name, tal.Row, spent[tal.Tab])
-			}
-			if tal.DependsOn != 0 && rank[tal.DependsOn] < int(tal.DependsOnRank)+1 {
-				t.Fatalf("%s needs talent %d rank %d", st.Name, tal.DependsOn, tal.DependsOnRank+1)
-			}
-			rank[tal.ID]++
-			spent[tal.Tab]++
-			total++
-		}
-	}
-	if total > 71 {
-		t.Fatalf("build uses %d points (max 71)", total)
-	}
-	t.Logf("build uses %d points", total)
-}
-
 func TestProficiencySpells(t *testing.T) {
 	d := load(t)
 	want := map[uint32]string{196: "One-Handed Axes", 198: "One-Handed Maces", 227: "Staves", 1180: "Daggers", 5009: "Wands", 9078: "Cloth", 8737: "Mail", 9116: "Shield", 15590: "Fist Weapons", 201: "One-Handed Swords"}

@@ -139,13 +139,13 @@ func decideGear(s Stack, c Ctx) Decision {
 		soon := proto.Clone(it).(*worldpb.ItemInfo)
 		soon.RequiredLevel = 0
 		if it.RequiredLevel <= c.Level+futureLevels && gear.Usable(soon, c.Class, c.Race, c.Level, c.Known) {
-			if _, g := gear.Gain(soon, c.Equipped); g > upgradeEps {
+			if _, g := gear.Gain(soon, c.Equipped, gear.ProfileFor(c.Class)); g > upgradeEps {
 				return keep(s, "upgrade at level "+itoa(it.RequiredLevel))
 			}
 		}
 		return sell(s, 1, "cannot be used by this class")
 	}
-	if _, g := gear.Gain(it, c.Equipped); g > upgradeEps {
+	if _, g := gear.Gain(it, c.Equipped, gear.ProfileFor(c.Class)); g > upgradeEps {
 		return keep(s, "upgrade (not equipped yet)")
 	}
 	return sell(s, 2, "no upgrade")

@@ -1,0 +1,36 @@
+class: priest
+recommended_leveling_spec: Shadow
+# talent_order : converti depuis priest.Build (guides Highground Gaming / Icy Veins, voir BACKLOG).
+# tree = arbre du client 3.3.5a, vérifié par cmd/classcheck.
+talent_order:
+  - { levels: "10-12", tree: Shadow, talent: "Spirit Tap", points: 3 }
+  - { levels: "13-14", tree: Shadow, talent: "Darkness", points: 2 }
+  - { levels: "15-17", tree: Shadow, talent: "Shadow Focus", points: 3 }
+  - { levels: "18-19", tree: Shadow, talent: "Darkness", points: 2 }
+  - { levels: "20", tree: Shadow, talent: "Mind Flay", points: 1 }
+  - { levels: "21", tree: Shadow, talent: "Darkness", points: 1 }
+  - { levels: "22-23", tree: Shadow, talent: "Improved Shadow Word: Pain", points: 2 }
+  - { levels: "24", tree: Shadow, talent: "Improved Mind Blast", points: 1 }
+  - { levels: "25-27", tree: Shadow, talent: "Shadow Weaving", points: 3 }
+  - { levels: "28-29", tree: Shadow, talent: "Shadow Reach", points: 2 }
+  - { levels: "30-33", tree: Shadow, talent: "Improved Mind Blast", points: 4 }
+  - { levels: "34", tree: Shadow, talent: "Vampiric Embrace", points: 1 }
+  - { levels: "35-36", tree: Shadow, talent: "Mind Melt", points: 2 }
+  - { levels: "37-39", tree: Shadow, talent: "Improved Devouring Plague", points: 3 }
+  - { levels: "40", tree: Shadow, talent: "Shadowform", points: 1 }
+  - { levels: "41-42", tree: Shadow, talent: "Improved Spirit Tap", points: 2 }
+  - { levels: "43-44", tree: Shadow, talent: "Shadow Power", points: 2 }
+  - { levels: "45-47", tree: Shadow, talent: "Misery", points: 3 }
+  - { levels: "48-49", tree: Shadow, talent: "Improved Shadowform", points: 2 }
+  - { levels: "50", tree: Shadow, talent: "Vampiric Touch", points: 1 }
+  - { levels: "51-53", tree: Shadow, talent: "Pain and Suffering", points: 3 }
+  - { levels: "54", tree: Shadow, talent: "Psychic Horror", points: 1 }
+  - { levels: "55-59", tree: Shadow, talent: "Twisted Faith", points: 5 }
+  - { levels: "60", tree: Shadow, talent: "Dispersion", points: 1 }
+  - { levels: "61-65", tree: Discipline, talent: "Twin Disciplines", points: 5 }
+  - { levels: "66-68", tree: Discipline, talent: "Improved Inner Fire", points: 3 }
+  - { levels: "69-70", tree: Discipline, talent: "Improved Power Word: Fortitude", points: 2 }
+  - { levels: "71-73", tree: Discipline, talent: "Meditation", points: 3 }
+  - { levels: "74-76", tree: Shadow, talent: "Focused Mind", points: 3 }
+  - { levels: "77-78", tree: Shadow, talent: "Improved Vampiric Embrace", points: 2 }
+  - { levels: "79-80", tree: Shadow, talent: "Shadow Power", points: 2 }

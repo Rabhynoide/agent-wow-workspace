@@ -114,3 +114,19 @@ func TestSalesComeFirstGrayBeforeGear(t *testing.T) {
 		t.Fatalf("copper = %d %d", ds[0].Copper, ds[2].Copper)
 	}
 }
+
+func TestWarriorKeepsTwoHanderUpgrade(t *testing.T) {
+	c := Ctx{Class: 1, Race: 1, Level: 8, Known: map[uint32]bool{197: true, 196: true, 9077: true}, Equipped: map[int]*I{
+		15: {Class: 2, Subclass: 0, InventoryType: 13, Dps: 3}, // worn one-handed axe
+	}, QuestItems: map[uint32]bool{}}
+	axe := &I{Entry: 1, Quality: 1, Class: 2, Subclass: 1, InventoryType: 17, Dps: 6, SellPrice: 40, AllowableClass: -1, AllowableRace: -1}
+	robe := &I{Entry: 2, Quality: 1, Class: 4, Subclass: 1, InventoryType: 20, Armor: 2, SellPrice: 5, AllowableClass: -1, AllowableRace: -1,
+		Stats: []*worldpb.ItemStat{{Type: 5, Value: 3}}}
+	m := plan(t, c, axe, robe)
+	if m[1].Sell {
+		t.Fatalf("the two-handed axe is an upgrade for a warrior: %+v", m[1])
+	}
+	if !m[2].Sell {
+		t.Fatalf("an intellect robe is no upgrade for a warrior: %+v", m[2])
+	}
+}

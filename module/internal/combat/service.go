@@ -25,6 +25,7 @@ import (
 	"wowagent/internal/loot"
 	"wowagent/internal/moveio"
 	"wowagent/internal/priest"
+	"wowagent/internal/warrior"
 	"wowagent/internal/wire"
 )
 
@@ -53,7 +54,8 @@ type Service struct {
 	failures   map[uint8]castFailure
 	lastShield time.Time // Weakened Soul: no new shield for 15 s
 	lastRenew  time.Time
-	lastBuff   time.Time // Fortitude / Inner Fire (30 min)
+	lastBuff   time.Time // Fortitude / Inner Fire (30 min); Battle Shout (2 min)
+	lastKill   time.Time // Victory Rush is usable for 20 s after a killing blow
 }
 
 func Register(g grpc.ServiceRegistrar, s modv1.SessionClient) {
@@ -409,6 +411,10 @@ func (s *Service) forgetBuffs() {
 
 // buff refreshes Power Word: Fortitude and Inner Fire every 25 minutes (out of combat).
 func (s *Service) buff(ctx context.Context, me *statepb.SelfInfo) {
+	if me.ClassId == warrior.ClassID {
+		s.warriorBuff(ctx, me)
+		return
+	}
 	if s.since(&s.lastBuff) < 25*time.Minute || pct(me.Power, me.MaxPower) < 40 {
 		return
 	}
@@ -432,6 +438,13 @@ func (s *Service) buff(ctx context.Context, me *statepb.SelfInfo) {
 // Priority: heal when low, shield, renew, Shadow Word: Pain once, Mind Blast, Smite;
 // out of mana: wand (Shoot) if one is equipped, else melee.
 func (s *Service) fight(ctx context.Context, j *job, guid uint64) (bool, string) {
+	if b, err := s.api.Brief(ctx); err == nil && b.Self != nil && b.Self.ClassId == warrior.ClassID {
+		dead, why := s.fightWarrior(ctx, j, guid)
+		if dead {
+			s.mark(&s.lastKill)
+		}
+		return dead, why
+	}
 	var busyUntil, lastSwing, lastShoot, lastBlast, painAt time.Time
 	selected := false
 	fails := 0
@@ -587,4 +600,161 @@ func (s *Service) lootCorpse(ctx context.Context, j *job, guid uint64) {
 		slog.Info("loot failed", "entry", t.Entry, "err", err)
 		sleep(ctx, 500*time.Millisecond)
 	}
+}
+
+// ---- warrior --------------------------------------------------------------
+
+const (
+	battleShoutTime = 110 * time.Second // the shout lasts 2 minutes
+	inCombatFlag    = 0x00080000        // UNIT_FLAG_IN_COMBAT on ourselves
+	chargeMin       = 8                 // Charge range: 8 to 25 yards
+	chargeMax       = 24
+)
+
+// warriorBuff keeps Battle Shout up between fights; Bloodrage gives the 10 rage it costs.
+func (s *Service) warriorBuff(ctx context.Context, me *statepb.SelfInfo) {
+	if s.since(&s.lastBuff) < battleShoutTime {
+		return
+	}
+	known, err := s.api.Spells(ctx)
+	if err != nil {
+		return
+	}
+	shout := best(known, warrior.BattleShout)
+	if shout == 0 {
+		return
+	}
+	if me.Power < 100 { // rage is stored x10
+		if br := best(known, warrior.Bloodrage); br != 0 && s.tryCast(ctx, br, me.Guid) {
+			sleep(ctx, 1500*time.Millisecond)
+		}
+	}
+	if s.tryCast(ctx, shout, me.Guid) {
+		s.mark(&s.lastBuff)
+	}
+}
+
+// fightWarrior follows journal/classes/warrior.yaml (rotation_solo): Charge to open, auto-attack,
+// Victory Rush after a kill, Execute on a low target, Overpower when it fires, Rend on targets that
+// live long enough, Mortal Strike / Slam once known, Thunder Clap at low level, Heroic Strike with
+// spare rage.
+func (s *Service) fightWarrior(ctx context.Context, j *job, guid uint64) (bool, string) {
+	known, err := s.api.Spells(ctx)
+	if err != nil {
+		return false, "spells unavailable"
+	}
+	charge, rend, hs := best(known, warrior.Charge), best(known, warrior.Rend), best(known, warrior.HeroicStrike)
+	tc, vr, op := best(known, warrior.ThunderClap), best(known, warrior.VictoryRush), best(known, warrior.Overpower)
+	exe, ms, slam := best(known, warrior.Execute), best(known, warrior.MortalStrike), best(known, warrior.Slam)
+	var gcdUntil, lastSwing, lastCharge, rendAt, tcAt, opTry, vrTry, msAt, hsAt time.Time
+	selected := false
+	started := time.Now()
+	for time.Since(started) < 120*time.Second {
+		if ctx.Err() != nil {
+			return false, "cancelled"
+		}
+		t, err := s.api.Obj(ctx, guid)
+		if status.Code(err) == codes.NotFound {
+			return false, "" // out of sight: not a kill, pick another target
+		}
+		if err != nil {
+			if !sleep(ctx, 300*time.Millisecond) {
+				return false, "cancelled"
+			}
+			continue
+		}
+		if t.Hp == 0 && t.MaxHp > 0 {
+			return true, ""
+		}
+		snap, err := s.refresh(ctx, j)
+		if err != nil || snap.Self == nil {
+			return false, "state unavailable"
+		}
+		me := snap.Self
+		if me.Dead {
+			s.forgetBuffs()
+			return false, "dead"
+		}
+		rage := me.Power / 10
+		targetPct := pct(t.Hp, t.MaxHp)
+		dist := float32(math.Hypot(float64(t.X-me.X), float64(t.Y-me.Y)))
+		now := time.Now()
+		// Open with Charge (out of combat only): the server moves us next to the target.
+		if charge != 0 && dist >= chargeMin && dist <= chargeMax && me.UnitFlags&inCombatFlag == 0 && now.Sub(lastCharge) > 15*time.Second {
+			s.packetU64(ctx, uint32(opcode.CMSGSetSelection), guid)
+			selected = true
+			s.face(ctx, me, t.X, t.Y)
+			lastCharge = now
+			if s.tryCast(ctx, charge, guid) {
+				sleep(ctx, 800*time.Millisecond) // the charge itself
+				continue
+			}
+		}
+		if dist > meleeRange+1 {
+			st, err := s.api.Goto(ctx, t.X, t.Y, t.Z, meleeRange-1, 3)
+			if err != nil || st.State == "failed" {
+				return false, fmt.Sprintf("cannot approach target: %v %s", err, st.GetReason())
+			}
+			continue
+		}
+		if !selected {
+			s.packetU64(ctx, uint32(opcode.CMSGSetSelection), guid)
+			selected = true
+		}
+		s.face(ctx, me, t.X, t.Y)
+		if now.Sub(lastSwing) > 3*time.Second {
+			s.packetU64(ctx, uint32(opcode.CMSGAttackswing), guid)
+			lastSwing = now
+		}
+		if now.After(gcdUntil) {
+			var spell uint32
+			var mark *time.Time
+			reactive := false // only usable after an event (dodge, kill): failures are expected
+			switch {
+			case vr != 0 && s.since(&s.lastKill) < 18*time.Second && now.Sub(vrTry) > 2*time.Second:
+				spell, mark, reactive = vr, &vrTry, true
+			case exe != 0 && targetPct < 20 && rage >= 15:
+				spell = exe
+			case op != 0 && rage >= 5 && now.Sub(opTry) > 2*time.Second:
+				spell, mark, reactive = op, &opTry, true
+			case rend != 0 && rage >= 10 && targetPct > 50 && now.Sub(rendAt) > 15*time.Second:
+				spell, mark = rend, &rendAt
+			case ms != 0 && rage >= 30 && now.Sub(msAt) > 6*time.Second:
+				spell, mark = ms, &msAt
+			case slam != 0 && me.Level >= 41 && rage >= 15:
+				spell = slam
+			case tc != 0 && me.Level < 20 && rage >= 20 && now.Sub(tcAt) > 6*time.Second:
+				spell, mark = tc, &tcAt
+			}
+			if spell != 0 {
+				if mark != nil {
+					*mark = now
+				}
+				if s.tryCast(ctx, spell, guid) {
+					gcdUntil = time.Now().Add(1100 * time.Millisecond) // 1.5 s global cooldown minus the check
+					if reactive && spell == vr {
+						s.mu.Lock()
+						s.lastKill = time.Time{} // used
+						s.mu.Unlock()
+					}
+				} else if !reactive && mark != nil {
+					*mark = time.Time{}
+				}
+				continue
+			}
+		}
+		// Heroic Strike replaces the next swing (no global cooldown): spend spare rage.
+		spare := uint32(30)
+		if me.Level >= 41 {
+			spare = 60 // Slam and Mortal Strike need the rage
+		}
+		if hs != 0 && rage >= spare && time.Since(hsAt) > 2500*time.Millisecond {
+			_, _ = s.cast(ctx, hs, guid)
+			hsAt = time.Now()
+		}
+		if !sleep(ctx, 300*time.Millisecond) {
+			return false, "cancelled"
+		}
+	}
+	return false, "fight timeout"
 }

@@ -6,6 +6,8 @@ services:
         CMD: progress
     environment:
       DBC_DIR: /dbc
+      CLASSES_DIR: /classes
     volumes:
       - ../../logs:/logs
       - ../../assets/dbc:/dbc:ro
+      - ../../journal/classes:/classes:ro

@@ -1,5 +1,15 @@
 # NOTES (lire en premier à chaque session)
 
+## Nouveau personnage (ex. test d'un guerrier)
+Les sections « Etat du personnage » et « Pièges » parlent de Claudia (prêtre). Pour un autre personnage :
+1. Créer : `agent-wow char create --name <Nom> --race human --class warrior` (races : human, dwarf, gnome, night-elf, draenei ; Alliance seulement pour les routes générées). Noter son état dans `journal/characters/<Nom>.md` (pas dans la section de Claudia).
+2. Démarrer : `scripts/start.sh <Nom>` (timeout Bash 10 min). Arrêter : `scripts/rpc.sh session.logout`.
+3. Route de la race (guides Zygor convertis dans `assets/routes/`, voir MODULES « zygor2route ») : humain `alliance_01_human_1_13.json`, elfe de la nuit `_02_night_elf_1_13`, gnome `_03_gnome_1_13`, nain `_04_dwarf_1_13`, draeneï `_05_draenei_1_13`, puis pour tous `alliance_07_main_guide_13_20.json alliance_08_levels_20_25.json alliance_09_levels_25_30.json ...`. Si `assets/routes/` est vide : relancer `zygor2route` (MODULES).
+4. Quêtes à faire : `cd module && go run ./cmd/guidecheck -plan -char <Nom> -race Human -class Warrior -level <niveau> -n 10 ../assets/routes/alliance_01_human_1_13.json ../assets/routes/alliance_07_main_guide_13_20.json` puis `scripts/job.sh auto.run '<json>'`. Refaire le plan à chaque niveau ou quand la liste est finie.
+5. Automatique, quelle que soit la classe : talents dès le niveau 10 d'après `journal/classes/<classe>.yaml` (points retirés au respec sautés : pas de respec), entraînement (sans la liste `training.skip`), équipement et revente avec le profil de stats de la classe (guerrier : force, armes à deux mains), réparation, résurrection.
+6. Guerrier : rotation de base (Charge, Battle Shout + Bloodrage, Victory Rush, Execute, Overpower, Rend, Thunder Clap avant 20, Heroic Strike avec la rage en trop, Mortal Strike / Slam plus tard). Pas de postures (quêtes de classe 10 et 30 à faire, mais la posture n'est pas utilisée), pas de Premiers soins, pas de nourriture : `combat.rest` attend les PV.
+7. Classes sans fichier dans `journal/classes/` : pas de talents automatiques ; combat de prêtre (sorts absents) = attaque automatique seulement.
+
 ## Etat du personnage (fin de session 2026-10-10, soir)
 - Claudia, humain prêtre (guid 1), niveau 6 (Bouclier et Châtiment 2 appris), XP 1550/3600, 29 cuivres, 171 PV max, équipement réparé à 100 % (il était à 15 % après les morts du 2026-10-10). Position : Elwynn, sud-ouest de Goldshire (après un sanglier), map 0. Session fermée. Quêtes faites en plus : la chaîne Maclure 85, 86, 106, 84, 111, 107. En cours dans le journal : 60 (Kobold Candles, NE PAS la faire avant le niveau 7+, voir mine de Fargodeep). Position : Goldshire, devant le marchand Brog Hamfist (~-9465,12,58), map 0. Session fermée.
 - Sacs : 12 emplacements libres (revente automatique faite le 2026-10-10 ; `auto` vend tout seul à moins de 3 emplacements libres). Marchands de Goldshire : Brog Hamfist (151) à (-9465,10,57), aussi Farley 295, Dobbins 465, Toddrick 3935.
