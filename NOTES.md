@@ -6,6 +6,13 @@
 - Non faites : 54 "Report to Goldshire" (quitte la zone), 2158 "Rest and Relaxation" (aubergiste).
 - Sorts non appris depuis le niveau 1 : voir BACKLOG (entraîneur prêtre, talents, équipement non gérés).
 
+## Choix du modèle (à suggérer à l'utilisateur, en une ligne, avant de commencer la tâche)
+Je ne peux pas changer de modèle moi-même : je propose `/model <nom>` quand le modèle courant ne colle pas à la tâche, puis je continue avec celui que l'utilisateur garde. Changer via `/model` dans la même session (le contexte est conservé).
+- Sonnet : jouer (start.sh, job.sh auto.run, choix de quêtes, suivi), dev simple (RPC calqués sur l'existant, SQL world, scripts, doc, tests), mise à jour NOTES/MODULES/BACKLOG.
+- Opus : code protocole (décodage/envoi de paquets, update fields, navmesh, terrain, déplacement), debug d'un comportement incompris après 2 tentatives infructueuses, revue avant push.
+- Revue Opus : sur le diff seulement (`git diff origin/claudia-modules...HEAD` ou `/code-review`), par lot de fonctionnalités, en ciblant les points « à vérifier » de BACKLOG.
+- En Sonnet : noter dans BACKLOG les doutes de protocole (« à vérifier : … ») et écrire des tests (paquets réels de `logs/state_bad_N.hex`) pour alléger la revue.
+
 ## Démarrer / arrêter
 - Démarrer : `scripts/start.sh` (vérifie auth + port, lance `char play` en arrière-plan, attend "world session ready", 1 à 3 min ; une seule ligne en sortie). Lancer la commande Bash avec un timeout de 10 min.
 - Appeler : `scripts/rpc.sh <module.methode> '<json>' [chemin]` (chemin optionnel, ex. `self` ou `self.hp` ; flottants arrondis). Arrêter : `scripts/rpc.sh session.logout` (refusé en combat : attendre).
