@@ -20,6 +20,7 @@ Je ne peux pas changer de modèle moi-même : je propose `/model <nom>` quand le
 Icy Veins bloque ma lecture (403). Aux paliers de niveau listés dans BACKLOG (9, 19, 39, 49, 59, changement de zone), prévenir l'utilisateur en une ligne pour qu'il colle le guide complet, avant de modifier `priest.Build`, les poids de `gear` ou la rotation de `combat`.
 
 ## Guides de leveling
+Données de classe (talents, rotation, sorts) : `journal/classes/<classe>.yaml`, à valider avec `cmd/classcheck` avant usage.
 Source principale : guides Zygor (voir MODULES.md « zygor2route ») → `assets/routes/`. Les routes extraites par Claude Desktop (en pause) iraient dans `journal/guides/` (format : README du dossier). Valider avec `cd module && go run ./cmd/guidecheck -dir ../journal/guides`, jouer avec `... -ids -from <niveau> -to <niveau>` puis `scripts/job.sh auto.run '<json>'`. Les guides ont 2-3 ans (WotLK Classic ≠ 3.3.5) : la base du serveur fait foi, guidecheck signale les écarts.
 
 ## Démarrer / arrêter

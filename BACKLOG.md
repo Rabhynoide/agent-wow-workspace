@@ -67,7 +67,8 @@ Ordre des travaux :
 2. [x] `cmd/guidecheck` : validation contre la base + liste pour `auto.run` (voir MODULES.md).
 3. [ ] Une fois les fichiers reçus : lancer guidecheck, corriger/signaler les écarts, présenter à l'utilisateur la route retenue AVANT de jouer ; marquer les étapes manuelles (voyages, tram, vols, quêtes de soin/exploration/groupe).
 4. [~] `auto` piloté par la route : `guidecheck -plan` donne la liste, `auto.run` l'exécute (testé : chaîne Maclure, niveau 5 → 6). A faire : plan intégré dans `auto` (fichier de route + niveau courant) au lieu de listes à la main ; sauter les quêtes de niveau trop haut ; gérer voyages (tram Stormwind-Ironforge, vols).
-5. [ ] Classes autres que prêtre : tables de rangs de sorts et builds par classe, vérifiées contre Spell.dbc/Talent.dbc (comme `internal/priest`).
+5. [~] Données de classe (`journal/classes/*.yaml`, validées par `cmd/classcheck`) : warrior.yaml reçu le 2026-10-10, 0 problème. A faire : priest.yaml au même format (pour remplacer `priest.Build` codé en dur) ; `progress.talents` piloté par le fichier de la classe (lu dans le conteneur) ; respec (CMSG_TALENT_WIPE_CONFIRM chez l'entraîneur, coût en or) pour les `removed_at` ; rotation de combat par classe (code, Opus).
+5b. [ ] Classes autres que prêtre : tables de rangs de sorts et builds par classe, vérifiées contre Spell.dbc/Talent.dbc (comme `internal/priest`).
 
 ## A demander à l'utilisateur quand le personnage atteint le palier
 Icy Veins bloque ma lecture (403) : à chaque palier ci-dessous, prévenir l'utilisateur en une ligne AVANT d'avancer, pour qu'il colle le texte du guide complet (ou un build complet) dans la conversation.

@@ -62,3 +62,21 @@ func TestPriestTalentTree(t *testing.T) {
 		t.Fatalf("only %d priest talents", len(rows))
 	}
 }
+
+func TestTabNamesAndClassSpells(t *testing.T) {
+	d := load(t)
+	names := map[string]bool{}
+	for _, tab := range d.Tabs {
+		if tab.ClassMask == 1 { // warrior
+			names[tab.Name] = true
+		}
+	}
+	for _, n := range []string{"Arms", "Fury", "Protection"} {
+		if !names[n] {
+			t.Errorf("warrior tree %q missing (have %v)", n, names)
+		}
+	}
+	if len(d.ClassSpells(1, "Rend")) == 0 || len(d.ClassSpells(5, "Rend")) != 0 {
+		t.Error("Rend should be a warrior spell only")
+	}
+}

@@ -1,0 +1,115 @@
+class: warrior
+recommended_leveling_spec: Arms
+alternatives:
+  - { spec: Fury, why: "Gros dégâts mais très dépendant de l'équipement ; déconseillé si sous-équipé." }
+  - { spec: Protection, why: "Pour leveler en groupe / donjons en rôle tank." }
+
+# tree = arbre du client 3.3.5a (déduit du jeu, le guide ne précise pas l'arbre).
+talent_order:
+  - { levels: "10-11", tree: Arms, talent: "Improved Rend", points: 2 }
+  - { levels: "12-14", tree: Protection, talent: "Improved Thunder Clap", points: 3, removed_at: 25, note: "Retiré au respec du niveau 25, repris en 75-77" }
+  - { levels: "15-17", tree: Arms, talent: "Improved Heroic Strike", points: 3 }
+  - { levels: "18-19", tree: Arms, talent: "Improved Charge", points: 2 }
+  - { levels: "20-22", tree: Arms, talent: "Deflection", points: 3 }
+  - { levels: "23-24", tree: Arms, talent: "Improved Overpower", points: 2 }
+  - { levels: "25", tree: Arms, talent: "Anger Management", points: 1, note: "Après respec" }
+  - { levels: "25", tree: Arms, talent: "Impale", points: 2, note: "Après respec" }
+  - { levels: "25-27", tree: Arms, talent: "Taste for Blood", points: 3 }
+  - { levels: "28-29", tree: Arms, talent: "Two-Handed Weapon Specialization", points: 2 }
+  - { levels: "30", tree: Arms, talent: "Sweeping Strikes", points: 1 }
+  - { levels: "31", tree: Arms, talent: "Two-Handed Weapon Specialization", points: 1 }
+  - { levels: "32-34", tree: Arms, talent: "Deep Wounds", points: 3 }
+  - { levels: "35-36", tree: Arms, talent: "Weapon Mastery", points: 2 }
+  - { levels: "37-38", tree: Arms, talent: "Trauma", points: 2 }
+  - { levels: "39", tree: Arms, talent: "Poleaxe Specialization", points: 1, note: "Ou autre spécialisation d'arme selon l'arme portée ; Poleaxe préférée" }
+  - { levels: "40-41", tree: Arms, talent: "Improved Slam", points: 2 }
+  - { levels: "42", tree: Arms, talent: "Mortal Strike", points: 1 }
+  - { levels: "43-44", tree: Arms, talent: "Strength of Arms", points: 2 }
+  - { levels: "45-46", tree: Arms, talent: "Unrelenting Assault", points: 2 }
+  - { levels: "47-49", tree: Arms, talent: "Poleaxe Specialization", points: 3, note: "Même spécialisation d'arme qu'au 39" }
+  - { levels: "50", tree: Arms, talent: "Endless Rage", points: 1 }
+  - { levels: "51-52", tree: Arms, talent: "Blood Frenzy", points: 2 }
+  - { levels: "53", tree: Arms, talent: "Poleaxe Specialization", points: 1 }
+  - { levels: "54", tree: Arms, talent: "Sudden Death", points: 1 }
+  - { levels: "55-59", tree: Arms, talent: "Wrecking Crew", points: 5 }
+  - { levels: "60", tree: Arms, talent: "Bladestorm", points: 1 }
+  - { levels: "61-63", tree: Fury, talent: "Armored to the Teeth", points: 3 }
+  - { levels: "64-68", tree: Fury, talent: "Cruelty", points: 5 }
+  - { levels: "69-70", tree: Arms, talent: "Sudden Death", points: 2 }
+  - { levels: "71-72", tree: Arms, talent: "Second Wind", points: 2 }
+  - { levels: "73-74", tree: Protection, talent: "Improved Bloodrage", points: 2 }
+  - { levels: "75-77", tree: Protection, talent: "Improved Thunder Clap", points: 3 }
+  - { levels: "78-80", tree: Protection, talent: "Incite", points: 3 }
+
+respec_notes: >-
+  Niveau 25 : respec obligatoire si Improved Thunder Clap a été pris (12-14).
+  Retirer ces 3 points pour atteindre Taste for Blood. Le guide ne détaille pas
+  la répartition exacte après respec ; garder le reste de l'ordre ci-dessus.
+
+key_abilities:
+  - { name: "Battle Shout", level: null, use: "Buff à maintenir en permanence" }
+  - { name: "Charge", level: null, use: "Ouverture, génère de la rage" }
+  - { name: "Heroic Strike", level: null, use: "Dépense de rage (tôt) ; plus tard seulement en excédent" }
+  - { name: "Bloodrage", level: null, use: "Rage hors combat entre deux mobs" }
+  - { name: "Rend", level: 4, use: "DoT d'ouverture ; active Taste for Blood (25+)" }
+  - { name: "Thunder Clap", level: 6, use: "Gros dégâts au début, AoE ensuite" }
+  - { name: "Victory Rush", level: 6, use: "Après un coup fatal, avant expiration du proc" }
+  - { name: "Defensive Stance", level: 10, use: "Via quête de classe" }
+  - { name: "Overpower", level: 12, use: "Sur esquive ou proc Taste for Blood ; cœur de la rotation" }
+  - { name: "Execute", level: 24, use: "Cible basse vie, ou proc Sudden Death (54+)" }
+  - { name: "Sweeping Strikes", level: 30, use: "Talent ; multi-cibles" }
+  - { name: "Berserker Stance", level: 30, use: "Via quête de classe" }
+  - { name: "Slam", level: null, use: "Sort principal dès Improved Slam (41) ; 15 rage, à l'arrêt" }
+  - { name: "Mortal Strike", level: 42, use: "Talent ; 30 rage, si rage haute ou en mouvement" }
+  - { name: "Bladestorm", level: 60, use: "Talent ; mono et AoE, combiner avec Sweeping Strikes" }
+
+rotation_solo:
+  - "Hors combat : Battle Shout actif ; Bloodrage entre deux mobs pour garder la rage"
+  - "Ouvrir avec Charge"
+  - "Rend si la cible vivra la majeure partie du DoT"
+  - "Overpower sur esquive (12+) ou proc Taste for Blood (25+) ; ne jamais laisser expirer"
+  - "Victory Rush avant expiration du proc"
+  - "Execute sur cible basse vie (24+) ou proc Sudden Death (54+)"
+  - "Slam si immobile (41+)"
+  - "Mortal Strike si rage haute ou en mouvement (42+)"
+  - "Thunder Clap : prioritaire en bas niveau ; ensuite seulement avec rage en trop ou plusieurs ennemis"
+  - "Heroic Strike : vider la rage avant 41 ; ensuite uniquement en gros excédent"
+  - "Multi-mobs : Sweeping Strikes (30+) ; à 60+, Bladestorm prêt => puller plusieurs mobs et combiner Sweeping Strikes + Bladestorm"
+
+downtime: >-
+  First Aid quasi indispensable (soin sans ressource, apprendre tôt).
+  Bloodrage entre deux mobs pour éviter la décroissance de la rage.
+  Improved Charge fournit de la rage d'ouverture. Rien d'autre précisé par le guide.
+
+stat_priority: null
+
+gear_notes:
+  - "Arme à deux mains (Two-Handed Weapon Specialization) ; polearm/hache idéale pour Poleaxe Specialization"
+  - "Mining + Engineering : casques et bijoux fabriqués utiles en leveling, Engineering voulu au 80"
+  - "Sinon, professions déconseillées si objectif = vitesse max"
+
+glyphs:
+  major: ["Glyph of Rending", "Glyph of Victory Rush"]
+  minor: ["Glyph of Battle", "Glyph of Bloodrage", "Glyph of Enduring Victory"]
+
+class_quests:
+  - { level: 10, unlocks: "Defensive Stance", quests: { Human: "A Warrior's Training (1638)", Dwarf_Gnome: "Muren Stormpike (1679)", NightElf: "Elanaria (1684)", Orc_Troll_Tauren: "Veteran Uzzek (1505)", Undead: "Speak with Dillinger (1818)" } }
+  - { level: 30, unlocks: "Berserker Stance", quests: { all: "The Islander (1718)" }, note: "Prise auprès du maître de classe" }
+
+training:
+  max_rank: ["Battle Shout", "Rend", "Thunder Clap", "Execute", "Slam", "Mortal Strike"]
+  train_asap_single_rank: ["Victory Rush", "Hamstring", "Bloodrage", "Overpower", "Disarm", "Retaliation", "Intimidating Shout", "Berserker Rage", "Pummel", "Recklessness", "Shattering Throw", "Enraged Regeneration"]
+  low_priority: ["Heroic Strike", "Cleave", "Charge"]   # gains de rang faibles, si or en trop
+  skip: ["Shield Bash", "Demoralizing Shout", "Revenge", "Mocking Blow", "Shield Block", "Challenging Shout", "Shield Wall", "Whirlwind", "Shield Slam", "Spell Reflection", "Commanding Shout", "Intervene"]
+
+pitfalls:
+  - "Oublier le respec au 25 (Improved Thunder Clap bloque Taste for Blood)"
+  - "Laisser expirer les procs Taste for Blood / Victory Rush"
+  - "Spammer Mortal Strike à l'arrêt : Slam est plus rentable en rage"
+  - "Continuer à vider la rage en Heroic Strike après 41"
+  - "Rend sur des mobs qui meurent trop vite"
+  - "Dépenser l'or sur les sorts de tank/défensifs (liste training.skip)"
+
+source: https://www.icy-veins.com/wotlk-classic/warrior-leveling-guide
+source_spec: https://www.icy-veins.com/wotlk-classic/arms-warrior-leveling-guide
+last_updated: "2022-09-06"

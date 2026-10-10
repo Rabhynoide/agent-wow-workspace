@@ -106,6 +106,7 @@ func (t *Talent) MaxRank() int {
 // TalentTab is one TalentTab.dbc row.
 type TalentTab struct {
 	ID, ClassMask, Page uint32
+	Name                string // enUS, e.g. "Arms"
 }
 
 // SkillAbility restricts a spell to races/classes (0 = any).
@@ -149,7 +150,7 @@ func Load(dir string) (*Data, error) {
 		return nil, err
 	}
 	for r := 0; r < f.Records; r++ {
-		d.Tabs[f.U32(r, 0)] = &TalentTab{ID: f.U32(r, 0), ClassMask: f.U32(r, 20), Page: f.U32(r, 22)}
+		d.Tabs[f.U32(r, 0)] = &TalentTab{ID: f.U32(r, 0), ClassMask: f.U32(r, 20), Page: f.U32(r, 22), Name: f.Str(r, 1)}
 	}
 	if f, err = Open(filepath.Join(dir, "SkillLineAbility.dbc")); err != nil {
 		return nil, err
@@ -188,4 +189,21 @@ func (d *Data) TalentBySpellName(class uint32, name string) *Talent {
 		}
 	}
 	return nil
+}
+
+// ClassSpells lists the spell ids with this name that the class can learn (SkillLineAbility class mask).
+func (d *Data) ClassSpells(class uint32, name string) []uint32 {
+	var out []uint32
+	for id, s := range d.Spells {
+		if s.Name != name {
+			continue
+		}
+		for _, a := range d.Abilities[id] {
+			if a.ClassMask&(1<<(class-1)) != 0 {
+				out = append(out, id)
+				break
+			}
+		}
+	}
+	return out
 }
