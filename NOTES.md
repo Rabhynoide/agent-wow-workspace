@@ -11,8 +11,10 @@ Les sections « Etat du personnage » et « Pièges » parlent de Claudia (prêt
 7. Classes sans fichier dans `journal/classes/` : pas de talents automatiques ; combat de prêtre (sorts absents) = attaque automatique seulement.
 
 ## Etat du personnage : Claudio (guerrier humain, GUID 3, test du 2026-10-10)
-- Créé de zéro pour le test de leveling jusqu'au niveau 10 (objectif de l'utilisateur). Niveau 6 au 2026-10-10 après Northshire complet, 54, 2158, 106, 111, 107 ; quête 86 (viande de sanglier) refusée : ses sources sont trop fortes (Rockhide 7-8, Longsnout 10-11). Deux morts sur les Rockhide Boars avant la règle de danger +1.
-- Sorts : Battle Shout, Charge, Rend, Heroic Strike (+ postures de base). Rotation guerrier en place (voir MODULES « combat »). Journal de test : voir `journal/characters/Claudio.md`.
+- Créé de zéro pour tester le leveling jusqu'au niveau 10 (objectif de l'utilisateur), arrêté au niveau 6, XP 852/3600, 197 pc. MORT (fantôme au cimetière d'Elwynn) : `auto.recover` au démarrage. Session fermée.
+- Fait : toute la vallée de Northshire (12 quêtes sur 12 disponibles), 54, 2158, 106, 111, 107. Quête 86 refusée (sources de viande trop fortes). Détails, chronologie et défauts : `journal/characters/Claudio.md`.
+- A l'arrêt : un « fight timeout » (0 kill en 120 s) et la mort ne sont pas expliqués : regarder `logs/combat.log` et `logs/move.log` à la reprise (BACKLOG « Test du guerrier »).
+- Continuer : `scripts/start.sh Claudio`, `scripts/job.sh auto.recover`, puis `guidecheck -plan -char Claudio -race Human -class Warrior -level 6` ou `scripts/grind.sh 8 113 30 525 94`.
 
 ## Etat du personnage : Claudia (fin de session 2026-10-10)
 - Humain prêtre (guid 1), niveau 6, XP 1818/3600, 29 cuivres, 171 PV max, équipement réparé à 100 %. Sorts : Châtiment 2, Soins inférieurs 2, Bouclier, Mot de l'ombre : Douleur, Robustesse. Position : Elwynn, sud-ouest de Goldshire (~-9540,67), map 0. Session fermée.

@@ -55,6 +55,14 @@ Légende : [ ] à faire, [~] partiel, [x] fait.
 - [ ] Idées mod-playerbots (src/Ai, mouvements) : suivre une cible (distance/angle), vérifier qu'une destination est atteignable avant d'y aller, se débloquer.
 - [ ] Évitement des monstres hostiles dans l'A* (coût autour des monstres). Opus.
 
+## Test du guerrier Claudio (2026-10-10) : ouvert
+- [ ] « Fight timeout » : `fightWarrior` expire après 120 s sans tuer (0 kill, PV 100 %) ; puis le personnage est trouvé mort à l'arrêt. Hypothèses : cible hors de portée de mêlée (le seuil `meleeRange+1` avec la distance 2D, une cible sur une pente ou derrière un mur), cible qui s'enfuit à faible vie, attaque automatique non engagée (CMSG_ATTACKSWING sans facing correct). A faire : journaliser l'état à chaque 20 s de combat (distance 3D, PV de la cible, rage, cible sélectionnée), abandonner et passer à une autre cible après 45 s sans dégât sur la cible, test hors ligne de `fightWarrior` avec un faux client.
+- [ ] Entraînement inutile : Parry (passive) acheté (95 pc) ; `training.skip` du fichier warrior.yaml ne le liste pas. A faire : liste d'exclusion locale par classe (`journal/classes/<classe>.local.yaml` ou règle « passifs de défense ») et n'acheter que max_rank / train_asap_single_rank en premier quand l'argent manque.
+- [ ] Charge « pas prête » (code 67) répétée et Overpower essayé toutes les 2 s : lire le journal de combat (SMSG_ATTACKERSTATEUPDATE) pour savoir quand Overpower est utilisable ; suivre le temps de recharge de Charge (15 s).
+- [ ] Soins du guerrier : aucun (pas de nourriture ni de Premiers soins) ; le repos à 75 % réduit les morts mais ralentit. A faire : acheter/manger de la nourriture, Premiers soins (compétence + bandages).
+- [ ] Portée visible : le serveur n'envoie que les monstres proches (~100 yards), donc les chasses « rayon 150 » sur des créatures éloignées échouent vite ; `auto.grind` saute, mais `world.spawns` pourrait guider `hunt` vers les points d'apparition éloignés (déjà fait dans `hunt` ; à vérifier pour `grind`).
+- [x] Danger par classe, rotation (Battle Shout/Charge/Heroic Strike), boucle de `grind.sh` (voir `journal/characters/Claudio.md`).
+
 ## Sécurité du personnage (morts répétées constatées le 2026-10-10)
 - [ ] Pathfinding qui évite les monstres hostiles (idée utilisateur) : voir « Déplacement ». Cause des 3 morts dans la mine de Fargodeep.
 - [~] `auto.collect` / `auto.hunt` : monstres élites ou de plus de 2 niveaux au-dessus refusés (fait) ; reste le danger des groupes (quêtes 60, 47, 87 de la mine).
@@ -90,7 +98,7 @@ Icy Veins bloque ma lecture (403) : à chaque palier ci-dessous, prévenir l'uti
 - [ ] Autre classe ou autre spécialisation : demander le guide de leveling complet correspondant.
 
 ## Prochaines étapes suggérées (2026-10-10)
-- Test guerrier de zéro par l'utilisateur (Sonnet) : NOTES « Nouveau personnage ».
+- Reprendre le test guerrier (Claudio, niveau 6 → 10) : d'abord le « fight timeout » et la mort inexpliquée (BACKLOG « Test du guerrier »), puis vérifier les talents automatiques au niveau 10.
 - Gros test visuel du déplacement : escaliers, ponts, intérieurs, virages serrés, et le recul vers la ligne de vue en combat près des bâtiments.
 - Claudia : niveaux 6 → 10 (quêtes du plan sans la mine, chasse), puis vérifier les talents automatiques au niveau 10.
 - Évitement des monstres hostiles dans l'A* (Opus), puis quêtes de soin / buff sur PNJ.
