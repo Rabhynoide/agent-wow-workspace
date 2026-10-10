@@ -74,6 +74,13 @@ func (c C) MoveStatus(ctx context.Context, waitS uint32) (*movepb.MoveStatus, er
 	return &r, err
 }
 
+// LineOfSight asks move whether the static geometry leaves a clear view from us to the point.
+func (c C) LineOfSight(ctx context.Context, x, y, z float32) (bool, error) {
+	var r movepb.LosResult
+	err := invoke.Call(ctx, c.S, "move", "los", &movepb.LosRequest{X: x, Y: y, Z: z}, &r)
+	return r.Visible, err
+}
+
 func (c C) MoveStop(ctx context.Context) error {
 	var r movepb.MoveStatus
 	return invoke.Call(ctx, c.S, "move", "stop", &emptypb.Empty{}, &r)

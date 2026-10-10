@@ -445,7 +445,7 @@ func (s *Service) fight(ctx context.Context, j *job, guid uint64) (bool, string)
 		}
 		return dead, why
 	}
-	var busyUntil, lastSwing, lastShoot, lastBlast, painAt time.Time
+	var busyUntil, lastSwing, lastShoot, lastBlast, painAt, losAt time.Time
 	selected := false
 	fails := 0
 	meleeUntil := time.Time{}
@@ -508,6 +508,20 @@ func (s *Service) fight(ctx context.Context, j *job, guid uint64) (bool, string)
 				return false, fmt.Sprintf("cannot approach target: %v %s", err, st.GetReason())
 			}
 			continue
+		}
+		// Ranged spells need a clear view: when a wall or a ceiling is in the way, walk halfway to the
+		// target (the path goes around the obstacle) and check again, instead of casting into it.
+		if dist > meleeRange+1 && time.Since(losAt) > 700*time.Millisecond {
+			losAt = time.Now()
+			if !s.visible(ctx, t) {
+				closer := max(meleeRange-1, dist/2)
+				slog.Info("no line of sight, moving closer", "target", t.Entry, "dist", dist, "to", closer)
+				st, err := s.api.Goto(ctx, t.X, t.Y, t.Z, closer, 3)
+				if err != nil || st.State == "failed" {
+					return false, fmt.Sprintf("cannot approach target: %v %s", err, st.GetReason())
+				}
+				continue
+			}
 		}
 		if !selected {
 			s.packetU64(ctx, uint32(opcode.CMSGSetSelection), guid)
@@ -602,6 +616,12 @@ func (s *Service) lootCorpse(ctx context.Context, j *job, guid uint64) {
 	}
 }
 
+// visible tells whether we see the target (move.los); unknown counts as visible.
+func (s *Service) visible(ctx context.Context, t *statepb.Obj) bool {
+	ok, err := s.api.LineOfSight(ctx, t.X, t.Y, t.Z)
+	return err != nil || ok
+}
+
 // ---- warrior --------------------------------------------------------------
 
 const (
@@ -680,7 +700,7 @@ func (s *Service) fightWarrior(ctx context.Context, j *job, guid uint64) (bool, 
 		dist := float32(math.Hypot(float64(t.X-me.X), float64(t.Y-me.Y)))
 		now := time.Now()
 		// Open with Charge (out of combat only): the server moves us next to the target.
-		if charge != 0 && dist >= chargeMin && dist <= chargeMax && me.UnitFlags&inCombatFlag == 0 && now.Sub(lastCharge) > 15*time.Second {
+		if charge != 0 && dist >= chargeMin && dist <= chargeMax && me.UnitFlags&inCombatFlag == 0 && now.Sub(lastCharge) > 15*time.Second && s.visible(ctx, t) {
 			s.packetU64(ctx, uint32(opcode.CMSGSetSelection), guid)
 			selected = true
 			s.face(ctx, me, t.X, t.Y)
