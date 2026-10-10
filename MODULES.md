@@ -7,6 +7,12 @@ Scripts : `start.sh` (démarre la session), `job.sh` (attend un job async), `gri
 Appel : `scripts/rpc.sh <module.methode> '<json>' [chemin]` (sortie JSON compacte, flottants arrondis). Jobs async : `scripts/job.sh <module.methode> '<json>'` (attend la fin). Logs : `logs/<module>.log`.
 Test navmesh hors-ligne : `cd module && go test ./internal/nav -v`.
 
+## zygor2route + guidecheck -plan  (leveling guidé par les guides Zygor)
+- Source : dépôt GitHub ErebusAres/ZygorGuidesRemaster-3.3.5a_WOTLK cloné dans `assets/zygor/repo/` (contenu tiers sous droits : JAMAIS dans git ; `assets/` est ignoré). On garde seulement notre code.
+- `cd module && go run ./cmd/zygor2route -src ../assets/zygor/repo/ZygorGuidesViewerRM/Guides/Leveling/ZygorGuidesAlliance.lua -out ../assets/routes` (idem `ZygorGuidesHorde.lua`, avec `-prefix horde`) : 25 routes JSON (Alliance : 5 races de départ 1-13, puis Main Guide 13-20, Levels 20-25 ... Northrend 78-80) avec ids de quêtes/PNJ/monstres, variantes `only` (race+classe).
+- `go run ./cmd/guidecheck -max 6 <fichiers de la chaîne dans l'ordre>` valide contre la base (Human 1-13 + 13-20 + 20-25 + 25-30 : 1090 étapes, 296 quêtes, 8 écarts bénins).
+- `go run ./cmd/guidecheck -plan -char Claudia -race Human -class Priest -level 6 -n 12 <fichiers>` : prochaines quêtes de la route non faites (lit `character_queststatus_rewarded`), hors quêtes manuelles, filtrées par race/classe/niveau, + JSON pour `auto.run`. Chaîne humaine : `assets/routes/alliance_01_human_1_13.json alliance_07_main_guide_13_20.json alliance_08_levels_20_25.json ...`.
+
 ## guidecheck  (outil hors jeu, `module/cmd/guidecheck`)
 - `cd module && go run ./cmd/guidecheck -dir ../journal/guides` : valide les guides extraits (format dans `journal/guides/README.md`) contre la base : titre/id de quête, race, classe, niveau minimum, PNJ donneur/rendeur, prérequis, doublons de titre (départagés par PNJ puis classe). Liste les quêtes à faire à la main (exploration, sort à lancer sur une cible, groupe). Code de sortie 1 s'il y a des problèmes.
 - `... -ids -from 5 -to 10` : imprime `{"quests":[...]}` (ordre du guide, quêtes réalisables par `auto`) à donner à `auto.run`. Nécessite la base accessible depuis l'hôte (WORLD_DB_HOST, défaut 192.168.100.7:3306).

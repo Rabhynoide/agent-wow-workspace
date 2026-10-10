@@ -18,7 +18,13 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
+type only struct {
+	Race  string `json:"race"`
+	Class string `json:"class"`
+}
+
 type step struct {
+	Only    []only          `json:"only"`
 	N       int             `json:"n"`
 	Action  string          `json:"action"`
 	Quest   string          `json:"quest"`
@@ -61,6 +67,9 @@ var classIDs = map[string]uint32{"warrior": 1, "paladin": 2, "hunter": 3, "rogue
 
 var firstInt = regexp.MustCompile(`\d+`)
 
+// chainSuffix is the " (2)" some guides append to the titles of chained quests.
+var chainSuffix = regexp.MustCompile(`\s*\(\d+\)\s*$`)
+
 type checker struct {
 	db       *sql.DB
 	cache    map[uint32]*quest
@@ -69,6 +78,7 @@ type checker struct {
 	accepted map[uint32]bool
 	done     map[uint32]bool
 	order    []uint32
+	entries  []routeQuest
 }
 
 func main() {
@@ -76,9 +86,20 @@ func main() {
 	ids := flag.Bool("ids", false, "print the quest ids for auto.run instead of the report")
 	from := flag.Int("from", 0, "with -ids: first quest min level")
 	to := flag.Int("to", 100, "with -ids: last quest min level")
+	maxShow := flag.Int("max", 8, "problems shown per category")
+	plan := flag.Bool("plan", false, "print the next quests of the route for a character (see -char -race -class -level -n)")
+	char := flag.String("char", "", "with -plan: character name (quests already rewarded are skipped)")
+	race := flag.String("race", "", "with -plan: race of the character (e.g. Human)")
+	class := flag.String("class", "", "with -plan: class of the character (e.g. Priest)")
+	level := flag.Int("level", 1, "with -plan: character level")
+	next := flag.Int("n", 10, "with -plan: number of quests to list")
 	flag.Parse()
-	files, _ := filepath.Glob(filepath.Join(*dir, "*.json"))
-	sort.Strings(files)
+	// Files given as arguments are checked in that order (one race's chain); else the whole directory.
+	files := flag.Args()
+	if len(files) == 0 {
+		files, _ = filepath.Glob(filepath.Join(*dir, "*.json"))
+		sort.Strings(files)
+	}
 	if len(files) == 0 {
 		fmt.Println("no guide files in", *dir)
 		os.Exit(1)
@@ -111,9 +132,28 @@ func main() {
 		c.printIDs(*from, *to)
 		return
 	}
+	if *plan {
+		c.printPlan(*char, *race, *class, uint32(*level), *next)
+		return
+	}
 	fmt.Printf("%d files, %d steps, %d quests, %d manual, %d problems\n", len(files), total, len(c.order), len(c.manual), len(c.problems))
+	groups := map[string][]string{}
+	var keys []string
 	for _, p := range c.problems {
-		fmt.Println(" !", p)
+		k := kindOf(p)
+		if _, ok := groups[k]; !ok {
+			keys = append(keys, k)
+		}
+		groups[k] = append(groups[k], p)
+	}
+	for _, k := range keys {
+		fmt.Printf(" == %s: %d\n", k, len(groups[k]))
+		for i, p := range groups[k] {
+			if i >= *maxShow {
+				break
+			}
+			fmt.Println("   !", p)
+		}
 	}
 	var man []uint32
 	for id := range c.manual {
@@ -159,11 +199,8 @@ func (c *checker) check(file string, g *guide) {
 		if m := firstInt.Find(s.Level); m != nil {
 			lvl, _ = strconv.Atoi(string(m))
 		}
-		if race != 0 && q.Races != 0 && q.Races&(1<<(race-1)) == 0 {
-			c.problem(file, s, "quest %d is not available to %s", q.ID, g.Race)
-		}
-		if cls := classIDs[strings.ToLower(s.Class)]; q.Classes != 0 && (cls == 0 || q.Classes&(1<<(cls-1)) == 0) {
-			c.problem(file, s, "quest %d is class restricted (mask %d): set \"class\" on the step", q.ID, q.Classes)
+		if !allowed(q, s, race) {
+			c.problem(file, s, "quest %d (races %d, classes %d) is not available to %s %s%s", q.ID, q.Races, q.Classes, g.Race, s.Class, onlyText(s.Only))
 		}
 		if lvl > 0 && lvl < q.MinLevel && s.Action == "accept" {
 			c.problem(file, s, "quest %d needs level %d, guide level is %d", q.ID, q.MinLevel, lvl)
@@ -180,6 +217,7 @@ func (c *checker) check(file string, g *guide) {
 				c.accepted[q.ID] = true
 				c.order = append(c.order, q.ID)
 			}
+			c.entries = append(c.entries, routeQuest{id: q.ID, only: s.Only})
 			c.classify(q)
 		case "turnin":
 			if s.NPC != "" && len(q.Enders) > 0 && !has(q.Enders, s.NPC) {
@@ -192,6 +230,54 @@ func (c *checker) check(file string, g *guide) {
 			c.done[q.ID] = true
 		}
 	}
+}
+
+// allowed checks the quest's race and class masks against the step: with "only" pairs, one pair must
+// fit; otherwise the guide's race and the step's class are used.
+func allowed(q *quest, s step, race uint32) bool {
+	fits := func(r, cl uint32) bool {
+		return (q.Races == 0 || r == 0 || q.Races&(1<<(r-1)) != 0) && (q.Classes == 0 || (cl != 0 && q.Classes&(1<<(cl-1)) != 0))
+	}
+	if len(s.Only) > 0 {
+		for _, o := range s.Only {
+			r := raceIDs[strings.ToLower(o.Race)]
+			if r == 0 {
+				r = race
+			}
+			cl := classIDs[strings.ToLower(o.Class)]
+			if o.Class == "" { // a lone word may be a class
+				if c := classIDs[strings.ToLower(o.Race)]; c != 0 {
+					cl, r = c, race
+				}
+			}
+			if fits(r, cl) {
+				return true
+			}
+		}
+		return false
+	}
+	return fits(race, classIDs[strings.ToLower(s.Class)])
+}
+
+func onlyText(o []only) string {
+	if len(o) == 0 {
+		return ""
+	}
+	var parts []string
+	for _, p := range o {
+		parts = append(parts, strings.TrimSpace(p.Race+" "+p.Class))
+	}
+	return " (only " + strings.Join(parts, ", ") + ")"
+}
+
+func kindOf(p string) string {
+	for _, k := range []string{"is not available", "quest giver is", "turn-in NPC is", "prerequisite quest", "no quest with this title",
+		"ambiguous title", "does not exist", "in the database", "needs level", "unknown action", "step number", "unreadable", "database:", "none is available"} {
+		if strings.Contains(p, k) {
+			return k
+		}
+	}
+	return "other"
 }
 
 func has(list []string, name string) bool {
@@ -222,12 +308,12 @@ func (c *checker) resolve(file string, s step, race uint32) *quest {
 			c.problem(file, s, "quest id %d does not exist", s.QuestID)
 			return nil
 		}
-		if s.Quest != "" && !strings.EqualFold(strings.TrimSpace(q.Title), strings.TrimSpace(s.Quest)) {
+		if s.Quest != "" && !strings.EqualFold(strings.TrimSpace(q.Title), strings.TrimSpace(chainSuffix.ReplaceAllString(s.Quest, ""))) {
 			c.problem(file, s, "id %d is %q in the database", s.QuestID, q.Title)
 		}
 		return q
 	}
-	rows, err := c.db.Query("SELECT ID FROM quest_template WHERE LogTitle=?", s.Quest)
+	rows, err := c.db.Query("SELECT ID FROM quest_template WHERE LogTitle=?", chainSuffix.ReplaceAllString(s.Quest, ""))
 	if err != nil {
 		c.problem(file, s, "database: %v", err)
 		return nil
@@ -342,4 +428,71 @@ func (c *checker) printIDs(from, to int) {
 	}
 	b, _ := json.Marshal(map[string]any{"quests": ids})
 	fmt.Println(string(b))
+}
+
+// route is one accepted quest of a route in order, with the steps that follow it.
+type routeQuest struct {
+	id    uint32
+	steps []string
+	only  []only
+}
+
+// printPlan lists the next quests of the route this character has not rewarded yet.
+// The route is read from the files given (already loaded in c.order via check) and filtered by race/class.
+func (c *checker) printPlan(char, race, class string, level uint32, n int) {
+	rewarded := map[uint32]bool{}
+	if char != "" {
+		cdb, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s)/%s?timeout=5s&transaction_read_only=1",
+			env("WORLD_DB_USER", "root"), env("WORLD_DB_PASSWORD", "password"), env("WORLD_DB_HOST", "192.168.100.7:3306"), env("CHAR_DB_NAME", "acore_characters")))
+		if err == nil {
+			rows, err := cdb.Query("SELECT r.quest FROM character_queststatus_rewarded r JOIN characters c ON c.guid=r.guid WHERE c.name=?", char)
+			if err == nil {
+				for rows.Next() {
+					var id uint32
+					if rows.Scan(&id) == nil {
+						rewarded[id] = true
+					}
+				}
+				rows.Close()
+			}
+		}
+	}
+	r, cl := raceIDs[strings.ToLower(race)], classIDs[strings.ToLower(class)]
+	var out []uint32
+	fmt.Printf("route for %s %s level %d, %d quests already rewarded:\n", race, class, level, len(rewarded))
+	for _, e := range c.entries {
+		q := c.cache[e.id]
+		if q == nil || rewarded[e.id] || c.manual[e.id] != "" {
+			continue
+		}
+		if !allowed(q, step{Only: e.only}, r) || (len(e.only) == 0 && q.Classes != 0 && cl != 0 && q.Classes&(1<<(cl-1)) == 0) {
+			continue
+		}
+		if len(e.only) > 0 && !onlyMatches(e.only, r, cl) {
+			continue
+		}
+		if uint32(q.MinLevel) > level+1 { // not yet: the route is level-gated (and we are behind it)
+			continue
+		}
+		out = append(out, e.id)
+		fmt.Printf("  %5d %-42s ql %2d min %2d  from %v\n", e.id, q.Title, q.Level, q.MinLevel, q.Starters)
+		if len(out) >= n {
+			break
+		}
+	}
+	b, _ := json.Marshal(map[string]any{"quests": out})
+	fmt.Println(string(b))
+}
+
+func onlyMatches(o []only, race, class uint32) bool {
+	for _, p := range o {
+		pr, pc := raceIDs[strings.ToLower(p.Race)], classIDs[strings.ToLower(p.Class)]
+		if pc == 0 && p.Class == "" {
+			pc, pr = classIDs[strings.ToLower(p.Race)], 0
+		}
+		if (pr == 0 || pr == race) && (pc == 0 || pc == class) {
+			return true
+		}
+	}
+	return false
 }

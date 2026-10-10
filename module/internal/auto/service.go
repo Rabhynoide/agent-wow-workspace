@@ -4,6 +4,7 @@ package auto
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	modv1 "github.com/agent-wow/agent-wow/pkg/modules/v1"
@@ -472,12 +473,22 @@ func (r *run) hunt(entry uint32, name string, count, itemEntry, itemCount uint32
 		return fmt.Errorf("no spawn found for %s (%d)", name, entry)
 	}
 	r.step("hunt %s x%d", name, count)
-	if sp[0].Dist > 30 {
-		if err := r.walk(sp[0].X, sp[0].Y, sp[0].Z, 10); err != nil {
-			return err
+	// Spawn points are sorted by distance. When every monster around one is dead (they respawn slowly),
+	// go to the next point instead of waiting there. Progress is kept by the quest log / bags.
+	var err2 error
+	for i := 0; i < len(sp) && i < 5; i++ {
+		if i > 0 || sp[0].Dist > 30 {
+			if err := r.walk(sp[i].X, sp[i].Y, sp[i].Z, 10); err != nil {
+				return err
+			}
 		}
+		req := &combatpb.KillRequest{Entry: entry, Count: count, ItemEntry: itemEntry, ItemCount: itemCount, Radius: 60, MaxS: 240, WaitS: 20}
+		if err2 = r.fightJob(req); err2 == nil || !strings.Contains(err2.Error(), "no live entry") {
+			return err2
+		}
+		r.step("no %s left here, trying another spawn point", name)
 	}
-	return r.fightJob(&combatpb.KillRequest{Entry: entry, Count: count, ItemEntry: itemEntry, ItemCount: itemCount, Radius: 80, MaxS: 240, WaitS: 20})
+	return err2
 }
 
 // ensureSpace sells gray items when the backpack is nearly full.
