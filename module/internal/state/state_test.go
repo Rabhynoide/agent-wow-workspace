@@ -103,3 +103,20 @@ func TestUpdateValuesBlock(t *testing.T) {
 		t.Fatalf("fields = %v", me)
 	}
 }
+
+func TestSnapshotIgnoresItemsNotCarried(t *testing.T) {
+	svc := &Service{st: NewStore(1)}
+	me := svc.st.obj(1, TypePlayer)
+	item := svc.st.obj(100, TypeItem)
+	item.F[fEntry], item.F[fItemCount] = 4536, 3
+	setGUID(me, uint16(fInvSlots+2*slotPackFirst), 100) // carried in the backpack
+	sold := svc.st.obj(101, TypeItem)                   // sold: lives on in the buyback list
+	sold.F[fEntry] = 1411
+	resp, err := svc.Snapshot(nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(resp.Items) != 1 || resp.Items[0].Entry != 4536 || resp.Items[0].Bag != 255 || resp.Items[0].BagSlot != slotPackFirst {
+		t.Fatalf("items = %v", resp.Items)
+	}
+}

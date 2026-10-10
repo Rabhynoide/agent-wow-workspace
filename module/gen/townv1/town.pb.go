@@ -24,8 +24,12 @@ const (
 
 type SellRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Also sell white-quality items that are not equipment-useful (not implemented: gray only).
-	DryRun        bool `protobuf:"varint,1,opt,name=dry_run,json=dryRun,proto3" json:"dry_run,omitempty"`
+	// Only report what would be sold and kept (with prices and reasons).
+	DryRun bool `protobuf:"varint,1,opt,name=dry_run,json=dryRun,proto3" json:"dry_run,omitempty"`
+	// Stop selling once this many bag slots are free (0 = sell everything the rules allow).
+	MinFree uint32 `protobuf:"varint,2,opt,name=min_free,json=minFree,proto3" json:"min_free,omitempty"`
+	// Include the kept items (with the reason) in the report.
+	ShowKept      bool `protobuf:"varint,3,opt,name=show_kept,json=showKept,proto3" json:"show_kept,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -67,21 +71,124 @@ func (x *SellRequest) GetDryRun() bool {
 	return false
 }
 
+func (x *SellRequest) GetMinFree() uint32 {
+	if x != nil {
+		return x.MinFree
+	}
+	return 0
+}
+
+func (x *SellRequest) GetShowKept() bool {
+	if x != nil {
+		return x.ShowKept
+	}
+	return false
+}
+
+type SellLine struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Entry uint32                 `protobuf:"varint,1,opt,name=entry,proto3" json:"entry,omitempty"`
+	Name  string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Count uint32                 `protobuf:"varint,3,opt,name=count,proto3" json:"count,omitempty"`
+	// Vendor price of the whole stack.
+	Copper uint32 `protobuf:"varint,4,opt,name=copper,proto3" json:"copper,omitempty"`
+	// "sell" or "keep".
+	Action        string `protobuf:"bytes,5,opt,name=action,proto3" json:"action,omitempty"`
+	Reason        string `protobuf:"bytes,6,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SellLine) Reset() {
+	*x = SellLine{}
+	mi := &file_town_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SellLine) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SellLine) ProtoMessage() {}
+
+func (x *SellLine) ProtoReflect() protoreflect.Message {
+	mi := &file_town_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SellLine.ProtoReflect.Descriptor instead.
+func (*SellLine) Descriptor() ([]byte, []int) {
+	return file_town_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *SellLine) GetEntry() uint32 {
+	if x != nil {
+		return x.Entry
+	}
+	return 0
+}
+
+func (x *SellLine) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *SellLine) GetCount() uint32 {
+	if x != nil {
+		return x.Count
+	}
+	return 0
+}
+
+func (x *SellLine) GetCopper() uint32 {
+	if x != nil {
+		return x.Copper
+	}
+	return 0
+}
+
+func (x *SellLine) GetAction() string {
+	if x != nil {
+		return x.Action
+	}
+	return ""
+}
+
+func (x *SellLine) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
 type SellResult struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Ok            bool                   `protobuf:"varint,1,opt,name=ok,proto3" json:"ok,omitempty"`
-	Reason        string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
-	Sold          uint32                 `protobuf:"varint,3,opt,name=sold,proto3" json:"sold,omitempty"`
-	Copper        uint32                 `protobuf:"varint,4,opt,name=copper,proto3" json:"copper,omitempty"`
-	FreeSlots     uint32                 `protobuf:"varint,5,opt,name=free_slots,json=freeSlots,proto3" json:"free_slots,omitempty"`
-	Vendor        string                 `protobuf:"bytes,6,opt,name=vendor,proto3" json:"vendor,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Ok     bool                   `protobuf:"varint,1,opt,name=ok,proto3" json:"ok,omitempty"`
+	Reason string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	// Stacks sold (or to sell with dry_run).
+	Sold uint32 `protobuf:"varint,3,opt,name=sold,proto3" json:"sold,omitempty"`
+	// Copper gained (or expected with dry_run).
+	Copper        uint32      `protobuf:"varint,4,opt,name=copper,proto3" json:"copper,omitempty"`
+	FreeSlots     uint32      `protobuf:"varint,5,opt,name=free_slots,json=freeSlots,proto3" json:"free_slots,omitempty"`
+	Vendor        string      `protobuf:"bytes,6,opt,name=vendor,proto3" json:"vendor,omitempty"`
+	Lines         []*SellLine `protobuf:"bytes,7,rep,name=lines,proto3" json:"lines,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SellResult) Reset() {
 	*x = SellResult{}
-	mi := &file_town_proto_msgTypes[1]
+	mi := &file_town_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -93,7 +200,7 @@ func (x *SellResult) String() string {
 func (*SellResult) ProtoMessage() {}
 
 func (x *SellResult) ProtoReflect() protoreflect.Message {
-	mi := &file_town_proto_msgTypes[1]
+	mi := &file_town_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -106,7 +213,7 @@ func (x *SellResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SellResult.ProtoReflect.Descriptor instead.
 func (*SellResult) Descriptor() ([]byte, []int) {
-	return file_town_proto_rawDescGZIP(), []int{1}
+	return file_town_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *SellResult) GetOk() bool {
@@ -151,14 +258,30 @@ func (x *SellResult) GetVendor() string {
 	return ""
 }
 
+func (x *SellResult) GetLines() []*SellLine {
+	if x != nil {
+		return x.Lines
+	}
+	return nil
+}
+
 var File_town_proto protoreflect.FileDescriptor
 
 const file_town_proto_rawDesc = "" +
 	"\n" +
 	"\n" +
-	"town.proto\x12\x10wowagent.town.v1\x1a\x1bgoogle/protobuf/empty.proto\"&\n" +
+	"town.proto\x12\x10wowagent.town.v1\x1a\x1bgoogle/protobuf/empty.proto\"^\n" +
 	"\vSellRequest\x12\x17\n" +
-	"\adry_run\x18\x01 \x01(\bR\x06dryRun\"\x97\x01\n" +
+	"\adry_run\x18\x01 \x01(\bR\x06dryRun\x12\x19\n" +
+	"\bmin_free\x18\x02 \x01(\rR\aminFree\x12\x1b\n" +
+	"\tshow_kept\x18\x03 \x01(\bR\bshowKept\"\x92\x01\n" +
+	"\bSellLine\x12\x14\n" +
+	"\x05entry\x18\x01 \x01(\rR\x05entry\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
+	"\x05count\x18\x03 \x01(\rR\x05count\x12\x16\n" +
+	"\x06copper\x18\x04 \x01(\rR\x06copper\x12\x16\n" +
+	"\x06action\x18\x05 \x01(\tR\x06action\x12\x16\n" +
+	"\x06reason\x18\x06 \x01(\tR\x06reason\"\xc9\x01\n" +
 	"\n" +
 	"SellResult\x12\x0e\n" +
 	"\x02ok\x18\x01 \x01(\bR\x02ok\x12\x16\n" +
@@ -167,7 +290,8 @@ const file_town_proto_rawDesc = "" +
 	"\x06copper\x18\x04 \x01(\rR\x06copper\x12\x1d\n" +
 	"\n" +
 	"free_slots\x18\x05 \x01(\rR\tfreeSlots\x12\x16\n" +
-	"\x06vendor\x18\x06 \x01(\tR\x06vendor2\x8f\x01\n" +
+	"\x06vendor\x18\x06 \x01(\tR\x06vendor\x120\n" +
+	"\x05lines\x18\a \x03(\v2\x1a.wowagent.town.v1.SellLineR\x05lines2\x8f\x01\n" +
 	"\x04Town\x12G\n" +
 	"\bSellJunk\x12\x1d.wowagent.town.v1.SellRequest\x1a\x1c.wowagent.town.v1.SellResult\x12>\n" +
 	"\fBeforeLogout\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.EmptyB\x1cZ\x1awowagent/gen/townv1;townv1b\x06proto3"
@@ -184,22 +308,24 @@ func file_town_proto_rawDescGZIP() []byte {
 	return file_town_proto_rawDescData
 }
 
-var file_town_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_town_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_town_proto_goTypes = []any{
 	(*SellRequest)(nil),   // 0: wowagent.town.v1.SellRequest
-	(*SellResult)(nil),    // 1: wowagent.town.v1.SellResult
-	(*emptypb.Empty)(nil), // 2: google.protobuf.Empty
+	(*SellLine)(nil),      // 1: wowagent.town.v1.SellLine
+	(*SellResult)(nil),    // 2: wowagent.town.v1.SellResult
+	(*emptypb.Empty)(nil), // 3: google.protobuf.Empty
 }
 var file_town_proto_depIdxs = []int32{
-	0, // 0: wowagent.town.v1.Town.SellJunk:input_type -> wowagent.town.v1.SellRequest
-	2, // 1: wowagent.town.v1.Town.BeforeLogout:input_type -> google.protobuf.Empty
-	1, // 2: wowagent.town.v1.Town.SellJunk:output_type -> wowagent.town.v1.SellResult
-	2, // 3: wowagent.town.v1.Town.BeforeLogout:output_type -> google.protobuf.Empty
-	2, // [2:4] is the sub-list for method output_type
-	0, // [0:2] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: wowagent.town.v1.SellResult.lines:type_name -> wowagent.town.v1.SellLine
+	0, // 1: wowagent.town.v1.Town.SellJunk:input_type -> wowagent.town.v1.SellRequest
+	3, // 2: wowagent.town.v1.Town.BeforeLogout:input_type -> google.protobuf.Empty
+	2, // 3: wowagent.town.v1.Town.SellJunk:output_type -> wowagent.town.v1.SellResult
+	3, // 4: wowagent.town.v1.Town.BeforeLogout:output_type -> google.protobuf.Empty
+	3, // [3:5] is the sub-list for method output_type
+	1, // [1:3] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_town_proto_init() }
@@ -213,7 +339,7 @@ func file_town_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_town_proto_rawDesc), len(file_town_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

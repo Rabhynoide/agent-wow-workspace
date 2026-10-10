@@ -1135,8 +1135,12 @@ type ItemInfo struct {
 	// -1 = any class/race, else bitmask (1 << (id - 1)).
 	AllowableClass int32 `protobuf:"varint,15,opt,name=allowable_class,json=allowableClass,proto3" json:"allowable_class,omitempty"`
 	AllowableRace  int32 `protobuf:"varint,16,opt,name=allowable_race,json=allowableRace,proto3" json:"allowable_race,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// First spell category: 11 = food, 59 = drink.
+	SpellCategory uint32 `protobuf:"varint,17,opt,name=spell_category,json=spellCategory,proto3" json:"spell_category,omitempty"`
+	// 0 none, 1 bind on pickup, 2 bind on equip, 3 bind on use, 4+ quest.
+	Bonding       uint32 `protobuf:"varint,18,opt,name=bonding,proto3" json:"bonding,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ItemInfo) Reset() {
@@ -1277,6 +1281,20 @@ func (x *ItemInfo) GetAllowableClass() int32 {
 func (x *ItemInfo) GetAllowableRace() int32 {
 	if x != nil {
 		return x.AllowableRace
+	}
+	return 0
+}
+
+func (x *ItemInfo) GetSpellCategory() uint32 {
+	if x != nil {
+		return x.SpellCategory
+	}
+	return 0
+}
+
+func (x *ItemInfo) GetBonding() uint32 {
+	if x != nil {
+		return x.Bonding
 	}
 	return 0
 }
@@ -2051,7 +2069,7 @@ const file_world_proto_rawDesc = "" +
 	"\x06spawns\x18\x01 \x03(\v2\x18.wowagent.world.v1.SpawnR\x06spawns\";\n" +
 	"\x0fItemInfoRequest\x12\x14\n" +
 	"\x05entry\x18\x01 \x01(\rR\x05entry\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\"\xf2\x03\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"\xb3\x04\n" +
 	"\bItemInfo\x12\x14\n" +
 	"\x05entry\x18\x01 \x01(\rR\x05entry\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
@@ -2071,7 +2089,9 @@ const file_world_proto_rawDesc = "" +
 	"\x03dps\x18\r \x01(\x02R\x03dps\x121\n" +
 	"\x05stats\x18\x0e \x03(\v2\x1b.wowagent.world.v1.ItemStatR\x05stats\x12'\n" +
 	"\x0fallowable_class\x18\x0f \x01(\x05R\x0eallowableClass\x12%\n" +
-	"\x0eallowable_race\x18\x10 \x01(\x05R\rallowableRace\"E\n" +
+	"\x0eallowable_race\x18\x10 \x01(\x05R\rallowableRace\x12%\n" +
+	"\x0espell_category\x18\x11 \x01(\rR\rspellCategory\x12\x18\n" +
+	"\abonding\x18\x12 \x01(\rR\abonding\"E\n" +
 	"\x10ItemInfoResponse\x121\n" +
 	"\x05items\x18\x01 \x03(\v2\x1b.wowagent.world.v1.ItemInfoR\x05items\"+\n" +
 	"\x13CreatureInfoRequest\x12\x14\n" +

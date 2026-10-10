@@ -6,17 +6,35 @@ option go_package = "wowagent/gen/townv1;townv1";
 import "google/protobuf/empty.proto";
 
 message SellRequest {
-  // Also sell white-quality items that are not equipment-useful (not implemented: gray only).
+  // Only report what would be sold and kept (with prices and reasons).
   bool dry_run = 1;
+  // Stop selling once this many bag slots are free (0 = sell everything the rules allow).
+  uint32 min_free = 2;
+  // Include the kept items (with the reason) in the report.
+  bool show_kept = 3;
+}
+
+message SellLine {
+  uint32 entry = 1;
+  string name = 2;
+  uint32 count = 3;
+  // Vendor price of the whole stack.
+  uint32 copper = 4;
+  // "sell" or "keep".
+  string action = 5;
+  string reason = 6;
 }
 
 message SellResult {
   bool ok = 1;
   string reason = 2;
+  // Stacks sold (or to sell with dry_run).
   uint32 sold = 3;
+  // Copper gained (or expected with dry_run).
   uint32 copper = 4;
   uint32 free_slots = 5;
   string vendor = 6;
+  repeated SellLine lines = 7;
 }
 
 service Town {

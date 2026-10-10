@@ -1,8 +1,8 @@
 # NOTES (lire en premier à chaque session)
 
 ## Etat du personnage (fin de session 2026-10-10, soir)
-- Claudia, humain prêtre (guid 1), niveau 5, XP 2580/2800 (il manque 220 pour le niveau 6), 103 cuivres, 152 PV max. Position : Elwynn Forest, route à l'est de Goldshire (~-9232,50,74), map 0. Session fermée.
-- Sacs PLEINS (16 emplacements) : le combat s'arrête sur « bags full ». Vendre avant de rechasser (voir BACKLOG « Revente »). Marchands de Goldshire : Brog Hamfist (151) à (-9465,10,57), aussi Farley 295, Dobbins 465, Toddrick 3935.
+- Claudia, humain prêtre (guid 1), niveau 5, XP 2580/2800 (il manque 220 pour le niveau 6), 237 cuivres, 152 PV max. Position : Goldshire, devant le marchand Brog Hamfist (~-9465,12,58), map 0. Session fermée.
+- Sacs : 12 emplacements libres (revente automatique faite le 2026-10-10 ; `auto` vend tout seul à moins de 3 emplacements libres). Marchands de Goldshire : Brog Hamfist (151) à (-9465,10,57), aussi Farley 295, Dobbins 465, Toddrick 3935.
 - Quêtes faites : celles de Northshire + 54 « Report to Goldshire » + 2158 « Rest and Relaxation ». Aucune quête en cours. Les autres quêtes d'Elwynn proposées à son niveau sont soit dangereuses (60, 47 : kobolds 5-8 dans la mine de Fargodeep, 3 morts), soit non gérées (5624 soin de Guard Roberts ; 62 exploration).
 - Entraîneur de classe de Goldshire : Priestess Josetta (377) à (-9461,33). Au niveau 6 : Bouclier (100 pc) et Châtiment 2 (100 pc) : il faut ~200 pc.
 - Talents : première dépense au niveau 10 (build Ombre dans `priest.Build`).

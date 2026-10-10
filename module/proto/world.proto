@@ -146,6 +146,10 @@ message ItemInfo {
   // -1 = any class/race, else bitmask (1 << (id - 1)).
   int32 allowable_class = 15;
   int32 allowable_race = 16;
+  // First spell category: 11 = food, 59 = drink.
+  uint32 spell_category = 17;
+  // 0 none, 1 bind on pickup, 2 bind on equip, 3 bind on use, 4+ quest.
+  uint32 bonding = 18;
 }
 
 message ItemInfoResponse {

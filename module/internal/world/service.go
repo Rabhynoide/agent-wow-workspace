@@ -315,7 +315,7 @@ var statCols = func() string {
 
 func (s *Service) ItemInfo(ctx context.Context, r *pb.ItemInfoRequest) (*pb.ItemInfoResponse, error) {
 	q := "SELECT entry, name, Quality, ItemLevel, RequiredLevel, class, subclass, InventoryType, SellPrice, BuyPrice, stackable, " +
-		"armor, dmg_min1, dmg_max1, delay, AllowableClass, AllowableRace" + statCols + " FROM item_template WHERE "
+		"armor, dmg_min1, dmg_max1, delay, AllowableClass, AllowableRace, spellcategory_1, bonding" + statCols + " FROM item_template WHERE "
 	var arg any
 	if r.Entry != 0 {
 		q += "entry=?"
@@ -338,7 +338,7 @@ func (s *Service) ItemInfo(ctx context.Context, r *pb.ItemInfoRequest) (*pb.Item
 		var delay uint32
 		var st [20]int32
 		dest := []any{&it.Entry, &it.Name, &it.Quality, &it.ItemLevel, &it.RequiredLevel, &it.Class, &it.Subclass, &it.InventoryType, &it.SellPrice, &it.BuyPrice, &it.Stackable,
-			&it.Armor, &dmin, &dmax, &delay, &it.AllowableClass, &it.AllowableRace}
+			&it.Armor, &dmin, &dmax, &delay, &it.AllowableClass, &it.AllowableRace, &it.SpellCategory, &it.Bonding}
 		for i := range st {
 			dest = append(dest, &st[i])
 		}

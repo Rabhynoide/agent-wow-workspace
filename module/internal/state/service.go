@@ -84,6 +84,10 @@ func (s *Service) Snapshot(context.Context, *emptypb.Empty) (*pb.SnapshotRespons
 			it.Slot, it.Bag, it.BagSlot = sl, 255, uint32(sl)
 		} else if pos, ok := inBag[o.Guid]; ok {
 			it.Bag, it.BagSlot = pos[0], pos[1]
+		} else {
+			// Not carried: sold items stay in the buyback list, the bank is out of reach. Counting them
+			// would inflate quest item counts.
+			continue
 		}
 		resp.Items = append(resp.Items, it)
 	}

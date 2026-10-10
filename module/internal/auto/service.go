@@ -489,32 +489,42 @@ func (r *run) ensureSpace() error {
 	if snap.FreeSlots >= 3 {
 		return nil
 	}
-	r.step("bags nearly full: selling junk")
+	r.step("bags nearly full: selling")
 	me := snap.Self
 	vendors, err := r.s.api.FindVendor(r.ctx, me.Map, me.X, me.Y)
 	if err != nil {
 		return err
 	}
+	// The server only accepts a sale within 5.5 yards: follow the vendor if it moved.
 	arrived := false
 	var lastErr error
 	for _, v := range vendors {
 		if len(v.Name) == 0 || v.Name[0] == '[' {
 			continue
 		}
-		if lastErr = r.walk(v.X, v.Y, v.Z, 3); lastErr == nil {
+		npc, err := r.s.api.ApproachNpc(r.ctx, v.Entry, v.X, v.Y, v.Z)
+		switch {
+		case err != nil:
+			lastErr = err
+		case npc == nil || npc.Dist > 5:
+			lastErr = fmt.Errorf("%s not found at its spawn", v.Name)
+		default:
 			arrived = true
+		}
+		if arrived {
 			break
 		}
 	}
 	if !arrived {
-		return fmt.Errorf("no reachable vendor to sell junk (%d candidates): %v", len(vendors), lastErr)
+		return fmt.Errorf("no reachable vendor to sell (%d candidates): %v", len(vendors), lastErr)
 	}
 	res, err := r.s.api.SellJunk(r.ctx)
 	if err != nil || !res.Ok {
-		return fmt.Errorf("sell junk: %v %s", err, res.GetReason())
+		return fmt.Errorf("sell: %v %s", err, res.GetReason())
 	}
+	r.note("sold %d stacks for %d copper (%d free slots)", res.Sold, res.Copper, res.FreeSlots)
 	if res.FreeSlots < 2 {
-		return fmt.Errorf("bags still full after selling %d items", res.Sold)
+		return fmt.Errorf("bags still full after selling %d items: nothing else may be sold (see town.sell_junk with dry_run and show_kept)", res.Sold)
 	}
 	return nil
 }

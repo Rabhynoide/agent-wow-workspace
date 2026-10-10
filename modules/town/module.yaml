@@ -1,6 +1,6 @@
 api_version: 1
 enabled: true
-description: Vendor actions (sell gray items)
+description: Vendor actions (sell junk and useless items by rule)
 requires:
   - state
   - world

@@ -27,16 +27,16 @@ Légende : [ ] à faire, [~] partiel, [x] fait.
 - [x] Compteurs d'objectifs de quête : 4 x uint16 sur 2 champs (était lu comme 4 octets d'un seul champ) ; indexés par emplacement RequiredNpcOrGo.
 - [ ] Compte MySQL en lecture seule pour `world` : créer `agent_ro` (SELECT sur acore_world) et remplir `modules/world/.env`.
 
-## Revente et inventaire (prochain chantier, session 2026-10-10 : sacs pleins = chasse bloquée)
-Constat : `town.sell_junk` ne vend que les objets gris (4 objets = 4 cuivres) ; les sacs se remplissent d'objets blancs (nourriture en trop, armes/armures inutilisables : dague 24 pc, bouclier 15 pc, ceinture 6 pc, cape 7 pc...) et `combat` s'arrête sur « bags full ». Or il faut de l'argent pour les sorts (≈ 200 pc au niveau 6). Aucun appel pour vendre un objet précis.
-- [ ] `town.sell {rules}` : vendre aussi les objets non gris inutiles. Règle par défaut : garder les objets de quête (`quest_template` Required/Source), la pierre de foyer (6948), les consommables utiles (eau/nourriture : garder 10 de chaque meilleur rang selon le niveau, vendre le reste), l'équipement porté et tout objet qui améliore l'équipement (`gear.Gain` > 0) ; vendre le reste, du plus cher au moins cher.
-- [ ] Vendre aussi les objets d'armure/arme que la classe ne peut pas porter (`gear.Usable` faux) ET qui ne sont pas des matériaux de quête ; garder les armes pour lesquelles une compétence est apprenable bientôt (dague) seulement si leur score est meilleur.
-- [ ] `town.sell_junk` : afficher le prix obtenu par objet (les 4 cuivres du test sont dans `copper`), proposer `dry_run` détaillé (liste des objets et du prix) pour valider la règle sans vendre.
-- [ ] `auto.ensureSpace` : appeler cette vente (pas seulement le gris), marcher jusqu'au marchand le plus proche ATTEIGNABLE et vérifier qu'il est à moins de 8 yards ; l'échec « no vendor within 8 yards » du 2026-10-10 (après une marche « arrivée ») n'a pas été expliqué : tracer positions/PNJ visibles quand il se reproduit.
-- [ ] Avant la chasse : `combat.kill` doit vendre ou refuser proprement au lieu de s'arrêter à 0 emplacement libre ; ne ramasser que ce qui vaut quelque chose (gris/blanc à faible valeur : ignorer si sacs < 3 libres).
-- [ ] Rachat / réparation : non gérés (ajouter quand l'équipement a de la durabilité utile).
-- [ ] Argent pour l'entraînement : `progress.train` achète du moins cher au plus cher ; si l'argent manque, noter le déficit dans le statut pour que `auto` vende ou chasse plus.
-- Niveau requis : Sonnet suffit (logique + règles + SQL ; le paquet CMSG_SELL_ITEM existe déjà dans `town`). Opus seulement si on touche à la marche ou au combat.
+## Revente et inventaire (fait le 2026-10-10)
+- [x] `town.sell_junk` vend aussi les objets blancs inutiles selon des règles (voir MODULES.md : équipement inutilisable ou sans gain, marchandises, nourriture en trop, consommables obsolètes à 10 niveaux d'écart). Testé en jeu : 12 piles, 134 pc, 12 emplacements libres.
+- [x] `dry_run` + `show_kept` : détail (prix, raison) avant de vendre. Distance de vente 5 yards (le serveur refuse au-delà de 5,5 ; l'ancien seuil de 8 yards faisait échouer des ventes en silence). `auto.ensureSpace` suit le marchand jusqu'à 5 yards.
+- [x] Les objets vendus (liste de rachat) ne sont plus comptés dans `state.snapshot`.
+- [ ] Le prix attendu (156 pc) dépasse le gain mesuré (134 pc) : 22 pc d'écart non expliqués (prix de vente ajusté par le serveur ?). Comparer par objet quand on le revoit.
+- [ ] Ne ramasser que ce qui vaut quelque chose quand les sacs sont presque pleins (ignorer les gris de très faible valeur, loot sélectif dans `loot.Take`).
+- [ ] Rachat / réparation : non gérés (réparer quand la durabilité devient utile ; le rachat n'est pas nécessaire).
+- [ ] Équiper automatiquement les sacs trouvés/achetés (aujourd'hui gardés, jamais équipés) : plus d'emplacements, donc moins de ventes.
+- [ ] Manger/boire : `combat.rest` ne mange ni ne boit ; la nourriture gardée ne sert à rien tant que ce n'est pas fait (gain de temps de repos).
+- [ ] Argent pour l'entraînement : `progress.train` achète du moins cher au plus cher ; si l'argent manque, noter le déficit dans le statut.
 
 ## Sécurité du personnage (morts répétées constatées le 2026-10-10)
 - [ ] Pathfinding qui évite les monstres hostiles (idée utilisateur) : aujourd'hui `move` va tout droit dans le couloir navmesh, y compris au milieu d'un camp (ex. kobolds de la mine de Fargodeep : 3 morts de suite). A faire : (1) coût supplémentaire dans l'A* autour des monstres connus (positions de spawn `creature` de la base + unités vivantes vues par `state`), rayon d'aggro ≈ 20 yards + 1 yard par niveau d'écart (hostiles seulement : niveau > niveau du joueur - 3 ou faction hostile) ; (2) option `avoid_hostiles` dans `move.goto` (activée par défaut dans `auto`) ; (3) si aucun chemin sûr, échouer avec la raison plutôt que traverser. Niveau requis : Opus (navmesh + hostilité).
