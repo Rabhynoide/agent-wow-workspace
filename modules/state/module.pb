@@ -31,7 +31,7 @@ EmptyProtoPZ.google.golang.org/protobuf/types/known/emptypbø¢GPBªGoogle.P
 SendPacket%.agentwow.module.v1.SendPacketRequest.google.protobuf.EmptyE
 GetClock.google.protobuf.Empty!.agentwow.module.v1.ClockResponsea
 InvokeModule'.agentwow.module.v1.InvokeModuleRequest(.agentwow.module.v1.InvokeModuleResponseB5Z3github.com/agent-wow/agent-wow/pkg/modules/v1;modv1bproto3
-µ
+«
 state.protowowagent.state.v1api/module/v1/session.protogoogle/protobuf/empty.proto"´
 SelfInfo
 guid (Rguid
@@ -66,13 +66,20 @@ unit_flags (R	unitFlags
 Quest
 id (Rid
 state (Rstate
-counts (Rcounts"Ø
+counts (Rcounts"÷
 SnapshotResponse/
 self (2.wowagent.state.v1.SelfInfoRself-
 items (2.wowagent.state.v1.ItemRitems0
 quests (2.wowagent.state.v1.QuestRquests
 objects (Robjects
-packets (Rpackets"Ÿ
+packets (Rpackets
+
+free_slots (R	freeSlots"‘
+BriefResponse/
+self (2.wowagent.state.v1.SelfInfoRself0
+quests (2.wowagent.state.v1.QuestRquests
+
+free_slots (R	freeSlots"Ÿ
 NearbyRequest
 kind (	Rkind
 entry (Rentry
@@ -111,9 +118,10 @@ unit_flags (R	unitFlags
 SpellsResponse
 spells (Rspells"#
 GetObjRequest
-guid (Rguid2ñ
+guid (Rguid2´
 StateG
-Snapshot.google.protobuf.Empty#.wowagent.state.v1.SnapshotResponseM
+Snapshot.google.protobuf.Empty#.wowagent.state.v1.SnapshotResponseA
+Brief.google.protobuf.Empty .wowagent.state.v1.BriefResponseM
 Nearby .wowagent.state.v1.NearbyRequest!.wowagent.state.v1.NearbyResponseB
 GetObj .wowagent.state.v1.GetObjRequest.wowagent.state.v1.ObjB
 SetPos .wowagent.state.v1.SetPosRequest.google.protobuf.EmptyC

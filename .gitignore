@@ -53,3 +53,4 @@ assets/
 logs/*.log
 logs/*.hex
 .env
+modules/*/.env

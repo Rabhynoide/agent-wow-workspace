@@ -441,10 +441,12 @@ func (x *QuestNpc) GetZ() float32 {
 type QuestObjective struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// "kill" or "item" or "gameobject".
-	Kind          string `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
-	Entry         uint32 `protobuf:"varint,2,opt,name=entry,proto3" json:"entry,omitempty"`
-	Name          string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	Count         uint32 `protobuf:"varint,4,opt,name=count,proto3" json:"count,omitempty"`
+	Kind  string `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
+	Entry uint32 `protobuf:"varint,2,opt,name=entry,proto3" json:"entry,omitempty"`
+	Name  string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Count uint32 `protobuf:"varint,4,opt,name=count,proto3" json:"count,omitempty"`
+	// kill/gameobject: index of the quest log counter (RequiredNpcOrGo slot, 0-based).
+	Counter       uint32 `protobuf:"varint,5,opt,name=counter,proto3" json:"counter,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -503,6 +505,13 @@ func (x *QuestObjective) GetName() string {
 func (x *QuestObjective) GetCount() uint32 {
 	if x != nil {
 		return x.Count
+	}
+	return 0
+}
+
+func (x *QuestObjective) GetCounter() uint32 {
+	if x != nil {
+		return x.Counter
 	}
 	return 0
 }
@@ -1586,12 +1595,13 @@ const file_world_proto_rawDesc = "" +
 	"\x03map\x18\x03 \x01(\rR\x03map\x12\f\n" +
 	"\x01x\x18\x04 \x01(\x02R\x01x\x12\f\n" +
 	"\x01y\x18\x05 \x01(\x02R\x01y\x12\f\n" +
-	"\x01z\x18\x06 \x01(\x02R\x01z\"d\n" +
+	"\x01z\x18\x06 \x01(\x02R\x01z\"~\n" +
 	"\x0eQuestObjective\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x14\n" +
 	"\x05entry\x18\x02 \x01(\rR\x05entry\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x14\n" +
-	"\x05count\x18\x04 \x01(\rR\x05count\"\xe3\x03\n" +
+	"\x05count\x18\x04 \x01(\rR\x05count\x12\x18\n" +
+	"\acounter\x18\x05 \x01(\rR\acounter\"\xe3\x03\n" +
 	"\tQuestInfo\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\rR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x14\n" +

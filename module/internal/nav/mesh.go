@@ -140,7 +140,14 @@ type Mesh struct {
 	mu    sync.Mutex
 	files map[[2]int32]string
 	tiles map[[2]int32]*Tile // nil value = no tile there
+	used  map[[2]int32]uint64
+	clock uint64
+	// MaxTiles bounds the parsed tiles kept in memory (least recently used are dropped).
+	MaxTiles int
 }
+
+// DefaultMaxTiles keeps roughly 100-200 MB of parsed tiles (a tile covers 533 yards).
+const DefaultMaxTiles = 128
 
 // LoadMap reads the map parameters file; tiles are loaded on demand.
 func LoadMap(dir string, mapID uint32) (*Mesh, error) {
@@ -153,7 +160,7 @@ func LoadMap(dir string, mapID uint32) (*Mesh, error) {
 	}
 	f := func(i int) float32 { return math.Float32frombits(binary.LittleEndian.Uint32(b[4*i:])) }
 	m := &Mesh{MapID: mapID, dir: dir, orig: V3{f(0), f(1), f(2)}, tileW: f(3), tileH: f(4),
-		files: map[[2]int32]string{}, tiles: map[[2]int32]*Tile{}}
+		files: map[[2]int32]string{}, tiles: map[[2]int32]*Tile{}, used: map[[2]int32]uint64{}, MaxTiles: DefaultMaxTiles}
 	// File names use ADT grid indices, not Detour tile indices, so index by header.
 	names, _ := filepath.Glob(filepath.Join(dir, fmt.Sprintf("%03d*.mmtile", mapID)))
 	for _, name := range names {
@@ -184,7 +191,11 @@ func (m *Mesh) Tile(x, y int32) *Tile {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	k := [2]int32{x, y}
+	m.clock++
 	if t, ok := m.tiles[k]; ok {
+		if t != nil {
+			m.used[k] = m.clock
+		}
 		return t
 	}
 	var t *Tile
@@ -196,7 +207,26 @@ func (m *Mesh) Tile(x, y int32) *Tile {
 		}
 	}
 	m.tiles[k] = t
+	if t != nil {
+		m.used[k] = m.clock
+		m.evict()
+	}
 	return t
+}
+
+// evict drops the least recently used tiles above MaxTiles; they are re-read on demand.
+func (m *Mesh) evict() {
+	for m.MaxTiles > 0 && len(m.used) > m.MaxTiles {
+		var oldest [2]int32
+		first := true
+		for k, c := range m.used {
+			if first || c < m.used[oldest] {
+				oldest, first = k, false
+			}
+		}
+		delete(m.used, oldest)
+		delete(m.tiles, oldest)
+	}
 }
 
 // polyRef identifies a polygon: tile coordinates and index.

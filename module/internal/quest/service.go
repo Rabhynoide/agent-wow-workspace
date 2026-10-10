@@ -63,7 +63,7 @@ func (s *Service) find(ctx context.Context, kind string, entry uint32) (*statepb
 }
 
 func (s *Service) inLog(ctx context.Context, id uint32) (bool, error) {
-	snap, err := s.api.Snapshot(ctx)
+	snap, err := s.api.Brief(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -141,9 +141,7 @@ func (s *Service) Use(ctx context.Context, r *pb.UseRequest) (*pb.QuestResult, e
 	if !r.Loot {
 		return &pb.QuestResult{Ok: true}, nil
 	}
-	s.loot.Wait = 1500 * time.Millisecond
-	res, err := s.loot.Take(ctx, s.s, o.Guid, false)
-	s.loot.Wait = 8 * time.Second
+	res, err := s.loot.Take(ctx, s.s, o.Guid, false, 1500*time.Millisecond)
 	if err != nil {
 		// Locked objects need the client to cast the opening spell (22810) on them.
 		s.loot.Drain()
@@ -156,7 +154,7 @@ func (s *Service) Use(ctx context.Context, r *pb.UseRequest) (*pb.QuestResult, e
 		if err := moveio.Packet(ctx, s.s, uint32(opcode.CMSGCastSpell), cw.B); err != nil {
 			return fail("cast: %v", err)
 		}
-		if res, err = s.loot.Take(ctx, s.s, o.Guid, false); err != nil {
+		if res, err = s.loot.Take(ctx, s.s, o.Guid, false, loot.DefaultWait); err != nil {
 			return fail("loot: %v", err)
 		}
 	}

@@ -17,10 +17,11 @@ Légende : [ ] à faire, [~] partiel, [x] fait.
 - [ ] `session.logout` est refusé en combat (reason 1) : attendre la fin du combat.
 - [x] Coffre « Milly's Harvest » : verrou « Open Kneeling » => sort 22810 lancé par `quest.use`.
 - [~] Vente de camelote : fonctionne ; la marche a échoué une fois (cause : arrivée mesurée en 2D) ; vendre aussi les objets blancs inutiles.
-- [ ] Hostilité (factions) non résolue : `combat` ne chasse que des entrées explicites.
-- [ ] Durée de démarrage : `char play --module-timeout 8m` nécessaire (8 images Docker).
-- [ ] `go vet` signale des copies de messages protobuf dans `move` (sans danger mais à nettoyer).
-- [ ] Compteurs d'objectifs de quête : vérifiés seulement pour les kills.
+- [~] Hostilité (factions) non résolue : `combat` ne chasse que des entrées explicites ; les agresseurs doivent être en combat (UNIT_FLAG_IN_COMBAT).
+- [~] Durée de démarrage : `char play --module-timeout 8m` nécessaire (8 images Docker) ; `scripts/start.sh` attend à notre place.
+- [x] `go vet` signalait des copies de messages protobuf (move/combat/auto) : package `jobs` + `proto.Clone`.
+- [x] Compteurs d'objectifs de quête : 4 x uint16 sur 2 champs (était lu comme 4 octets d'un seul champ) ; indexés par emplacement RequiredNpcOrGo.
+- [ ] Compte MySQL en lecture seule pour `world` : créer `agent_ro` (SELECT sur acore_world) et remplir `modules/world/.env`.
 
 ## Prochaines étapes suggérées
 - Entraîneur de prêtre (sorts niveau 4/6 : Bouclier, Châtiment rang 2...), talents, module `gear`.

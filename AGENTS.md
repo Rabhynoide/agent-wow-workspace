@@ -9,6 +9,13 @@ Useful resources to reference:
 - wow client-data: https://github.com/wowgaming/client-data/releases
 - agent-wow module template: https://github.com/agent-wow/go-module-template
 
+## Session memory (read first)
+
+Before anything else read `NOTES.md` (character state, how to start/stop, pitfalls) and
+`MODULES.md` (module RPC reference). `BACKLOG.md` lists known issues. Do not read the Go sources
+unless you change a module. Prefer the scripts in `./scripts` (`start.sh`, `job.sh`, `rpc.sh`):
+they wait and filter so that one tool call replaces many.
+
 ## System checks
 
 Before executing on a task, you should do a quick system check to ensure you have

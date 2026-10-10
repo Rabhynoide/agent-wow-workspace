@@ -56,18 +56,11 @@ func (s *Service) Snapshot(context.Context, *emptypb.Empty) (*pb.SnapshotRespons
 	if me == nil {
 		return resp, nil
 	}
-	pt := (me.u(fUnitBytes0) >> 24) & 0xff
-	resp.Self = &pb.SelfInfo{
-		Guid: me.Guid, Map: st.Map, X: me.X, Y: me.Y, Z: me.Z, O: me.O,
-		Level: me.u(fUnitLevel), Hp: me.u(fUnitHealth), MaxHp: me.u(fUnitMaxHP),
-		Power: me.u(fUnitPower1 + uint16(pt)), MaxPower: me.u(fUnitMaxPow1 + uint16(pt)), PowerType: pt,
-		Xp: me.u(fXP), NextXp: me.u(fNextXP), Money: me.u(fCoinage),
-		Target: me.guid(fUnitTarget), Ghost: me.u(fPlayerFlags)&0x10 != 0,
-		Dead:     (me.u(fUnitHealth) == 0 && me.u(fUnitMaxHP) > 0) || me.u(fPlayerFlags)&0x10 != 0,
-		RunSpeed: me.Speeds[1], UnitFlags: me.u(fUnitFlags),
-	}
+	resp.Self = st.selfInfo(me)
+	resp.Quests = questLog(me)
+	resp.FreeSlots = st.freeSlots(me)
 	slotOf := map[uint64]int32{}
-	for slot := 0; slot < 39; slot++ {
+	for slot := 0; slot <= slotPackLast; slot++ {
 		if g := me.guid(uint16(fInvSlots + 2*slot)); g != 0 {
 			slotOf[g] = int32(slot)
 		}
@@ -83,17 +76,72 @@ func (s *Service) Snapshot(context.Context, *emptypb.Empty) (*pb.SnapshotRespons
 		resp.Items = append(resp.Items, it)
 	}
 	sort.Slice(resp.Items, func(i, j int) bool { return resp.Items[i].Slot < resp.Items[j].Slot })
+	return resp, nil
+}
+
+// Brief is Snapshot without the item list.
+func (s *Service) Brief(context.Context, *emptypb.Empty) (*pb.BriefResponse, error) {
+	st := s.st
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	me := st.objs[st.self]
+	if me == nil {
+		return &pb.BriefResponse{}, nil
+	}
+	return &pb.BriefResponse{Self: st.selfInfo(me), Quests: questLog(me), FreeSlots: st.freeSlots(me)}, nil
+}
+
+func (st *Store) selfInfo(me *Obj) *pb.SelfInfo {
+	pt := (me.u(fUnitBytes0) >> 24) & 0xff
+	return &pb.SelfInfo{
+		Guid: me.Guid, Map: st.Map, X: me.X, Y: me.Y, Z: me.Z, O: me.O,
+		Level: me.u(fUnitLevel), Hp: me.u(fUnitHealth), MaxHp: me.u(fUnitMaxHP),
+		Power: me.u(fUnitPower1 + uint16(pt)), MaxPower: me.u(fUnitMaxPow1 + uint16(pt)), PowerType: pt,
+		Xp: me.u(fXP), NextXp: me.u(fNextXP), Money: me.u(fCoinage),
+		Target: me.guid(fUnitTarget), Ghost: me.u(fPlayerFlags)&0x10 != 0,
+		Dead:     (me.u(fUnitHealth) == 0 && me.u(fUnitMaxHP) > 0) || me.u(fPlayerFlags)&0x10 != 0,
+		RunSpeed: me.Speeds[1], UnitFlags: me.u(fUnitFlags),
+	}
+}
+
+// questLog reads the 25 quest log entries (id, state, 4 x uint16 counters over two fields, time).
+func questLog(me *Obj) []*pb.Quest {
+	var out []*pb.Quest
 	for i := 0; i < 25; i++ {
 		base := uint16(fQuestLog + 5*i)
 		if id := me.u(base); id != 0 {
-			c := me.u(base + 2)
-			resp.Quests = append(resp.Quests, &pb.Quest{
+			c0, c1 := me.u(base+2), me.u(base+3)
+			out = append(out, &pb.Quest{
 				Id: id, State: me.u(base + 1),
-				Counts: []uint32{c & 0xff, (c >> 8) & 0xff, (c >> 16) & 0xff, (c >> 24) & 0xff},
+				Counts: []uint32{c0 & 0xffff, c0 >> 16, c1 & 0xffff, c1 >> 16},
 			})
 		}
 	}
-	return resp, nil
+	return out
+}
+
+// freeSlots counts empty backpack slots plus empty slots of the equipped bags.
+func (st *Store) freeSlots(me *Obj) uint32 {
+	var free uint32
+	for slot := slotPackFirst; slot <= slotPackLast; slot++ {
+		if me.guid(uint16(fInvSlots+2*slot)) == 0 {
+			free++
+		}
+	}
+	for slot := slotBagFirst; slot <= slotBagLast; slot++ {
+		g := me.guid(uint16(fInvSlots + 2*slot))
+		bag := st.objs[g]
+		if g == 0 || bag == nil {
+			continue
+		}
+		n := min(bag.u(fBagSlots), 36)
+		for i := uint32(0); i < n; i++ {
+			if bag.guid(uint16(fBagSlot1+2*i)) == 0 {
+				free++
+			}
+		}
+	}
+	return free
 }
 
 func kindOf(t uint8) string {
@@ -155,7 +203,7 @@ func (s *Service) Nearby(_ context.Context, r *pb.NearbyRequest) (*pb.NearbyResp
 	total := uint32(len(out))
 	max := int(r.Max)
 	if max == 0 {
-		max = 15
+		max = 5
 	}
 	if len(out) > max {
 		out = out[:max]

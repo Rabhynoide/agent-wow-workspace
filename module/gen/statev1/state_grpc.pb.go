@@ -22,6 +22,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	State_Snapshot_FullMethodName     = "/wowagent.state.v1.State/Snapshot"
+	State_Brief_FullMethodName        = "/wowagent.state.v1.State/Brief"
 	State_Nearby_FullMethodName       = "/wowagent.state.v1.State/Nearby"
 	State_GetObj_FullMethodName       = "/wowagent.state.v1.State/GetObj"
 	State_SetPos_FullMethodName       = "/wowagent.state.v1.State/SetPos"
@@ -35,6 +36,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type StateClient interface {
 	Snapshot(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*SnapshotResponse, error)
+	Brief(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*BriefResponse, error)
 	Nearby(ctx context.Context, in *NearbyRequest, opts ...grpc.CallOption) (*NearbyResponse, error)
 	GetObj(ctx context.Context, in *GetObjRequest, opts ...grpc.CallOption) (*Obj, error)
 	SetPos(ctx context.Context, in *SetPosRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -55,6 +57,16 @@ func (c *stateClient) Snapshot(ctx context.Context, in *emptypb.Empty, opts ...g
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SnapshotResponse)
 	err := c.cc.Invoke(ctx, State_Snapshot_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *stateClient) Brief(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*BriefResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BriefResponse)
+	err := c.cc.Invoke(ctx, State_Brief_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -126,6 +138,7 @@ func (c *stateClient) BeforeLogout(ctx context.Context, in *emptypb.Empty, opts 
 // for forward compatibility.
 type StateServer interface {
 	Snapshot(context.Context, *emptypb.Empty) (*SnapshotResponse, error)
+	Brief(context.Context, *emptypb.Empty) (*BriefResponse, error)
 	Nearby(context.Context, *NearbyRequest) (*NearbyResponse, error)
 	GetObj(context.Context, *GetObjRequest) (*Obj, error)
 	SetPos(context.Context, *SetPosRequest) (*emptypb.Empty, error)
@@ -144,6 +157,9 @@ type UnimplementedStateServer struct{}
 
 func (UnimplementedStateServer) Snapshot(context.Context, *emptypb.Empty) (*SnapshotResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Snapshot not implemented")
+}
+func (UnimplementedStateServer) Brief(context.Context, *emptypb.Empty) (*BriefResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Brief not implemented")
 }
 func (UnimplementedStateServer) Nearby(context.Context, *NearbyRequest) (*NearbyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Nearby not implemented")
@@ -198,6 +214,24 @@ func _State_Snapshot_Handler(srv interface{}, ctx context.Context, dec func(inte
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(StateServer).Snapshot(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _State_Brief_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StateServer).Brief(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: State_Brief_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StateServer).Brief(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -320,6 +354,10 @@ var State_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Snapshot",
 			Handler:    _State_Snapshot_Handler,
+		},
+		{
+			MethodName: "Brief",
+			Handler:    _State_Brief_Handler,
 		},
 		{
 			MethodName: "Nearby",

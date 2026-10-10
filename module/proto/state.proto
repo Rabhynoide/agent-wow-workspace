@@ -49,6 +49,15 @@ message SnapshotResponse {
   repeated Quest quests = 3;
   uint32 objects = 4;
   uint32 packets = 5;
+  // Empty slots in the backpack and equipped bags.
+  uint32 free_slots = 6;
+}
+
+// Brief is a light snapshot without the item list.
+message BriefResponse {
+  SelfInfo self = 1;
+  repeated Quest quests = 2;
+  uint32 free_slots = 3;
 }
 
 message NearbyRequest {
@@ -56,6 +65,7 @@ message NearbyRequest {
   string kind = 1;
   uint32 entry = 2;
   float radius = 3;
+  // Default 5.
   uint32 max = 4;
   bool alive_only = 5;
   // Keep only units whose npc_flags intersect this mask.
@@ -104,6 +114,7 @@ message GetObjRequest {
 
 service State {
   rpc Snapshot(google.protobuf.Empty) returns (SnapshotResponse);
+  rpc Brief(google.protobuf.Empty) returns (BriefResponse);
   rpc Nearby(NearbyRequest) returns (NearbyResponse);
   rpc GetObj(GetObjRequest) returns (Obj);
   rpc SetPos(SetPosRequest) returns (google.protobuf.Empty);

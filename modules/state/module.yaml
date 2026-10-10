@@ -8,6 +8,7 @@ grpc:
   descriptor_set: module.pb
 rpc:
   snapshot: /wowagent.state.v1.State/Snapshot
+  brief: /wowagent.state.v1.State/Brief
   nearby: /wowagent.state.v1.State/Nearby
   get_obj: /wowagent.state.v1.State/GetObj
   set_pos: /wowagent.state.v1.State/SetPos

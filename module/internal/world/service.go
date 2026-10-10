@@ -243,9 +243,9 @@ func (s *Service) QuestInfo(ctx context.Context, r *pb.QuestInfoRequest) (*pb.Qu
 		for i := 0; i < 4; i++ {
 			switch {
 			case npc[i] > 0:
-				qi.Objectives = append(qi.Objectives, &pb.QuestObjective{Kind: "kill", Entry: uint32(npc[i]), Count: npcN[i]})
+				qi.Objectives = append(qi.Objectives, &pb.QuestObjective{Kind: "kill", Entry: uint32(npc[i]), Count: npcN[i], Counter: uint32(i)})
 			case npc[i] < 0:
-				qi.Objectives = append(qi.Objectives, &pb.QuestObjective{Kind: "gameobject", Entry: uint32(-npc[i]), Count: npcN[i]})
+				qi.Objectives = append(qi.Objectives, &pb.QuestObjective{Kind: "gameobject", Entry: uint32(-npc[i]), Count: npcN[i], Counter: uint32(i)})
 			}
 		}
 		for i := 0; i < 6; i++ {

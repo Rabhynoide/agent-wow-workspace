@@ -59,6 +59,8 @@ message QuestObjective {
   uint32 entry = 2;
   string name = 3;
   uint32 count = 4;
+  // kill/gameobject: index of the quest log counter (RequiredNpcOrGo slot, 0-based).
+  uint32 counter = 5;
 }
 
 message QuestInfo {

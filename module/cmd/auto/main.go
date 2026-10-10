@@ -7,8 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"wowagent/internal/runtime"
 	"wowagent/internal/auto"
+	"wowagent/internal/runtime"
 )
 
 func main() {

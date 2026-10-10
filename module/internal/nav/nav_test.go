@@ -100,3 +100,17 @@ func TestPathStaysOnMesh(t *testing.T) {
 		t.Logf("%s: %d samples, %d off-mesh (%.1f%%), max height gap on-mesh %.1f", name, total, off, 100*float64(off)/float64(total), maxGap)
 	}
 }
+
+func TestTileCacheEviction(t *testing.T) {
+	m := &Mesh{files: map[[2]int32]string{}, tiles: map[[2]int32]*Tile{}, used: map[[2]int32]uint64{}, MaxTiles: 2}
+	for i := int32(0); i < 3; i++ {
+		m.tiles[[2]int32{i, 0}] = &Tile{}
+		m.clock++
+		m.used[[2]int32{i, 0}] = m.clock
+	}
+	m.Tile(0, 0) // touch tile 0: tile 1 becomes the oldest
+	m.evict()
+	if _, ok := m.tiles[[2]int32{1, 0}]; ok || len(m.used) != 2 {
+		t.Fatalf("tile 1 should be evicted, used=%v", m.used)
+	}
+}

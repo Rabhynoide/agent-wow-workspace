@@ -25,6 +25,13 @@ func (c C) Snapshot(ctx context.Context) (*statepb.SnapshotResponse, error) {
 	return &r, err
 }
 
+// Brief is the snapshot without the item list (self, quest log, free slots).
+func (c C) Brief(ctx context.Context) (*statepb.BriefResponse, error) {
+	var r statepb.BriefResponse
+	err := invoke.Call(ctx, c.S, "state", "brief", &emptypb.Empty{}, &r)
+	return &r, err
+}
+
 func (c C) Nearby(ctx context.Context, req *statepb.NearbyRequest) (*statepb.NearbyResponse, error) {
 	var r statepb.NearbyResponse
 	err := invoke.Call(ctx, c.S, "state", "nearby", req, &r)
@@ -168,17 +175,6 @@ func (c C) ItemInfo(ctx context.Context, entry uint32) (*worldpb.ItemInfo, error
 		return nil, fmt.Errorf("unknown item %d", entry)
 	}
 	return r.Items[0], nil
-}
-
-// FreeSlots counts empty backpack slots (slots 23..38).
-func FreeSlots(snap *statepb.SnapshotResponse) int {
-	used := 0
-	for _, it := range snap.Items {
-		if it.Slot >= 23 && it.Slot <= 38 {
-			used++
-		}
-	}
-	return 16 - used
 }
 
 func (c C) SellJunk(ctx context.Context) (*townpb.SellResult, error) {

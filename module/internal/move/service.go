@@ -14,11 +14,12 @@ import (
 	modv1 "github.com/agent-wow/agent-wow/pkg/modules/v1"
 	"github.com/agent-wow/agent-wow/pkg/opcode"
 	"google.golang.org/grpc"
-	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	pb "wowagent/gen/movev1"
 	statepb "wowagent/gen/statev1"
+	"wowagent/internal/api"
+	"wowagent/internal/jobs"
 	"wowagent/internal/moveio"
 	"wowagent/internal/nav"
 	"wowagent/internal/terrain"
@@ -32,37 +33,33 @@ const (
 	maxWait     = 25
 )
 
-type job struct {
-	cancel context.CancelFunc
-	done   chan struct{}
-	mu     sync.Mutex
-	st     pb.MoveStatus
-	start  time.Time
-}
+type job = jobs.Job[*pb.MoveStatus]
 
-func (j *job) snapshot() *pb.MoveStatus {
-	j.mu.Lock()
-	defer j.mu.Unlock()
-	s := j.st
-	s.ElapsedS = float32(time.Since(j.start).Seconds())
-	if j.st.State != "moving" {
-		s.ElapsedS = j.st.ElapsedS
-	}
-	return &s
+// route is a path handed to the running walk (re-targeting without stop/start packets).
+type route struct {
+	path   [][3]float32
+	target [3]float32
+	radius float32
+	plen   float32
 }
 
 type Service struct {
 	pb.UnimplementedMoveServer
 	session modv1.SessionClient
+	api     api.C
 	dir     string
 	guid    uint64
+	jobs    *jobs.Runner[*pb.MoveStatus]
 
 	mu     sync.Mutex
 	meshes map[uint32]*nav.Mesh
 	terr   map[uint32]*terrain.Maps
 	maps   string
-	cur    *job
-	last   pb.MoveStatus
+
+	rmu       sync.Mutex
+	walking   bool   // a walk loop is running and accepts new routes
+	walkFlags uint32 // movement flags of that walk
+	next      *route
 }
 
 func Register(s grpc.ServiceRegistrar, session modv1.SessionClient) {
@@ -71,7 +68,10 @@ func Register(s grpc.ServiceRegistrar, session modv1.SessionClient) {
 		dir = "/mmaps"
 	}
 	guid, _ := strconv.ParseUint(os.Getenv("AGENT_WOW_CHARACTER_GUID"), 10, 64)
-	pb.RegisterMoveServer(s, &Service{session: session, dir: dir, guid: guid, meshes: map[uint32]*nav.Mesh{}, terr: map[uint32]*terrain.Maps{}, maps: mapsDir(), last: pb.MoveStatus{State: "idle"}})
+	runner := jobs.NewRunner(&pb.MoveStatus{State: "idle"})
+	runner.Decorate = func(j *job, st *pb.MoveStatus) { st.ElapsedS = float32(time.Since(j.Start).Seconds()) }
+	pb.RegisterMoveServer(s, &Service{session: session, api: api.C{S: session}, dir: dir, guid: guid, jobs: runner,
+		meshes: map[uint32]*nav.Mesh{}, terr: map[uint32]*terrain.Maps{}, maps: mapsDir()})
 }
 
 func mapsDir() string {
@@ -107,24 +107,18 @@ func (s *Service) mesh(id uint32) (*nav.Mesh, error) {
 }
 
 func (s *Service) self(ctx context.Context) (*statepb.SelfInfo, error) {
-	req, _ := anypb.New(&emptypb.Empty{})
-	resp, err := s.session.InvokeModule(ctx, &modv1.InvokeModuleRequest{Module: "state", Method: "snapshot", Request: req})
+	b, err := s.api.Brief(ctx)
 	if err != nil {
 		return nil, err
 	}
-	var snap statepb.SnapshotResponse
-	if err := resp.Result.UnmarshalTo(&snap); err != nil {
-		return nil, err
-	}
-	if snap.Self == nil {
+	if b.Self == nil {
 		return nil, fmt.Errorf("self state not available yet")
 	}
-	return snap.Self, nil
+	return b.Self, nil
 }
 
 func (s *Service) setPos(ctx context.Context, x, y, z, o float32) {
-	req, _ := anypb.New(&statepb.SetPosRequest{X: x, Y: y, Z: z, O: o})
-	if _, err := s.session.InvokeModule(ctx, &modv1.InvokeModuleRequest{Module: "state", Method: "set_pos", Request: req}); err != nil {
+	if err := s.api.SetPos(ctx, x, y, z, o); err != nil {
 		slog.Warn("state.set_pos failed", "err", err)
 	}
 }
@@ -196,16 +190,16 @@ func smoothZ(p [][3]float32) [][3]float32 {
 	return out
 }
 
-func (s *Service) plan(ctx context.Context, self *statepb.SelfInfo, x, y, z float32) ([][3]float32, float32, error) {
-	m, err := s.mesh(self.Map)
+func (s *Service) plan(mapID uint32, from [3]float32, x, y, z float32) ([][3]float32, float32, error) {
+	m, err := s.mesh(mapID)
 	if err != nil {
 		return nil, 0, err
 	}
-	pts, corridor, err := m.PathCorridor(nav.ToRecast(self.X, self.Y, self.Z), nav.ToRecast(x, y, z), nav.GroundOnly)
+	pts, corridor, err := m.PathCorridor(nav.ToRecast(from[0], from[1], from[2]), nav.ToRecast(x, y, z), nav.GroundOnly)
 	if err != nil {
 		return nil, 0, err
 	}
-	dense := densify(m, s.terrainFor(self.Map), pts, corridor)
+	dense := densify(m, s.terrainFor(mapID), pts, corridor)
 	var l float32
 	for i := 1; i < len(dense); i++ {
 		l += dist(dense[i-1], dense[i])
@@ -226,69 +220,49 @@ func (s *Service) Path(ctx context.Context, r *pb.PathRequest) (*pb.PathResponse
 	if err != nil {
 		return &pb.PathResponse{Error: err.Error()}, nil
 	}
-	pts, l, err := s.plan(ctx, self, r.X, r.Y, r.Z)
+	pts, l, err := s.plan(self.Map, [3]float32{self.X, self.Y, self.Z}, r.X, r.Y, r.Z)
 	if err != nil {
 		return &pb.PathResponse{Error: err.Error()}, nil
 	}
 	return &pb.PathResponse{Points: uint32(len(pts)), Length: l}, nil
 }
 
-func (s *Service) stopCurrent() {
-	s.mu.Lock()
-	j := s.cur
-	s.mu.Unlock()
-	if j != nil {
-		j.cancel()
-		<-j.done
-	}
-}
-
 func (s *Service) Stop(ctx context.Context, _ *emptypb.Empty) (*pb.MoveStatus, error) {
-	s.stopCurrent()
-	return s.current(), nil
+	s.jobs.Stop()
+	return s.jobs.Current(), nil
 }
 
 func (s *Service) BeforeLogout(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
-	s.stopCurrent()
+	s.jobs.Stop()
 	return &emptypb.Empty{}, nil
 }
 
-func (s *Service) current() *pb.MoveStatus {
-	s.mu.Lock()
-	j, last := s.cur, s.last
-	s.mu.Unlock()
-	if j != nil {
-		return j.snapshot()
-	}
-	return &last
-}
-
 func (s *Service) Status(ctx context.Context, r *pb.StatusRequest) (*pb.MoveStatus, error) {
-	s.mu.Lock()
-	j := s.cur
-	s.mu.Unlock()
-	if j != nil && r.WaitS > 0 {
-		select {
-		case <-j.done:
-		case <-time.After(time.Duration(min(r.WaitS, maxWait)) * time.Second):
-		case <-ctx.Done():
-		}
-	}
-	return s.current(), nil
+	return s.jobs.Wait(ctx, r.WaitS, 0, maxWait), nil
 }
 
 func (s *Service) Goto(ctx context.Context, r *pb.GotoRequest) (*pb.MoveStatus, error) {
-	s.stopCurrent()
+	wait := r.WaitS
+	if wait == 0 {
+		wait = 20
+	}
+	st, err := s.startGoto(ctx, r)
+	if st != nil || err != nil {
+		return st, err
+	}
+	return s.jobs.Wait(ctx, wait, wait, maxWait), nil
+}
+
+// startGoto starts a walk, or re-targets the running one; it returns a status only on failure.
+func (s *Service) startGoto(ctx context.Context, r *pb.GotoRequest) (*pb.MoveStatus, error) {
+	s.jobs.Lock()
+	defer s.jobs.Unlock()
 	self, err := s.self(ctx)
 	if err != nil {
 		return &pb.MoveStatus{State: "failed", Reason: err.Error()}, nil
 	}
 	if self.Dead && !self.Ghost {
 		return &pb.MoveStatus{State: "failed", Reason: "character is dead", X: self.X, Y: self.Y, Z: self.Z}, nil
-	}
-	path, plen, err := s.plan(ctx, self, r.X, r.Y, r.Z)
-	if err != nil {
-		return &pb.MoveStatus{State: "failed", Reason: err.Error(), X: self.X, Y: self.Y, Z: self.Z}, nil
 	}
 	speed := self.RunSpeed
 	if speed <= 0 {
@@ -303,46 +277,61 @@ func (s *Service) Goto(ctx context.Context, r *pb.GotoRequest) (*pb.MoveStatus, 
 	if radius <= 0 {
 		radius = 1.5
 	}
-	jctx, cancel := context.WithCancel(context.Background())
-	j := &job{cancel: cancel, done: make(chan struct{}), start: time.Now()}
-	j.st = pb.MoveStatus{State: "moving", X: self.X, Y: self.Y, Z: self.Z, PathLen: plen, DistLeft: plen}
-	s.mu.Lock()
-	s.cur = j
-	s.mu.Unlock()
-	go s.run(jctx, j, path, [3]float32{r.X, r.Y, r.Z}, speed, flags, radius)
-	wait := min(r.WaitS, maxWait)
-	if r.WaitS == 0 {
-		wait = 20
+	target := [3]float32{r.X, r.Y, r.Z}
+	// Already walking with the same gait: plan from the live position and swap the route in place,
+	// so chasing a moving target does not stutter with stop/start packets.
+	if j := s.jobs.Cur(); j != nil {
+		cur := j.Snap()
+		path, plen, err := s.plan(self.Map, [3]float32{cur.X, cur.Y, cur.Z}, r.X, r.Y, r.Z)
+		if err == nil && len(path) >= 2 {
+			s.rmu.Lock()
+			ok := s.walking && s.walkFlags == flags
+			if ok {
+				s.next = &route{path: path, target: target, radius: radius, plen: plen}
+			}
+			s.rmu.Unlock()
+			if ok {
+				return nil, nil
+			}
+		}
 	}
-	select {
-	case <-j.done:
-	case <-time.After(time.Duration(wait) * time.Second):
-	case <-ctx.Done():
+	path, plen, err := s.plan(self.Map, [3]float32{self.X, self.Y, self.Z}, r.X, r.Y, r.Z)
+	if err != nil {
+		s.jobs.StartLocked(&pb.MoveStatus{State: "failed", Reason: err.Error(), X: self.X, Y: self.Y, Z: self.Z}, func(*job) {})
+		return &pb.MoveStatus{State: "failed", Reason: err.Error(), X: self.X, Y: self.Y, Z: self.Z}, nil
 	}
-	return s.current(), nil
+	s.jobs.StartLocked(&pb.MoveStatus{State: "moving", X: self.X, Y: self.Y, Z: self.Z, PathLen: plen, DistLeft: plen}, func(j *job) {
+		s.run(j, &route{path: path, target: target, radius: radius, plen: plen}, speed, flags)
+	})
+	return nil, nil
 }
 
-func (s *Service) run(ctx context.Context, j *job, path [][3]float32, target [3]float32, speed float32, flags uint32, radius float32) {
+func (s *Service) run(j *job, rt *route, speed float32, flags uint32) {
+	ctx := j.Ctx
+	path := rt.path
 	pos := path[0]
 	o := float32(0)
 	seg := 1
+	s.rmu.Lock()
+	s.walking, s.walkFlags, s.next = true, flags, nil
+	s.rmu.Unlock()
 	finish := func(state, reason string) {
-		j.mu.Lock()
-		j.st.State, j.st.Reason = state, reason
-		j.st.X, j.st.Y, j.st.Z, j.st.O = pos[0], pos[1], pos[2], o
-		j.st.DistLeft, j.st.EtaS = dist2(pos, target), 0
-		j.st.ElapsedS = float32(time.Since(j.start).Seconds())
-		st := j.st
-		j.mu.Unlock()
+		s.rmu.Lock()
+		s.walking, s.next = false, nil
+		s.rmu.Unlock()
+		if state == "failed" && ctx.Err() != nil {
+			state, reason = "stopped", "cancelled"
+		}
+		j.Update(func(st *pb.MoveStatus) {
+			st.State, st.Reason = state, reason
+			st.X, st.Y, st.Z, st.O = pos[0], pos[1], pos[2], o
+			st.DistLeft, st.EtaS = dist2(pos, rt.target), 0
+			st.ElapsedS = float32(time.Since(j.Start).Seconds())
+		})
 		sctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		_ = s.send(sctx, uint32(opcode.MSGMoveStop), 0, pos[0], pos[1], pos[2], o)
 		s.setPos(sctx, pos[0], pos[1], pos[2], o)
-		s.mu.Lock()
-		s.last = st
-		s.cur = nil
-		s.mu.Unlock()
-		close(j.done)
 	}
 	if len(path) < 2 {
 		finish("arrived", "already there")
@@ -352,10 +341,6 @@ func (s *Service) run(ctx context.Context, j *job, path [][3]float32, target [3]
 	if err := s.send(ctx, uint32(opcode.MSGMoveStartForward), flags, pos[0], pos[1], pos[2], o); err != nil {
 		finish("failed", "send: "+err.Error())
 		return
-	}
-	var remaining float32
-	for i := 1; i < len(path); i++ {
-		remaining += dist(path[i-1], path[i])
 	}
 	lastBeat := time.Now()
 	lastTick := time.Now()
@@ -368,6 +353,17 @@ func (s *Service) run(ctx context.Context, j *job, path [][3]float32, target [3]
 			return
 		case <-t.C:
 		}
+		s.rmu.Lock()
+		if s.next != nil {
+			rt, s.next = s.next, nil
+			path, seg = rt.path, 1
+			// The route was planned from a slightly older position: skip nodes we already reached.
+			for seg < len(path)-1 && dist2(pos, path[seg]) < 1 {
+				seg++
+			}
+			j.Update(func(st *pb.MoveStatus) { st.PathLen = rt.plen })
+		}
+		s.rmu.Unlock()
 		now := time.Now()
 		step := speed * float32(now.Sub(lastTick).Seconds())
 		lastTick = now
@@ -389,20 +385,26 @@ func (s *Service) run(ctx context.Context, j *job, path [][3]float32, target [3]
 				o, turned = no, true
 			}
 		}
-		remaining = 0
+		var remaining float32
 		prev := pos
 		for i := seg; i < len(path); i++ {
 			remaining += dist(prev, path[i])
 			prev = path[i]
 		}
-		j.mu.Lock()
-		j.st.X, j.st.Y, j.st.Z, j.st.O = pos[0], pos[1], pos[2], o
-		j.st.DistLeft = remaining
-		j.st.EtaS = remaining / speed
-		j.mu.Unlock()
-		if seg >= len(path) || (dist2(pos, target) <= radius && math.Abs(float64(pos[2]-target[2])) <= 3) {
-			finish("arrived", "")
-			return
+		j.Update(func(st *pb.MoveStatus) {
+			st.X, st.Y, st.Z, st.O = pos[0], pos[1], pos[2], o
+			st.DistLeft = remaining
+			st.EtaS = remaining / speed
+		})
+		if seg >= len(path) || (dist2(pos, rt.target) <= rt.radius && math.Abs(float64(pos[2]-rt.target[2])) <= 3) {
+			s.rmu.Lock()
+			pending := s.next != nil
+			s.rmu.Unlock()
+			if !pending {
+				finish("arrived", "")
+				return
+			}
+			continue
 		}
 		if turned {
 			_ = s.send(ctx, uint32(opcode.MSGMoveSetFacing), flags, pos[0], pos[1], pos[2], o)

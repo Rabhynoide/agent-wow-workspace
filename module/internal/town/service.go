@@ -41,11 +41,19 @@ func (s *Service) SellJunk(ctx context.Context, r *pb.SellRequest) (*pb.SellResu
 	if err != nil || snap.Self == nil {
 		return fail("state unavailable: %v", err)
 	}
+	// Sell only from the backpack (slots 23..38) and equipped bags (slots 19..22), never the bank.
+	bags := map[uint64]bool{}
+	for _, it := range snap.Items {
+		if it.Slot >= 19 && it.Slot <= 22 {
+			bags[it.Guid] = true
+		}
+	}
 	quality := map[uint32]uint32{}
 	var junk []*statepb.Item
 	for _, it := range snap.Items {
-		if it.Slot >= 0 && (it.Slot < 23 || it.Slot > 38) {
-			continue // equipped or bag container
+		inPack := it.Slot >= 23 && it.Slot <= 38
+		if !inPack && !(it.Slot == -1 && bags[it.Container]) {
+			continue
 		}
 		q, ok := quality[it.Entry]
 		if !ok {
@@ -63,7 +71,7 @@ func (s *Service) SellJunk(ctx context.Context, r *pb.SellRequest) (*pb.SellResu
 			junk = append(junk, it)
 		}
 	}
-	res := &pb.SellResult{Ok: true, FreeSlots: uint32(api.FreeSlots(snap))}
+	res := &pb.SellResult{Ok: true, FreeSlots: snap.FreeSlots}
 	if len(junk) == 0 || r.DryRun {
 		res.Sold = uint32(len(junk))
 		return res, nil
@@ -83,11 +91,10 @@ func (s *Service) SellJunk(ctx context.Context, r *pb.SellRequest) (*pb.SellResu
 		return fail("no vendor within 8 yards; walk to one first")
 	}
 	res.Vendor = fmt.Sprint(vendor.Entry)
-	near = &statepb.NearbyResponse{Objs: []*statepb.Obj{vendor}}
 	money := snap.Self.Money
 	for _, it := range junk {
 		w := &wire.Writer{}
-		w.U64(near.Objs[0].Guid)
+		w.U64(vendor.Guid)
 		w.U64(it.Guid)
 		w.U32(it.Count)
 		if err := moveio.Packet(ctx, s.s, uint32(opcode.CMSGSellItem), w.B); err != nil {
@@ -99,7 +106,7 @@ func (s *Service) SellJunk(ctx context.Context, r *pb.SellRequest) (*pb.SellResu
 	after, err := s.api.Snapshot(ctx)
 	if err == nil && after.Self != nil {
 		res.Copper = after.Self.Money - money
-		res.FreeSlots = uint32(api.FreeSlots(after))
+		res.FreeSlots = after.FreeSlots
 	}
 	res.Sold = uint32(len(junk))
 	return res, nil

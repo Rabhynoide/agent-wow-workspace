@@ -36,6 +36,25 @@ const (
 	fXP          = 634
 	fNextXP      = 635
 	fCoinage     = 1170
+	fBagSlots    = 64 // CONTAINER_FIELD_NUM_SLOTS
+	fBagSlot1    = 66 // CONTAINER_FIELD_SLOT_1 (guid pairs)
+)
+
+// Inventory slots: equipped bags 19..22, backpack 23..38.
+const (
+	slotBagFirst  = 19
+	slotBagLast   = 22
+	slotPackFirst = 23
+	slotPackLast  = 38
+)
+
+// Spline flags of SMSG_MONSTER_MOVE.
+const (
+	splineParabolic = 0x00000800
+	splineFlying    = 0x00002000
+	splineCatmull   = 0x00040000
+	splineCyclic    = 0x00080000
+	splineAnimation = 0x00200000
 )
 
 const (
@@ -169,16 +188,24 @@ func (s *Store) monsterMove(r *wire.Reader) {
 		r.Skip(4)
 	}
 	flags := r.U32()
-	if flags&0x00200000 != 0 {
+	if flags&splineAnimation != 0 {
 		r.Skip(5)
 	}
 	r.U32() // duration
-	if flags&0x00000800 != 0 {
+	if flags&splineParabolic != 0 {
 		r.Skip(8)
 	}
 	n := r.U32()
 	if n == 0 || r.Err {
 		return
+	}
+	// Linear paths start with the destination; Catmull-Rom paths list every node, the last being
+	// the destination (cyclic paths have no destination: keep the current position).
+	if flags&(splineFlying|splineCatmull) != 0 {
+		if flags&splineCyclic != 0 || n > 1000 {
+			return
+		}
+		r.Skip(int(n-1) * 12)
 	}
 	dx, dy, dz := r.F32(), r.F32(), r.F32()
 	if !r.Err {

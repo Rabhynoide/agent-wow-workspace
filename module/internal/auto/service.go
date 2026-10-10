@@ -4,7 +4,6 @@ package auto
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
 
 	modv1 "github.com/agent-wow/agent-wow/pkg/modules/v1"
@@ -17,47 +16,26 @@ import (
 	statepb "wowagent/gen/statev1"
 	worldpb "wowagent/gen/worldv1"
 	"wowagent/internal/api"
+	"wowagent/internal/jobs"
 	"wowagent/internal/wire"
 )
 
 const maxWait = 25
 
-type job struct {
-	cancel context.CancelFunc
-	done   chan struct{}
-	mu     sync.Mutex
-	st     pb.AutoStatus
-	start  time.Time
-}
-
-func (j *job) set(f func(*pb.AutoStatus)) {
-	j.mu.Lock()
-	f(&j.st)
-	j.mu.Unlock()
-}
-
-func (j *job) snap() *pb.AutoStatus {
-	j.mu.Lock()
-	defer j.mu.Unlock()
-	s := j.st
-	if s.State == "running" {
-		s.ElapsedS = uint32(time.Since(j.start).Seconds())
-	}
-	return &s
-}
+type job = jobs.Job[*pb.AutoStatus]
 
 type Service struct {
 	pb.UnimplementedAutoServer
 	sess   modv1.SessionClient
 	corpse chan [4]float32
 	api    api.C
-	mu     sync.Mutex
-	cur    *job
-	last   pb.AutoStatus
+	jobs   *jobs.Runner[*pb.AutoStatus]
 }
 
 func Register(g grpc.ServiceRegistrar, s modv1.SessionClient) {
-	pb.RegisterAutoServer(g, &Service{sess: s, corpse: make(chan [4]float32, 4), api: api.C{S: s}, last: pb.AutoStatus{State: "idle"}})
+	runner := jobs.NewRunner(&pb.AutoStatus{State: "idle"})
+	runner.Decorate = func(j *job, st *pb.AutoStatus) { st.ElapsedS = uint32(time.Since(j.Start).Seconds()) }
+	pb.RegisterAutoServer(g, &Service{sess: s, corpse: make(chan [4]float32, 4), api: api.C{S: s}, jobs: runner})
 }
 
 func (s *Service) OnPacket(_ context.Context, p *modv1.WorldPacket) (*emptypb.Empty, error) {
@@ -77,39 +55,31 @@ func (s *Service) OnPacket(_ context.Context, p *modv1.WorldPacket) (*emptypb.Em
 }
 
 func (s *Service) Recover(ctx context.Context, r *pb.StatusRequest) (*pb.AutoStatus, error) {
-	s.stopCurrent()
-	jctx, cancel := context.WithCancel(context.Background())
-	j := &job{cancel: cancel, done: make(chan struct{}), start: time.Now(), st: pb.AutoStatus{State: "running", Step: "recovering corpse"}}
-	s.mu.Lock()
-	s.cur = j
-	s.mu.Unlock()
-	go s.finish(jctx, j, func() error { return (&run{s: s, j: j, ctx: jctx}).recover() })
-	return s.wait(ctx, r.WaitS, 20), nil
+	return s.start(ctx, r.WaitS, &pb.AutoStatus{State: "running", Step: "recovering corpse"}, func(r *run) error { return r.recover() }), nil
 }
 
-func (s *Service) finish(jctx context.Context, j *job, body func() error) {
-	err := body()
-	j.set(func(st *pb.AutoStatus) {
-		switch {
-		case err == nil:
-			st.State = "done"
-		case jctx.Err() != nil:
-			st.State, st.Reason = "stopped", "cancelled"
-		default:
-			st.State, st.Reason = "failed", err.Error()
-		}
-		st.ElapsedS = uint32(time.Since(j.start).Seconds())
+// start runs body as the current job and maps its error to the final state.
+func (s *Service) start(ctx context.Context, waitS uint32, initial *pb.AutoStatus, body func(r *run) error) *pb.AutoStatus {
+	s.jobs.Start(initial, func(j *job) {
+		err := body(&run{s: s, j: j, ctx: j.Ctx})
+		j.Update(func(st *pb.AutoStatus) {
+			switch {
+			case err == nil:
+				st.State = "done"
+			case j.Ctx.Err() != nil:
+				st.State, st.Reason = "stopped", "cancelled"
+			default:
+				st.State, st.Reason = "failed", err.Error()
+			}
+			st.ElapsedS = uint32(time.Since(j.Start).Seconds())
+		})
 	})
-	st := *j.snap()
-	s.mu.Lock()
-	s.last, s.cur = st, nil
-	s.mu.Unlock()
-	close(j.done)
+	return s.jobs.Wait(ctx, waitS, 20, maxWait)
 }
 
 // recover releases the spirit if needed, runs to the corpse and resurrects.
 func (r *run) recover() error {
-	snap, err := r.s.api.Snapshot(r.ctx)
+	snap, err := r.s.api.Brief(r.ctx)
 	if err != nil || snap.Self == nil {
 		return fmt.Errorf("state unavailable")
 	}
@@ -122,7 +92,9 @@ func (r *run) recover() error {
 	if !snap.Self.Ghost {
 		r.step("releasing spirit")
 		send(uint32(opcode.CMSGRepopRequest), []byte{0})
-		time.Sleep(3 * time.Second)
+		if !jobs.Sleep(r.ctx, 3*time.Second) {
+			return r.ctx.Err()
+		}
 	}
 	for len(r.s.corpse) > 0 {
 		<-r.s.corpse
@@ -144,8 +116,10 @@ func (r *run) recover() error {
 		w := &wire.Writer{}
 		w.U64(0)
 		send(uint32(opcode.CMSGReclaimCorpse), w.B)
-		time.Sleep(3 * time.Second)
-		if s, err := r.s.api.Snapshot(r.ctx); err == nil && s.Self != nil && !s.Self.Dead {
+		if !jobs.Sleep(r.ctx, 3*time.Second) {
+			return r.ctx.Err()
+		}
+		if s, err := r.s.api.Brief(r.ctx); err == nil && s.Self != nil && !s.Self.Dead {
 			return nil
 		}
 	}
@@ -153,83 +127,21 @@ func (r *run) recover() error {
 }
 
 func (s *Service) BeforeLogout(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
-	s.stopCurrent()
+	s.jobs.Stop()
 	return &emptypb.Empty{}, nil
 }
 
-func (s *Service) stopCurrent() {
-	s.mu.Lock()
-	j := s.cur
-	s.mu.Unlock()
-	if j != nil {
-		j.cancel()
-		<-j.done
-	}
-}
-
-func (s *Service) current() *pb.AutoStatus {
-	s.mu.Lock()
-	j, last := s.cur, s.last
-	s.mu.Unlock()
-	if j != nil {
-		return j.snap()
-	}
-	return &last
-}
-
 func (s *Service) Stop(context.Context, *emptypb.Empty) (*pb.AutoStatus, error) {
-	s.stopCurrent()
-	return s.current(), nil
-}
-
-func (s *Service) wait(ctx context.Context, w, def uint32) *pb.AutoStatus {
-	s.mu.Lock()
-	j := s.cur
-	s.mu.Unlock()
-	if j != nil {
-		if w == 0 {
-			w = def
-		}
-		select {
-		case <-j.done:
-		case <-time.After(time.Duration(min(w, maxWait)) * time.Second):
-		case <-ctx.Done():
-		}
-	}
-	return s.current()
+	s.jobs.Stop()
+	return s.jobs.Current(), nil
 }
 
 func (s *Service) Status(ctx context.Context, r *pb.StatusRequest) (*pb.AutoStatus, error) {
-	return s.wait(ctx, r.WaitS, 0), nil
+	return s.jobs.Wait(ctx, r.WaitS, 0, maxWait), nil
 }
 
 func (s *Service) Run(ctx context.Context, r *pb.RunRequest) (*pb.AutoStatus, error) {
-	s.stopCurrent()
-	jctx, cancel := context.WithCancel(context.Background())
-	j := &job{cancel: cancel, done: make(chan struct{}), start: time.Now(), st: pb.AutoStatus{State: "running"}}
-	s.mu.Lock()
-	s.cur = j
-	s.mu.Unlock()
-	go func() {
-		err := s.runQuests(jctx, j, r)
-		j.set(func(st *pb.AutoStatus) {
-			switch {
-			case err == nil:
-				st.State = "done"
-			case jctx.Err() != nil:
-				st.State, st.Reason = "stopped", "cancelled"
-			default:
-				st.State, st.Reason = "failed", err.Error()
-			}
-			st.ElapsedS = uint32(time.Since(j.start).Seconds())
-		})
-		st := *j.snap()
-		s.mu.Lock()
-		s.last, s.cur = st, nil
-		s.mu.Unlock()
-		close(j.done)
-	}()
-	return s.wait(ctx, r.WaitS, 20), nil
+	return s.start(ctx, r.WaitS, &pb.AutoStatus{State: "running"}, func(run *run) error { return run.quests(r) }), nil
 }
 
 // ---- quest logic -----------------------------------------------------------
@@ -242,11 +154,12 @@ type run struct {
 
 func (r *run) step(format string, a ...any) {
 	msg := fmt.Sprintf(format, a...)
-	r.j.set(func(st *pb.AutoStatus) { st.Step = msg })
+	r.j.Update(func(st *pb.AutoStatus) { st.Step = msg })
 }
 
-func (r *run) snapshot() (*statepb.SnapshotResponse, error) {
-	snap, err := r.s.api.Snapshot(r.ctx)
+// snapshot reads the light state (self, quest log, free slots) and fails when dead.
+func (r *run) snapshot() (*statepb.BriefResponse, error) {
+	snap, err := r.s.api.Brief(r.ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -256,35 +169,34 @@ func (r *run) snapshot() (*statepb.SnapshotResponse, error) {
 	if snap.Self.Dead {
 		return nil, fmt.Errorf("character is dead")
 	}
-	r.j.set(func(st *pb.AutoStatus) { st.Level, st.Xp = snap.Self.Level, snap.Self.Xp })
+	r.j.Update(func(st *pb.AutoStatus) { st.Level, st.Xp = snap.Self.Level, snap.Self.Xp })
 	return snap, nil
 }
 
-func (s *Service) runQuests(ctx context.Context, j *job, req *pb.RunRequest) error {
-	r := &run{s: s, j: j, ctx: ctx}
+func (r *run) quests(req *pb.RunRequest) error {
 	for _, id := range req.Quests {
-		j.set(func(st *pb.AutoStatus) { st.Quest = id })
+		r.j.Update(func(st *pb.AutoStatus) { st.Quest = id })
 		var err error
 		for attempt := 0; attempt < 3; attempt++ {
 			if err = r.recover(); err != nil {
 				return fmt.Errorf("recover: %w", err)
 			}
-			if err = r.doQuest(id, req.Rewards[id]); err == nil || ctx.Err() != nil {
+			if err = r.doQuest(id, req.Rewards[id]); err == nil || r.ctx.Err() != nil {
 				break
 			}
-			if snap, e := s.api.Snapshot(ctx); e != nil || snap.Self == nil || !snap.Self.Dead {
+			if b, e := r.s.api.Brief(r.ctx); e != nil || b.Self == nil || !b.Self.Dead {
 				break
 			}
 		}
 		if err != nil {
 			return fmt.Errorf("quest %d: %w", id, err)
 		}
-		j.set(func(st *pb.AutoStatus) { st.Done = append(st.Done, id) })
+		r.j.Update(func(st *pb.AutoStatus) { st.Done = append(st.Done, id) })
 	}
 	return nil
 }
 
-func inLog(snap *statepb.SnapshotResponse, id uint32) *statepb.Quest {
+func inLog(snap *statepb.BriefResponse, id uint32) *statepb.Quest {
 	for _, q := range snap.Quests {
 		if q.Id == id {
 			return q
@@ -293,9 +205,9 @@ func inLog(snap *statepb.SnapshotResponse, id uint32) *statepb.Quest {
 	return nil
 }
 
-func itemCount(snap *statepb.SnapshotResponse, entry uint32) uint32 {
+func itemCount(items []*statepb.Item, entry uint32) uint32 {
 	var n uint32
-	for _, it := range snap.Items {
+	for _, it := range items {
 		if it.Entry == entry {
 			n += it.Count
 		}
@@ -343,7 +255,9 @@ func (r *run) approachNpc(entry uint32, x, y, z float32) error {
 		if err := r.walk(o.X, o.Y, o.Z, 2.5); err != nil {
 			return err
 		}
-		time.Sleep(500 * time.Millisecond)
+		if !jobs.Sleep(r.ctx, 500*time.Millisecond) {
+			return r.ctx.Err()
+		}
 	}
 	return nil
 }
@@ -386,7 +300,7 @@ func (r *run) doQuest(id uint32, reward uint32) error {
 		if q.State == 1 {
 			break
 		}
-		if err := r.objectives(info, snap, q); err != nil {
+		if err := r.objectives(info, q); err != nil {
 			return err
 		}
 	}
@@ -413,16 +327,15 @@ func (r *run) doQuest(id uint32, reward uint32) error {
 }
 
 // objectives works on the first unfinished objective once.
-func (r *run) objectives(info *worldpb.QuestInfo, snap *statepb.SnapshotResponse, q *statepb.Quest) error {
-	killIdx := 0
+func (r *run) objectives(info *worldpb.QuestInfo, q *statepb.Quest) error {
+	var items []*statepb.Item
 	for _, o := range info.Objectives {
 		switch o.Kind {
 		case "kill", "gameobject":
 			var have uint32
-			if killIdx < len(q.Counts) {
-				have = q.Counts[killIdx]
+			if int(o.Counter) < len(q.Counts) {
+				have = q.Counts[o.Counter]
 			}
-			killIdx++
 			if have >= o.Count {
 				continue
 			}
@@ -431,11 +344,18 @@ func (r *run) objectives(info *worldpb.QuestInfo, snap *statepb.SnapshotResponse
 			}
 			return r.useObject(o.Entry, o.Name, false)
 		case "item":
-			have := itemCount(snap, o.Entry)
+			if items == nil {
+				snap, err := r.s.api.Snapshot(r.ctx)
+				if err != nil {
+					return err
+				}
+				items = snap.Items
+			}
+			have := itemCount(items, o.Entry)
 			if have >= o.Count {
 				continue
 			}
-			return r.collect(o, have)
+			return r.collect(o)
 		}
 	}
 	return nil
@@ -466,7 +386,7 @@ func (r *run) ensureSpace() error {
 	if err != nil {
 		return err
 	}
-	if api.FreeSlots(snap) >= 3 {
+	if snap.FreeSlots >= 3 {
 		return nil
 	}
 	r.step("bags nearly full: selling junk")
@@ -500,31 +420,34 @@ func (r *run) ensureSpace() error {
 }
 
 func (r *run) fightJob(req *combatpb.KillRequest) error {
-	if err := r.ensureSpace(); err != nil {
-		return err
-	}
-	st, err := r.s.api.CombatKill(r.ctx, req)
-	for err == nil && st.State == "running" {
-		r.step("combat: kills=%d items=%d hp=%d%% mana=%d%%", st.Kills, st.Items, st.HpPct, st.ManaPct)
-		if r.ctx.Err() != nil {
-			_ = r.s.api.CombatStop(context.Background())
-			return r.ctx.Err()
+	for attempt := 0; ; attempt++ {
+		if err := r.ensureSpace(); err != nil {
+			return err
 		}
-		st, err = r.s.api.CombatStatus(r.ctx, 20)
+		st, err := r.s.api.CombatKill(r.ctx, req)
+		for err == nil && st.State == "running" {
+			r.step("combat: kills=%d items=%d hp=%d%% mana=%d%%", st.Kills, st.Items, st.HpPct, st.ManaPct)
+			if r.ctx.Err() != nil {
+				_ = r.s.api.CombatStop(context.Background())
+				return r.ctx.Err()
+			}
+			st, err = r.s.api.CombatStatus(r.ctx, 20)
+		}
+		if err != nil {
+			return err
+		}
+		switch {
+		case st.State == "failed" && st.Reason == "bags full" && attempt < 2:
+			continue // sell junk and resume
+		case st.State == "failed" && st.Reason != "time limit":
+			return fmt.Errorf("combat: %s", st.Reason)
+		}
+		return nil
 	}
-	if err != nil {
-		return err
-	}
-	if st.State == "failed" && st.Reason == "bags full" {
-		return r.fightJob(req)
-	}
-	if st.State == "failed" && st.Reason != "time limit" {
-		return fmt.Errorf("combat: %s", st.Reason)
-	}
-	return nil
 }
 
-func (r *run) collect(o *worldpb.QuestObjective, have uint32) error {
+// collect gets a quest item from its nearest source on this map (best drop chance first on ties).
+func (r *run) collect(o *worldpb.QuestObjective) error {
 	srcs, err := r.s.api.ItemSources(r.ctx, o.Entry)
 	if err != nil {
 		return err
@@ -532,7 +455,25 @@ func (r *run) collect(o *worldpb.QuestObjective, have uint32) error {
 	if len(srcs) == 0 {
 		return fmt.Errorf("no known source for item %s (%d)", o.Name, o.Entry)
 	}
-	src := srcs[0]
+	snap, err := r.snapshot()
+	if err != nil {
+		return err
+	}
+	me := snap.Self
+	var src *worldpb.ItemSource
+	var bestDist float32
+	for _, cand := range srcs {
+		sp, err := r.s.api.Spawns(r.ctx, cand.Entry, me.Map, me.X, me.Y, 2000, cand.Kind)
+		if err != nil || len(sp) == 0 {
+			continue
+		}
+		if src == nil || sp[0].Dist < bestDist {
+			src, bestDist = cand, sp[0].Dist
+		}
+	}
+	if src == nil {
+		return fmt.Errorf("no source of %s (%d) spawns on this map", o.Name, o.Entry)
+	}
 	if src.Kind == "creature" {
 		return r.hunt(src.Entry, src.Name, 0, o.Entry, o.Count)
 	}
@@ -563,6 +504,6 @@ func (r *run) useObject(entry uint32, name string, loot bool) error {
 	if res, err := r.s.api.UseObject(r.ctx, entry, loot); err != nil || !res.Ok {
 		return fmt.Errorf("use %s: %v %s", name, err, res.GetReason())
 	}
-	time.Sleep(2 * time.Second)
+	jobs.Sleep(r.ctx, 2*time.Second)
 	return nil
 }

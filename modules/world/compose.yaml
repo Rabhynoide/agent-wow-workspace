@@ -8,5 +8,8 @@ services:
       - ../../logs:/logs
     environment:
       WORLD_DB_HOST: "192.168.100.7:3306"
-      WORLD_DB_USER: root
-      WORLD_DB_PASSWORD: password
+    # WORLD_DB_USER / WORLD_DB_PASSWORD (read-only account) live in modules/world/.env, ignored by git.
+    # Without it the module falls back to the server defaults (root/password).
+    env_file:
+      - path: .env
+        required: false

@@ -22,11 +22,13 @@ type response struct {
 
 // Tracker receives SMSG_LOOT_RESPONSE packets.
 type Tracker struct {
-	ch   chan response
-	Wait time.Duration
+	ch chan response
 }
 
-func NewTracker() *Tracker { return &Tracker{ch: make(chan response, 8), Wait: 8 * time.Second} }
+// DefaultWait is how long Take waits for the loot window.
+const DefaultWait = 8 * time.Second
+
+func NewTracker() *Tracker { return &Tracker{ch: make(chan response, 8)} }
 
 func (t *Tracker) OnPacket(payload []byte) {
 	r := wire.NewReader(payload)
@@ -71,7 +73,8 @@ func (t *Tracker) Drain() {
 
 // Take loots everything from guid. The caller must already be within interaction range.
 // With open=false the server already sent the loot window (e.g. after using a chest).
-func (t *Tracker) Take(ctx context.Context, s modv1.SessionClient, guid uint64, open bool) (Result, error) {
+// wait bounds how long to wait for the loot window.
+func (t *Tracker) Take(ctx context.Context, s modv1.SessionClient, guid uint64, open bool, wait time.Duration) (Result, error) {
 	if open {
 		t.Drain()
 		w := &wire.Writer{}
@@ -83,7 +86,7 @@ func (t *Tracker) Take(ctx context.Context, s modv1.SessionClient, guid uint64, 
 	var resp response
 	select {
 	case resp = <-t.ch:
-	case <-time.After(t.Wait):
+	case <-time.After(wait):
 		return Result{}, fmt.Errorf("no loot response")
 	case <-ctx.Done():
 		return Result{}, ctx.Err()

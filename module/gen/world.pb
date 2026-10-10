@@ -4,7 +4,7 @@
 EmptyB}
 com.google.protobufB
 EmptyProtoPZ.google.golang.org/protobuf/types/known/emptypbø¢GPBªGoogle.Protobuf.WellKnownTypesbproto3
-Ò
+ì
 world.protowowagent.world.v1google/protobuf/empty.proto"Î
 FindNpcRequest
 name (	Rname
@@ -41,12 +41,13 @@ map_filter (R	mapFilter
 map (Rmap
 x (Rx
 y (Ry
-z (Rz"d
+z (Rz"~
 QuestObjective
 kind (	Rkind
 entry (Rentry
 name (	Rname
-count (Rcount"ã
+count (Rcount
+counter (Rcounter"ã
 	QuestInfo
 id (Rid
 title (	Rtitle
