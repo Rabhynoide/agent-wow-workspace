@@ -1,7 +1,7 @@
 # NOTES (lire en premier à chaque session)
 
 ## Etat du personnage (fin de session 2026-10-10, soir)
-- Claudia, humain prêtre (guid 1), niveau 5, XP 2580/2800 (il manque 220 pour le niveau 6), 237 cuivres, 152 PV max. Position : Goldshire, devant le marchand Brog Hamfist (~-9465,12,58), map 0. Session fermée.
+- Claudia, humain prêtre (guid 1), niveau 6 (atteint le 2026-10-10 via la chaîne Maclure 85-86-...; Bouclier et Châtiment 2 appris), XP ~343/3600, ~47 cuivres, 171 PV max. Voir la fin de session pour la position. Position : Goldshire, devant le marchand Brog Hamfist (~-9465,12,58), map 0. Session fermée.
 - Sacs : 12 emplacements libres (revente automatique faite le 2026-10-10 ; `auto` vend tout seul à moins de 3 emplacements libres). Marchands de Goldshire : Brog Hamfist (151) à (-9465,10,57), aussi Farley 295, Dobbins 465, Toddrick 3935.
 - Quêtes faites : celles de Northshire + 54 « Report to Goldshire » + 2158 « Rest and Relaxation ». Aucune quête en cours. Les autres quêtes d'Elwynn proposées à son niveau sont soit dangereuses (60, 47 : kobolds 5-8 dans la mine de Fargodeep, 3 morts), soit non gérées (5624 soin de Guard Roberts ; 62 exploration).
 - Entraîneur de classe de Goldshire : Priestess Josetta (377) à (-9461,33). Au niveau 6 : Bouclier (100 pc) et Châtiment 2 (100 pc) : il faut ~200 pc.
@@ -20,7 +20,7 @@ Je ne peux pas changer de modèle moi-même : je propose `/model <nom>` quand le
 Icy Veins bloque ma lecture (403). Aux paliers de niveau listés dans BACKLOG (9, 19, 39, 49, 59, changement de zone), prévenir l'utilisateur en une ligne pour qu'il colle le guide complet, avant de modifier `priest.Build`, les poids de `gear` ou la rotation de `combat`.
 
 ## Guides de leveling
-Les routes de quêtes extraites par Claude Desktop sont dans `journal/guides/` (format : README du dossier). Valider avec `cd module && go run ./cmd/guidecheck -dir ../journal/guides`, jouer avec `... -ids -from <niveau> -to <niveau>` puis `scripts/job.sh auto.run '<json>'`. Les guides ont 2-3 ans (WotLK Classic ≠ 3.3.5) : la base du serveur fait foi, guidecheck signale les écarts.
+Source principale : guides Zygor (voir MODULES.md « zygor2route ») → `assets/routes/`. Les routes extraites par Claude Desktop (en pause) iraient dans `journal/guides/` (format : README du dossier). Valider avec `cd module && go run ./cmd/guidecheck -dir ../journal/guides`, jouer avec `... -ids -from <niveau> -to <niveau>` puis `scripts/job.sh auto.run '<json>'`. Les guides ont 2-3 ans (WotLK Classic ≠ 3.3.5) : la base du serveur fait foi, guidecheck signale les écarts.
 
 ## Démarrer / arrêter
 - Démarrer : `scripts/start.sh` (vérifie auth + port, lance `char play` en arrière-plan, attend "world session ready", 1 à 3 min ; une seule ligne en sortie). Lancer la commande Bash avec un timeout de 10 min.
