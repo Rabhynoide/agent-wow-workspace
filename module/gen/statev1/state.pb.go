@@ -406,7 +406,9 @@ type SnapshotResponse struct {
 	Objects uint32                 `protobuf:"varint,4,opt,name=objects,proto3" json:"objects,omitempty"`
 	Packets uint32                 `protobuf:"varint,5,opt,name=packets,proto3" json:"packets,omitempty"`
 	// Empty slots in the backpack and equipped bags.
-	FreeSlots     uint32 `protobuf:"varint,6,opt,name=free_slots,json=freeSlots,proto3" json:"free_slots,omitempty"`
+	FreeSlots uint32 `protobuf:"varint,6,opt,name=free_slots,json=freeSlots,proto3" json:"free_slots,omitempty"`
+	// Lowest durability of the equipped items, in percent (100 when nothing can wear out).
+	DurabilityPct uint32 `protobuf:"varint,7,opt,name=durability_pct,json=durabilityPct,proto3" json:"durability_pct,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -483,12 +485,20 @@ func (x *SnapshotResponse) GetFreeSlots() uint32 {
 	return 0
 }
 
+func (x *SnapshotResponse) GetDurabilityPct() uint32 {
+	if x != nil {
+		return x.DurabilityPct
+	}
+	return 0
+}
+
 // Brief is a light snapshot without the item list.
 type BriefResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Self          *SelfInfo              `protobuf:"bytes,1,opt,name=self,proto3" json:"self,omitempty"`
 	Quests        []*Quest               `protobuf:"bytes,2,rep,name=quests,proto3" json:"quests,omitempty"`
 	FreeSlots     uint32                 `protobuf:"varint,3,opt,name=free_slots,json=freeSlots,proto3" json:"free_slots,omitempty"`
+	DurabilityPct uint32                 `protobuf:"varint,4,opt,name=durability_pct,json=durabilityPct,proto3" json:"durability_pct,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -540,6 +550,13 @@ func (x *BriefResponse) GetQuests() []*Quest {
 func (x *BriefResponse) GetFreeSlots() uint32 {
 	if x != nil {
 		return x.FreeSlots
+	}
+	return 0
+}
+
+func (x *BriefResponse) GetDurabilityPct() uint32 {
+	if x != nil {
+		return x.DurabilityPct
 	}
 	return 0
 }
@@ -1047,7 +1064,7 @@ const file_state_proto_rawDesc = "" +
 	"\x05Quest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\rR\x02id\x12\x14\n" +
 	"\x05state\x18\x02 \x01(\rR\x05state\x12\x16\n" +
-	"\x06counts\x18\x03 \x03(\rR\x06counts\"\xf7\x01\n" +
+	"\x06counts\x18\x03 \x03(\rR\x06counts\"\x9e\x02\n" +
 	"\x10SnapshotResponse\x12/\n" +
 	"\x04self\x18\x01 \x01(\v2\x1b.wowagent.state.v1.SelfInfoR\x04self\x12-\n" +
 	"\x05items\x18\x02 \x03(\v2\x17.wowagent.state.v1.ItemR\x05items\x120\n" +
@@ -1055,12 +1072,14 @@ const file_state_proto_rawDesc = "" +
 	"\aobjects\x18\x04 \x01(\rR\aobjects\x12\x18\n" +
 	"\apackets\x18\x05 \x01(\rR\apackets\x12\x1d\n" +
 	"\n" +
-	"free_slots\x18\x06 \x01(\rR\tfreeSlots\"\x91\x01\n" +
+	"free_slots\x18\x06 \x01(\rR\tfreeSlots\x12%\n" +
+	"\x0edurability_pct\x18\a \x01(\rR\rdurabilityPct\"\xb8\x01\n" +
 	"\rBriefResponse\x12/\n" +
 	"\x04self\x18\x01 \x01(\v2\x1b.wowagent.state.v1.SelfInfoR\x04self\x120\n" +
 	"\x06quests\x18\x02 \x03(\v2\x18.wowagent.state.v1.QuestR\x06quests\x12\x1d\n" +
 	"\n" +
-	"free_slots\x18\x03 \x01(\rR\tfreeSlots\"\x9f\x01\n" +
+	"free_slots\x18\x03 \x01(\rR\tfreeSlots\x12%\n" +
+	"\x0edurability_pct\x18\x04 \x01(\rR\rdurabilityPct\"\x9f\x01\n" +
 	"\rNearbyRequest\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x14\n" +
 	"\x05entry\x18\x02 \x01(\rR\x05entry\x12\x16\n" +

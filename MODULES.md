@@ -11,14 +11,14 @@ Test navmesh hors-ligne : `cd module && go test ./internal/nav -v`.
 - Source : dépôt GitHub ErebusAres/ZygorGuidesRemaster-3.3.5a_WOTLK cloné dans `assets/zygor/repo/` (contenu tiers sous droits : JAMAIS dans git ; `assets/` est ignoré). On garde seulement notre code.
 - `cd module && go run ./cmd/zygor2route -src ../assets/zygor/repo/ZygorGuidesViewerRM/Guides/Leveling/ZygorGuidesAlliance.lua -out ../assets/routes` (idem `ZygorGuidesHorde.lua`, avec `-prefix horde`) : 25 routes JSON (Alliance : 5 races de départ 1-13, puis Main Guide 13-20, Levels 20-25 ... Northrend 78-80) avec ids de quêtes/PNJ/monstres, variantes `only` (race+classe).
 - `go run ./cmd/guidecheck -max 6 <fichiers de la chaîne dans l'ordre>` valide contre la base (Human 1-13 + 13-20 + 20-25 + 25-30 : 1090 étapes, 296 quêtes, 8 écarts bénins).
-- `go run ./cmd/guidecheck -plan -char Claudia -race Human -class Priest -level 6 -n 12 <fichiers>` : prochaines quêtes de la route non faites (lit `character_queststatus_rewarded`), hors quêtes manuelles, filtrées par race/classe/niveau, + JSON pour `auto.run`. Chaîne humaine : `assets/routes/alliance_01_human_1_13.json alliance_07_main_guide_13_20.json alliance_08_levels_20_25.json ...`.
+- `go run ./cmd/guidecheck -plan -char Claudia -race Human -class Priest -level 6 -n 12 [-maxabove 2] <fichiers>` : prochaines quêtes de la route non faites (lit `character_queststatus_rewarded`), sans les quêtes manuelles (exploration, sort à lancer, groupe, élite/donjon/raid/escorte/PvP via QuestInfoID), autorisées à la race et à la classe, niveau minimum atteint, niveau de quête <= niveau + maxabove, prérequis rendus ou placés avant dans la liste ; + JSON pour `auto.run` (qui s'arrête au premier refus). Chaîne humaine : `assets/routes/alliance_01_human_1_13.json alliance_07_main_guide_13_20.json alliance_08_levels_20_25.json ...`.
 
 ## guidecheck  (outil hors jeu, `module/cmd/guidecheck`)
 - `cd module && go run ./cmd/guidecheck -dir ../journal/guides` : valide les guides extraits (format dans `journal/guides/README.md`) contre la base : titre/id de quête, race, classe, niveau minimum, PNJ donneur/rendeur, prérequis, doublons de titre (départagés par PNJ puis classe). Liste les quêtes à faire à la main (exploration, sort à lancer sur une cible, groupe). Code de sortie 1 s'il y a des problèmes.
 - `... -ids -from 5 -to 10` : imprime `{"quests":[...]}` (ordre du guide, quêtes réalisables par `auto`) à donner à `auto.run`. Nécessite la base accessible depuis l'hôte (WORLD_DB_HOST, défaut 192.168.100.7:3306).
 
 ## state  (paquets -> état du monde)
-- `state.brief {}` : self (dont class_id, race, talent_points) + quêtes + free_slots, sans les objets (à préférer).
+- `state.brief {}` : self (dont class_id, race, talent_points) + quêtes + free_slots + durability_pct (pire objet équipé, 100 si rien ne s'use), sans les objets (à préférer).
 - `state.snapshot {}` : self (guid,map,x,y,z,o,level,hp,power,xp,money,target,dead,run_speed), items (slot -1 = sac secondaire ou banque), quêtes (id,state,counts[4] uint16), free_slots (sac à dos + sacs équipés), nb objets.
 - `state.nearby {kind:"unit|gameobject|player|any", entry, radius, max(5), alive_only, npc_flags}` : trié par distance (guid,entry,pos,dist,level,hp,faction,flags,npc_flags,dyn_flags,target).
 - `state.spells {}` : sorts connus. self.ghost/dead (fantôme détecté). `state.get_obj {guid}`, `state.set_pos {x,y,z,o,map}` (utilisé par move).
@@ -26,7 +26,7 @@ Test navmesh hors-ligne : `cd module && go test ./internal/nav -v`.
 - Debug : un paquet d'update non parsable est dumpé dans `logs/state_bad_N.hex` (5 max).
 
 ## world  (MySQL acore_world, lecture seule, session `transaction_read_only`)
-- `world.find_npc {name|entry, map_filter+map, x,y,radius, npc_flags, max}` : spawns + distance. npc_flags : vendeur 128, réparateur 4096, aubergiste 65536, questgiver 2, gossip 1.
+- `world.find_npc {name|entry, map_filter+map, x,y,radius, npc_flags, max}` : spawns + distance (sans les PNJ techniques « [DND] ... » : 61 autour de Goldshire portent les flags marchand/réparateur). `world.spawns` renvoie aussi `rank` (1 élite, 2 rare élite, 3 boss, 4 rare). npc_flags : vendeur 128, réparateur 4096, aubergiste 65536, questgiver 2, gossip 1.
 - `world.quest_info {id|title}` : niveau, objectifs (kill/item/gameobject + noms, `counter` = index du compteur du journal), starters/enders avec coords, quête suivante/précédente.
 - `world.quests_for_npc {entry}`, `world.spawns {entry,map,x,y,radius,kind:creature|gameobject}`, `world.item_info {entry|name}`, `world.creature {entry}`.
 - `world.class_trainers {class_id, map, x, y, max(3)}` : entraîneurs de classe les plus proches avec leurs sorts (coût, niveau, prérequis).
@@ -44,13 +44,15 @@ Test navmesh hors-ligne : `cd module && go test ./internal/nav -v`.
 - Limites : sorts de prêtre seulement, pas de fuite, pas de ciblage par hostilité, pas de suivi des auras (minuteries).
 
 ## town  (requires: state, world, move)
-- `town.sell_junk {dry_run, min_free, show_kept}` : vend ce que les règles `module/internal/sellrule` désignent, au marchand à <= 5 yards (limite du serveur : 5,5 ; il faut déjà y être, `auto` s'en charge). `dry_run` + `show_kept` donnent le détail (objet, quantité, prix, raison) sans rien vendre. `min_free` : s'arrêter quand ce nombre d'emplacements est libre. Vérifie ensuite ce que le serveur a vraiment pris.
+- `town.sell_junk {dry_run, min_free, show_kept}` (garde aussi les réactifs, classe 5) : vend ce que les règles `module/internal/sellrule` désignent, au marchand à <= 5 yards (limite du serveur : 5,5 ; il faut déjà y être, `auto` s'en charge). `dry_run` + `show_kept` donnent le détail (objet, quantité, prix, raison) sans rien vendre. `min_free` : s'arrêter quand ce nombre d'emplacements est libre. Vérifie ensuite ce que le serveur a vraiment pris.
 - Règles : on VEND les objets gris ; l'armure/arme que la classe ne peut pas porter (compétence non apprise) ou qui n'améliore pas l'équipement (`gear.Gain`) ; les marchandises/recettes/gemmes/munitions ; les objets divers « junk » ; les nourritures et boissons en trop (on garde la meilleure entrée de chaque sorte, catégories 11 et 59) ; les consommables dont le niveau est inférieur d'au moins 10 au nôtre. On GARDE : objets de quête (journal + classe 12), objets impossibles à vendre (pierre de foyer), bleus et mieux, sacs (pas équipés automatiquement), clés, améliorations non équipées (ou à moins de 5 niveaux), autres consommables.
+- `town.repair {}` : répare tout (CMSG_REPAIR_ITEM, objet 0) chez un réparateur (flag 4096) à <= 5 yards ; répare ce que l'argent permet. `auto` passe chez un marchand quand les sacs sont presque pleins OU la durabilité < 60 %, vend, puis répare si le PNJ sait réparer.
 - Les objets vendus restent dans la liste de rachat du marchand : `state` ne les liste plus (sinon les comptes d'objets de quête étaient faussés).
 
 ## auto  (requires: state, world, move, quest, combat, town, progress) — orchestrateur
 - `auto.run {quests:[ids], rewards:{id:index}, no_progress, wait_s}` : au départ et après chaque quête (sauf `no_progress`) : `progress.gear`, `progress.talents`, et entraînement si l'entraîneur a des sorts à apprendre à moins de 1500 yards ; récompense choisie par `progress.pick_reward` si absente de `rewards` ; événements dans `progress` du statut. Puis pour chaque quête : va au donneur, accepte, objectifs (kill / objets via la source la plus proche sur la carte / objets de décor), rend. Suit les PNJ qui se déplacent. Reprend après une mort. Gère sac plein.
 - `auto.status {wait_s}`, `auto.stop {}`, `auto.recover {wait_s}` (libérer l'âme, puis, aux niveaux 1-10 seulement, ressusciter chez l'esprit guérisseur du cimetière s'il est à moins de 150 yards (malus de résurrection dès le niveau 11 : jamais utilisé ensuite) ; sinon courir au corps et le réclamer en insistant 4 minutes).
+- Danger : `hunt`/`collect` refusent les monstres élites ou de niveau > niveau + 2 (« too dangerous for now »), mais ne voient pas les groupes (ex. kobolds de la mine) : voir BACKLOG. Entraîneur seulement à moins de 400 yards. Talents par lots de 10.
 - Limites : pas de quête à groupe/élite, une carte à la fois.
 
 ## progress  (requires: state, world, move) — rendre le personnage plus fort

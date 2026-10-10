@@ -45,10 +45,12 @@ type Service struct {
 	loot *loot.Tracker
 	guid uint64
 
-	jobs       *jobs.Runner[*pb.CombatStatus]
-	mu         sync.Mutex
-	castCount  uint8
-	castFailed time.Time
+	jobs      *jobs.Runner[*pb.CombatStatus]
+	mu        sync.Mutex
+	castCount uint8
+	// failures by cast count (our CMSG_CAST_SPELL counter): SMSG_CAST_FAILED of other casts
+	// (server-side or item spells, count 0) must not be taken for ours.
+	failures   map[uint8]castFailure
 	lastShield time.Time // Weakened Soul: no new shield for 15 s
 	lastRenew  time.Time
 	lastBuff   time.Time // Fortitude / Inner Fire (30 min)
@@ -58,7 +60,7 @@ func Register(g grpc.ServiceRegistrar, s modv1.SessionClient) {
 	guid, _ := strconv.ParseUint(os.Getenv("AGENT_WOW_CHARACTER_GUID"), 10, 64)
 	runner := jobs.NewRunner(&pb.CombatStatus{State: "idle"})
 	runner.Decorate = func(j *job, st *pb.CombatStatus) { st.ElapsedS = uint32(time.Since(j.Start).Seconds()) }
-	pb.RegisterCombatServer(g, &Service{s: s, api: api.C{S: s}, loot: loot.NewTracker(), guid: guid, jobs: runner})
+	pb.RegisterCombatServer(g, &Service{s: s, api: api.C{S: s}, loot: loot.NewTracker(), guid: guid, jobs: runner, failures: map[uint8]castFailure{}})
 }
 
 func (s *Service) OnPacket(_ context.Context, p *modv1.WorldPacket) (*emptypb.Empty, error) {
@@ -68,9 +70,12 @@ func (s *Service) OnPacket(_ context.Context, p *modv1.WorldPacket) (*emptypb.Em
 	case uint32(opcode.SMSGCastFailed):
 		r := wire.NewReader(p.GetPayload())
 		cnt, spell, res := r.U8(), r.U32(), r.U8()
+		if cnt == 0 { // not one of our casts
+			break
+		}
 		slog.Info("cast failed", "count", cnt, "spell", spell, "result", res)
 		s.mu.Lock()
-		s.castFailed = time.Now()
+		s.failures[cnt] = castFailure{spell: spell, at: time.Now()}
 		s.mu.Unlock()
 	}
 	return &emptypb.Empty{}, nil
@@ -125,10 +130,19 @@ func itemCount(items []*statepb.Item, entry uint32) uint32 {
 	return n
 }
 
-func (s *Service) cast(ctx context.Context, spell uint32, target uint64) error {
+type castFailure struct {
+	spell uint32
+	at    time.Time
+}
+
+// cast sends CMSG_CAST_SPELL and returns its cast count (never 0: the server uses 0 for its own casts).
+func (s *Service) cast(ctx context.Context, spell uint32, target uint64) (uint8, error) {
 	s.mu.Lock()
-	s.castCount++
+	if s.castCount++; s.castCount == 0 {
+		s.castCount = 1
+	}
 	cnt := s.castCount
+	delete(s.failures, cnt)
 	s.mu.Unlock()
 	w := &wire.Writer{}
 	w.U8(cnt)
@@ -136,7 +150,7 @@ func (s *Service) cast(ctx context.Context, spell uint32, target uint64) error {
 	w.U8(0)
 	w.U32(0x2)
 	w.PackedGUID(target)
-	return moveio.Packet(ctx, s.s, uint32(opcode.CMSGCastSpell), w.B)
+	return cnt, moveio.Packet(ctx, s.s, uint32(opcode.CMSGCastSpell), w.B)
 }
 
 // face turns towards the target when the orientation differs by more than ~6 degrees.
@@ -210,6 +224,7 @@ func (s *Service) rest(ctx context.Context, j *job, hpTarget, manaTarget uint32,
 		}
 		me := snap.Self
 		if me.Dead {
+			s.forgetBuffs()
 			return "failed", "dead"
 		}
 		hp := pct(me.Hp, me.MaxHp)
@@ -282,6 +297,7 @@ func (s *Service) kill(ctx context.Context, j *job, r *pb.KillRequest) (string, 
 			return "failed", "state unavailable"
 		}
 		if snap.Self.Dead {
+			s.forgetBuffs()
 			return "failed", "dead"
 		}
 		items := uint32(0)
@@ -355,11 +371,20 @@ func (s *Service) kill(ctx context.Context, j *job, r *pb.KillRequest) (string, 
 
 // tryCast casts a spell and reports whether the server did not reject it right away.
 func (s *Service) tryCast(ctx context.Context, spell uint32, target uint64) bool {
-	_ = s.cast(ctx, spell, target)
+	cnt, err := s.cast(ctx, spell, target)
+	if err != nil {
+		return false
+	}
 	sleep(ctx, 400*time.Millisecond)
+	return !s.failedCast(cnt, spell)
+}
+
+// failedCast tells whether the server rejected our cast number cnt of this spell.
+func (s *Service) failedCast(cnt uint8, spell uint32) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return time.Since(s.castFailed) >= 800*time.Millisecond
+	f, ok := s.failures[cnt]
+	return ok && f.spell == spell
 }
 
 // since returns the time elapsed since a shared timestamp.
@@ -375,6 +400,13 @@ func (s *Service) mark(t *time.Time) {
 	s.mu.Unlock()
 }
 
+// forgetBuffs is called on death: buffs (and Weakened Soul) are gone.
+func (s *Service) forgetBuffs() {
+	s.mu.Lock()
+	s.lastBuff, s.lastShield, s.lastRenew = time.Time{}, time.Time{}, time.Time{}
+	s.mu.Unlock()
+}
+
 // buff refreshes Power Word: Fortitude and Inner Fire every 25 minutes (out of combat).
 func (s *Service) buff(ctx context.Context, me *statepb.SelfInfo) {
 	if s.since(&s.lastBuff) < 25*time.Minute || pct(me.Power, me.MaxPower) < 40 {
@@ -384,13 +416,16 @@ func (s *Service) buff(ctx context.Context, me *statepb.SelfInfo) {
 	if err != nil {
 		return
 	}
+	ok := true
 	for _, ranks := range [][]uint32{priest.Fortitude, priest.InnerFire} {
 		if id := best(known, ranks); id != 0 {
-			s.tryCast(ctx, id, me.Guid)
+			ok = s.tryCast(ctx, id, me.Guid) && ok
 			sleep(ctx, 1200*time.Millisecond) // global cooldown
 		}
 	}
-	s.mark(&s.lastBuff)
+	if ok { // a failed buff is retried before the next pull
+		s.mark(&s.lastBuff)
+	}
 }
 
 // fight returns whether the target died; a non-empty reason aborts the job.
@@ -444,9 +479,7 @@ func (s *Service) fight(ctx context.Context, j *job, guid uint64) (bool, string)
 		}
 		me := snap.Self
 		if me.Dead {
-			s.mu.Lock()
-			s.lastBuff = time.Time{} // buffs are lost on death
-			s.mu.Unlock()
+			s.forgetBuffs()
 			return false, "dead"
 		}
 		hp, mana := pct(me.Hp, me.MaxHp), pct(me.Power, me.MaxPower)
@@ -509,7 +542,7 @@ func (s *Service) fight(ctx context.Context, j *job, guid uint64) (bool, string)
 		if outOfMana {
 			if shoot != 0 {
 				if time.Since(lastShoot) > 5*time.Second {
-					_ = s.cast(ctx, shoot, guid)
+					_, _ = s.cast(ctx, shoot, guid)
 					lastShoot = time.Now()
 				}
 			} else if time.Since(lastSwing) > 3*time.Second {

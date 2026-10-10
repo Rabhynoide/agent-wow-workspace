@@ -41,9 +41,10 @@ func TestRules(t *testing.T) {
 		{Entry: 7, Quality: 3, Class: 4, Subclass: 6, InventoryType: 14, SellPrice: 900, AllowableClass: -1, AllowableRace: -1},        // rare
 		{Entry: 8, Quality: 1, Class: 7, SellPrice: 4},                                                                                 // trade good
 		{Entry: 9, Quality: 1, Class: 1, SellPrice: 10},                                                                                // bag
+		{Entry: 17029, Quality: 1, Class: 5, SellPrice: 25},                                                                            // reagent (Holy Candle)
 	}
 	m := plan(t, c, items...)
-	want := map[uint32]bool{1: true, 2: true, 3: true, 4: true, 5: false, 772: false, 6948: false, 7: false, 8: true, 9: false}
+	want := map[uint32]bool{1: true, 2: true, 3: true, 4: true, 5: false, 772: false, 6948: false, 7: false, 8: true, 9: false, 17029: false}
 	for e, sell := range want {
 		if m[e].Sell != sell {
 			t.Errorf("item %d: sell=%v (%s), want %v", e, m[e].Sell, m[e].Reason, sell)

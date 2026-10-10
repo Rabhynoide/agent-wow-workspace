@@ -37,7 +37,18 @@ message SellResult {
   repeated SellLine lines = 7;
 }
 
+message RepairResult {
+  bool ok = 1;
+  string reason = 2;
+  // Copper spent.
+  uint32 copper = 3;
+  uint32 durability_pct = 4;
+  string vendor = 5;
+}
+
 service Town {
   rpc SellJunk(SellRequest) returns (SellResult);
+  // Repairs all items at a repair vendor within 5 yards.
+  rpc Repair(google.protobuf.Empty) returns (RepairResult);
   rpc BeforeLogout(google.protobuf.Empty) returns (google.protobuf.Empty);
 }

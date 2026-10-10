@@ -265,6 +265,83 @@ func (x *SellResult) GetLines() []*SellLine {
 	return nil
 }
 
+type RepairResult struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Ok     bool                   `protobuf:"varint,1,opt,name=ok,proto3" json:"ok,omitempty"`
+	Reason string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	// Copper spent.
+	Copper        uint32 `protobuf:"varint,3,opt,name=copper,proto3" json:"copper,omitempty"`
+	DurabilityPct uint32 `protobuf:"varint,4,opt,name=durability_pct,json=durabilityPct,proto3" json:"durability_pct,omitempty"`
+	Vendor        string `protobuf:"bytes,5,opt,name=vendor,proto3" json:"vendor,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RepairResult) Reset() {
+	*x = RepairResult{}
+	mi := &file_town_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RepairResult) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RepairResult) ProtoMessage() {}
+
+func (x *RepairResult) ProtoReflect() protoreflect.Message {
+	mi := &file_town_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RepairResult.ProtoReflect.Descriptor instead.
+func (*RepairResult) Descriptor() ([]byte, []int) {
+	return file_town_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *RepairResult) GetOk() bool {
+	if x != nil {
+		return x.Ok
+	}
+	return false
+}
+
+func (x *RepairResult) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *RepairResult) GetCopper() uint32 {
+	if x != nil {
+		return x.Copper
+	}
+	return 0
+}
+
+func (x *RepairResult) GetDurabilityPct() uint32 {
+	if x != nil {
+		return x.DurabilityPct
+	}
+	return 0
+}
+
+func (x *RepairResult) GetVendor() string {
+	if x != nil {
+		return x.Vendor
+	}
+	return ""
+}
+
 var File_town_proto protoreflect.FileDescriptor
 
 const file_town_proto_rawDesc = "" +
@@ -291,9 +368,16 @@ const file_town_proto_rawDesc = "" +
 	"\n" +
 	"free_slots\x18\x05 \x01(\rR\tfreeSlots\x12\x16\n" +
 	"\x06vendor\x18\x06 \x01(\tR\x06vendor\x120\n" +
-	"\x05lines\x18\a \x03(\v2\x1a.wowagent.town.v1.SellLineR\x05lines2\x8f\x01\n" +
+	"\x05lines\x18\a \x03(\v2\x1a.wowagent.town.v1.SellLineR\x05lines\"\x8d\x01\n" +
+	"\fRepairResult\x12\x0e\n" +
+	"\x02ok\x18\x01 \x01(\bR\x02ok\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x16\n" +
+	"\x06copper\x18\x03 \x01(\rR\x06copper\x12%\n" +
+	"\x0edurability_pct\x18\x04 \x01(\rR\rdurabilityPct\x12\x16\n" +
+	"\x06vendor\x18\x05 \x01(\tR\x06vendor2\xd1\x01\n" +
 	"\x04Town\x12G\n" +
-	"\bSellJunk\x12\x1d.wowagent.town.v1.SellRequest\x1a\x1c.wowagent.town.v1.SellResult\x12>\n" +
+	"\bSellJunk\x12\x1d.wowagent.town.v1.SellRequest\x1a\x1c.wowagent.town.v1.SellResult\x12@\n" +
+	"\x06Repair\x12\x16.google.protobuf.Empty\x1a\x1e.wowagent.town.v1.RepairResult\x12>\n" +
 	"\fBeforeLogout\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.EmptyB\x1cZ\x1awowagent/gen/townv1;townv1b\x06proto3"
 
 var (
@@ -308,21 +392,24 @@ func file_town_proto_rawDescGZIP() []byte {
 	return file_town_proto_rawDescData
 }
 
-var file_town_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_town_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_town_proto_goTypes = []any{
 	(*SellRequest)(nil),   // 0: wowagent.town.v1.SellRequest
 	(*SellLine)(nil),      // 1: wowagent.town.v1.SellLine
 	(*SellResult)(nil),    // 2: wowagent.town.v1.SellResult
-	(*emptypb.Empty)(nil), // 3: google.protobuf.Empty
+	(*RepairResult)(nil),  // 3: wowagent.town.v1.RepairResult
+	(*emptypb.Empty)(nil), // 4: google.protobuf.Empty
 }
 var file_town_proto_depIdxs = []int32{
 	1, // 0: wowagent.town.v1.SellResult.lines:type_name -> wowagent.town.v1.SellLine
 	0, // 1: wowagent.town.v1.Town.SellJunk:input_type -> wowagent.town.v1.SellRequest
-	3, // 2: wowagent.town.v1.Town.BeforeLogout:input_type -> google.protobuf.Empty
-	2, // 3: wowagent.town.v1.Town.SellJunk:output_type -> wowagent.town.v1.SellResult
-	3, // 4: wowagent.town.v1.Town.BeforeLogout:output_type -> google.protobuf.Empty
-	3, // [3:5] is the sub-list for method output_type
-	1, // [1:3] is the sub-list for method input_type
+	4, // 2: wowagent.town.v1.Town.Repair:input_type -> google.protobuf.Empty
+	4, // 3: wowagent.town.v1.Town.BeforeLogout:input_type -> google.protobuf.Empty
+	2, // 4: wowagent.town.v1.Town.SellJunk:output_type -> wowagent.town.v1.SellResult
+	3, // 5: wowagent.town.v1.Town.Repair:output_type -> wowagent.town.v1.RepairResult
+	4, // 6: wowagent.town.v1.Town.BeforeLogout:output_type -> google.protobuf.Empty
+	4, // [4:7] is the sub-list for method output_type
+	1, // [1:4] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
 	1, // [1:1] is the sub-list for extension extendee
 	0, // [0:1] is the sub-list for field type_name
@@ -339,7 +426,7 @@ func file_town_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_town_proto_rawDesc), len(file_town_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

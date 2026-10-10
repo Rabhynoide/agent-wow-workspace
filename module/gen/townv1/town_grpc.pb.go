@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	Town_SellJunk_FullMethodName     = "/wowagent.town.v1.Town/SellJunk"
+	Town_Repair_FullMethodName       = "/wowagent.town.v1.Town/Repair"
 	Town_BeforeLogout_FullMethodName = "/wowagent.town.v1.Town/BeforeLogout"
 )
 
@@ -29,6 +30,8 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type TownClient interface {
 	SellJunk(ctx context.Context, in *SellRequest, opts ...grpc.CallOption) (*SellResult, error)
+	// Repairs all items at a repair vendor within 5 yards.
+	Repair(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*RepairResult, error)
 	BeforeLogout(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
@@ -50,6 +53,16 @@ func (c *townClient) SellJunk(ctx context.Context, in *SellRequest, opts ...grpc
 	return out, nil
 }
 
+func (c *townClient) Repair(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*RepairResult, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RepairResult)
+	err := c.cc.Invoke(ctx, Town_Repair_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *townClient) BeforeLogout(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -65,6 +78,8 @@ func (c *townClient) BeforeLogout(ctx context.Context, in *emptypb.Empty, opts .
 // for forward compatibility.
 type TownServer interface {
 	SellJunk(context.Context, *SellRequest) (*SellResult, error)
+	// Repairs all items at a repair vendor within 5 yards.
+	Repair(context.Context, *emptypb.Empty) (*RepairResult, error)
 	BeforeLogout(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	mustEmbedUnimplementedTownServer()
 }
@@ -78,6 +93,9 @@ type UnimplementedTownServer struct{}
 
 func (UnimplementedTownServer) SellJunk(context.Context, *SellRequest) (*SellResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SellJunk not implemented")
+}
+func (UnimplementedTownServer) Repair(context.Context, *emptypb.Empty) (*RepairResult, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Repair not implemented")
 }
 func (UnimplementedTownServer) BeforeLogout(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method BeforeLogout not implemented")
@@ -121,6 +139,24 @@ func _Town_SellJunk_Handler(srv interface{}, ctx context.Context, dec func(inter
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Town_Repair_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TownServer).Repair(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Town_Repair_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TownServer).Repair(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Town_BeforeLogout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
@@ -149,6 +185,10 @@ var Town_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SellJunk",
 			Handler:    _Town_SellJunk_Handler,
+		},
+		{
+			MethodName: "Repair",
+			Handler:    _Town_Repair_Handler,
 		},
 		{
 			MethodName: "BeforeLogout",

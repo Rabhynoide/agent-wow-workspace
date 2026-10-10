@@ -59,6 +59,7 @@ func (s *Service) Snapshot(context.Context, *emptypb.Empty) (*pb.SnapshotRespons
 	resp.Self = st.selfInfo(me)
 	resp.Quests = questLog(me)
 	resp.FreeSlots = st.freeSlots(me)
+	resp.DurabilityPct = st.durability(me)
 	slotOf := map[uint64]int32{}
 	inBag := map[uint64][2]uint32{} // item guid -> (bag inventory slot, index)
 	for slot := 0; slot <= slotPackLast; slot++ {
@@ -104,7 +105,7 @@ func (s *Service) Brief(context.Context, *emptypb.Empty) (*pb.BriefResponse, err
 	if me == nil {
 		return &pb.BriefResponse{}, nil
 	}
-	return &pb.BriefResponse{Self: st.selfInfo(me), Quests: questLog(me), FreeSlots: st.freeSlots(me)}, nil
+	return &pb.BriefResponse{Self: st.selfInfo(me), Quests: questLog(me), FreeSlots: st.freeSlots(me), DurabilityPct: st.durability(me)}, nil
 }
 
 func (st *Store) selfInfo(me *Obj) *pb.SelfInfo {
@@ -136,6 +137,19 @@ func questLog(me *Obj) []*pb.Quest {
 		}
 	}
 	return out
+}
+
+// durability is the lowest durability percentage of the equipped items (100 if none can wear out).
+func (st *Store) durability(me *Obj) uint32 {
+	pct := uint32(100)
+	for slot := 0; slot < slotBagFirst; slot++ {
+		it := st.objs[me.guid(uint16(fInvSlots+2*slot))]
+		if it == nil || it.u(fItemMaxDur) == 0 {
+			continue
+		}
+		pct = min(pct, it.u(fItemDur)*100/it.u(fItemMaxDur))
+	}
+	return pct
 }
 
 // freeSlots counts empty backpack slots plus empty slots of the equipped bags.

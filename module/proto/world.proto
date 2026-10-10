@@ -33,6 +33,8 @@ message Spawn {
   float y = 9;
   float z = 10;
   float dist = 11;
+  // creature_template.rank: 0 normal, 1 elite, 2 rare elite, 3 boss, 4 rare.
+  uint32 rank = 12;
 }
 
 message FindNpcResponse {

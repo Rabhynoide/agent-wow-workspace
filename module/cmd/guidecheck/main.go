@@ -52,6 +52,7 @@ type quest struct {
 	Prev                      uint32
 	Special                   uint32
 	Group                     int
+	Type                      int // QuestInfoID: 1 elite/group, 41 PvP, 62/88/89 raid, 81 dungeon, 84 escort...
 	Starters, Enders          []string
 	hasObjectives, startsItem bool
 }
@@ -93,6 +94,7 @@ func main() {
 	class := flag.String("class", "", "with -plan: class of the character (e.g. Priest)")
 	level := flag.Int("level", 1, "with -plan: character level")
 	next := flag.Int("n", 10, "with -plan: number of quests to list")
+	above := flag.Int("maxabove", 2, "with -plan: skip quests more than this many levels above the character (danger)")
 	flag.Parse()
 	// Files given as arguments are checked in that order (one race's chain); else the whole directory.
 	files := flag.Args()
@@ -133,7 +135,7 @@ func main() {
 		return
 	}
 	if *plan {
-		c.printPlan(*char, *race, *class, uint32(*level), *next)
+		c.printPlan(*char, *race, *class, uint32(*level), *next, *above)
 		return
 	}
 	fmt.Printf("%d files, %d steps, %d quests, %d manual, %d problems\n", len(files), total, len(c.order), len(c.manual), len(c.problems))
@@ -289,6 +291,10 @@ func has(list []string, name string) bool {
 	return false
 }
 
+// manualTypes are the quest types (QuestInfoID) the automation must not attempt alone.
+var manualTypes = map[int]string{1: "elite / group quest", 41: "PvP quest", 62: "raid quest", 81: "dungeon quest", 82: "world event",
+	83: "legendary quest", 84: "escort quest", 85: "heroic dungeon quest", 88: "raid quest", 89: "raid quest"}
+
 // classify records why the automation cannot complete a quest.
 func (c *checker) classify(q *quest) {
 	switch {
@@ -298,6 +304,8 @@ func (c *checker) classify(q *quest) {
 		c.manual[q.ID] = "needs a spell cast on a target"
 	case q.Group > 0:
 		c.manual[q.ID] = fmt.Sprintf("group of %d recommended", q.Group)
+	case manualTypes[q.Type] != "":
+		c.manual[q.ID] = manualTypes[q.Type]
 	}
 }
 
@@ -375,12 +383,12 @@ func (c *checker) load(id uint32) *quest {
 	q := &quest{ID: id}
 	var startItem uint32
 	var prev int32
-	err := c.db.QueryRow(`SELECT q.LogTitle, q.MinLevel, q.QuestLevel, q.AllowableRaces, q.SuggestedGroupNum, q.StartItem,
+	err := c.db.QueryRow(`SELECT q.LogTitle, q.MinLevel, q.QuestLevel, q.AllowableRaces, q.SuggestedGroupNum, q.QuestInfoID, q.StartItem,
 		(q.RequiredNpcOrGo1<>0 OR q.RequiredNpcOrGo2<>0 OR q.RequiredNpcOrGo3<>0 OR q.RequiredNpcOrGo4<>0
 		 OR q.RequiredItemId1<>0 OR q.RequiredItemId2<>0 OR q.RequiredItemId3<>0 OR q.RequiredItemId4<>0 OR q.RequiredItemId5<>0 OR q.RequiredItemId6<>0),
 		COALESCE(a.AllowableClasses,0), COALESCE(a.PrevQuestID,0), COALESCE(a.SpecialFlags,0)
 		FROM quest_template q LEFT JOIN quest_template_addon a ON a.ID=q.ID WHERE q.ID=?`, id).
-		Scan(&q.Title, &q.MinLevel, &q.Level, &q.Races, &q.Group, &startItem, &q.hasObjectives, &q.Classes, &prev, &q.Special)
+		Scan(&q.Title, &q.MinLevel, &q.Level, &q.Races, &q.Group, &q.Type, &startItem, &q.hasObjectives, &q.Classes, &prev, &q.Special)
 	if err != nil {
 		c.cache[id] = nil
 		return nil
@@ -438,8 +446,7 @@ type routeQuest struct {
 }
 
 // printPlan lists the next quests of the route this character has not rewarded yet.
-// The route is read from the files given (already loaded in c.order via check) and filtered by race/class.
-func (c *checker) printPlan(char, race, class string, level uint32, n int) {
+func (c *checker) printPlan(char, race, class string, level uint32, n, above int) {
 	rewarded := map[uint32]bool{}
 	if char != "" {
 		cdb, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s)/%s?timeout=5s&transaction_read_only=1",
@@ -457,38 +464,58 @@ func (c *checker) printPlan(char, race, class string, level uint32, n int) {
 			}
 		}
 	}
-	r, cl := raceIDs[strings.ToLower(race)], classIDs[strings.ToLower(class)]
-	var out []uint32
 	fmt.Printf("route for %s %s level %d, %d quests already rewarded:\n", race, class, level, len(rewarded))
-	for _, e := range c.entries {
-		q := c.cache[e.id]
-		if q == nil || rewarded[e.id] || c.manual[e.id] != "" {
-			continue
-		}
-		if !allowed(q, step{Only: e.only}, r) || (len(e.only) == 0 && q.Classes != 0 && cl != 0 && q.Classes&(1<<(cl-1)) == 0) {
-			continue
-		}
-		if len(e.only) > 0 && !onlyMatches(e.only, r, cl) {
-			continue
-		}
-		if uint32(q.MinLevel) > level+1 { // not yet: the route is level-gated (and we are behind it)
-			continue
-		}
-		out = append(out, e.id)
-		fmt.Printf("  %5d %-42s ql %2d min %2d  from %v\n", e.id, q.Title, q.Level, q.MinLevel, q.Starters)
-		if len(out) >= n {
-			break
-		}
+	out := planRoute(c.entries, c.cache, c.manual, rewarded, raceIDs[strings.ToLower(race)], classIDs[strings.ToLower(class)], race, class, level, above, n)
+	for _, id := range out {
+		q := c.cache[id]
+		fmt.Printf("  %5d %-42s ql %2d min %2d  from %v\n", id, q.Title, q.Level, q.MinLevel, q.Starters)
 	}
 	b, _ := json.Marshal(map[string]any{"quests": out})
 	fmt.Println(string(b))
 }
 
+// planRoute picks, in route order, the quests this character can take now: not rewarded, not manual,
+// allowed to its race and class, level reached, not more than `above` levels over it, and whose
+// prerequisite is rewarded or planned earlier in the same list (auto.run stops at the first refusal).
+func planRoute(entries []routeQuest, cache map[uint32]*quest, manual map[uint32]string, rewarded map[uint32]bool,
+	race, class uint32, raceName, className string, level uint32, above, n int) []uint32 {
+	var out []uint32
+	planned := map[uint32]bool{}
+	for _, e := range entries {
+		q := cache[e.id]
+		if q == nil || rewarded[e.id] || planned[e.id] || manual[e.id] != "" {
+			continue
+		}
+		if len(e.only) > 0 && !onlyMatches(e.only, race, class) {
+			continue
+		}
+		if !allowed(q, step{Only: e.only, Class: className}, race) {
+			continue
+		}
+		if uint32(q.MinLevel) > level || q.Level > int(level)+above {
+			continue
+		}
+		if q.Prev != 0 && !rewarded[q.Prev] && !planned[q.Prev] {
+			continue
+		}
+		planned[e.id] = true
+		out = append(out, e.id)
+		if len(out) >= n {
+			break
+		}
+	}
+	return out
+}
+
+// onlyMatches tells whether one of the "only" pairs fits the character. A lone word is a race, or a
+// class when it names one ("only Priest").
 func onlyMatches(o []only, race, class uint32) bool {
 	for _, p := range o {
 		pr, pc := raceIDs[strings.ToLower(p.Race)], classIDs[strings.ToLower(p.Class)]
-		if pc == 0 && p.Class == "" {
-			pc, pr = classIDs[strings.ToLower(p.Race)], 0
+		if p.Class == "" {
+			if c := classIDs[strings.ToLower(p.Race)]; c != 0 {
+				pr, pc = 0, c
+			}
 		}
 		if (pr == 0 || pr == race) && (pc == 0 || pc == class) {
 			return true

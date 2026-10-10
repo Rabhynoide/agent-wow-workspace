@@ -135,18 +135,20 @@ func (x *FindNpcRequest) GetNpcFlags() uint32 {
 }
 
 type Spawn struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Entry         uint32                 `protobuf:"varint,1,opt,name=entry,proto3" json:"entry,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	MinLevel      uint32                 `protobuf:"varint,3,opt,name=min_level,json=minLevel,proto3" json:"min_level,omitempty"`
-	MaxLevel      uint32                 `protobuf:"varint,4,opt,name=max_level,json=maxLevel,proto3" json:"max_level,omitempty"`
-	NpcFlags      uint32                 `protobuf:"varint,5,opt,name=npc_flags,json=npcFlags,proto3" json:"npc_flags,omitempty"`
-	Faction       uint32                 `protobuf:"varint,6,opt,name=faction,proto3" json:"faction,omitempty"`
-	Map           uint32                 `protobuf:"varint,7,opt,name=map,proto3" json:"map,omitempty"`
-	X             float32                `protobuf:"fixed32,8,opt,name=x,proto3" json:"x,omitempty"`
-	Y             float32                `protobuf:"fixed32,9,opt,name=y,proto3" json:"y,omitempty"`
-	Z             float32                `protobuf:"fixed32,10,opt,name=z,proto3" json:"z,omitempty"`
-	Dist          float32                `protobuf:"fixed32,11,opt,name=dist,proto3" json:"dist,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Entry    uint32                 `protobuf:"varint,1,opt,name=entry,proto3" json:"entry,omitempty"`
+	Name     string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	MinLevel uint32                 `protobuf:"varint,3,opt,name=min_level,json=minLevel,proto3" json:"min_level,omitempty"`
+	MaxLevel uint32                 `protobuf:"varint,4,opt,name=max_level,json=maxLevel,proto3" json:"max_level,omitempty"`
+	NpcFlags uint32                 `protobuf:"varint,5,opt,name=npc_flags,json=npcFlags,proto3" json:"npc_flags,omitempty"`
+	Faction  uint32                 `protobuf:"varint,6,opt,name=faction,proto3" json:"faction,omitempty"`
+	Map      uint32                 `protobuf:"varint,7,opt,name=map,proto3" json:"map,omitempty"`
+	X        float32                `protobuf:"fixed32,8,opt,name=x,proto3" json:"x,omitempty"`
+	Y        float32                `protobuf:"fixed32,9,opt,name=y,proto3" json:"y,omitempty"`
+	Z        float32                `protobuf:"fixed32,10,opt,name=z,proto3" json:"z,omitempty"`
+	Dist     float32                `protobuf:"fixed32,11,opt,name=dist,proto3" json:"dist,omitempty"`
+	// creature_template.rank: 0 normal, 1 elite, 2 rare elite, 3 boss, 4 rare.
+	Rank          uint32 `protobuf:"varint,12,opt,name=rank,proto3" json:"rank,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -254,6 +256,13 @@ func (x *Spawn) GetZ() float32 {
 func (x *Spawn) GetDist() float32 {
 	if x != nil {
 		return x.Dist
+	}
+	return 0
+}
+
+func (x *Spawn) GetRank() uint32 {
+	if x != nil {
+		return x.Rank
 	}
 	return 0
 }
@@ -1988,7 +1997,7 @@ const file_world_proto_rawDesc = "" +
 	"\x01y\x18\x06 \x01(\x02R\x01y\x12\x16\n" +
 	"\x06radius\x18\a \x01(\x02R\x06radius\x12\x10\n" +
 	"\x03max\x18\b \x01(\rR\x03max\x12\x1b\n" +
-	"\tnpc_flags\x18\t \x01(\rR\bnpcFlags\"\xf2\x01\n" +
+	"\tnpc_flags\x18\t \x01(\rR\bnpcFlags\"\x86\x02\n" +
 	"\x05Spawn\x12\x14\n" +
 	"\x05entry\x18\x01 \x01(\rR\x05entry\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1b\n" +
@@ -2001,7 +2010,8 @@ const file_world_proto_rawDesc = "" +
 	"\x01y\x18\t \x01(\x02R\x01y\x12\f\n" +
 	"\x01z\x18\n" +
 	" \x01(\x02R\x01z\x12\x12\n" +
-	"\x04dist\x18\v \x01(\x02R\x04dist\"C\n" +
+	"\x04dist\x18\v \x01(\x02R\x04dist\x12\x12\n" +
+	"\x04rank\x18\f \x01(\rR\x04rank\"C\n" +
 	"\x0fFindNpcResponse\x120\n" +
 	"\x06spawns\x18\x01 \x03(\v2\x18.wowagent.world.v1.SpawnR\x06spawns\"8\n" +
 	"\x10QuestInfoRequest\x12\x0e\n" +

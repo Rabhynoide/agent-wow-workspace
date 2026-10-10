@@ -28,7 +28,12 @@ import (
 	"wowagent/internal/wire"
 )
 
-const maxWait = 25
+const (
+	maxWait = 25
+	// Talent points spent per call: each waits for the server, and a call must stay well under the
+	// 30 s RPC timeout (auto calls again while points remain).
+	maxTalentsPerCall = 10
+)
 
 type job = jobs.Job[*pb.TrainStatus]
 
@@ -429,7 +434,7 @@ func (s *Service) Talents(ctx context.Context, r *pb.TalentsRequest) (*pb.Talent
 		}
 		for {
 			rank := max(s.talentRank(t, known), planned[t.ID])
-			if rank >= step.Rank || res.PointsLeft == 0 {
+			if rank >= step.Rank || res.PointsLeft == 0 || len(res.Learned) >= maxTalentsPerCall {
 				break
 			}
 			if !r.DryRun {
@@ -443,7 +448,7 @@ func (s *Service) Talents(ctx context.Context, r *pb.TalentsRequest) (*pb.Talent
 			res.PointsLeft--
 			res.Learned = append(res.Learned, fmt.Sprintf("%s %d", step.Name, rank+1))
 		}
-		if res.PointsLeft == 0 {
+		if res.PointsLeft == 0 || len(res.Learned) >= maxTalentsPerCall {
 			break
 		}
 	}

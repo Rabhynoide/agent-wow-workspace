@@ -26,8 +26,13 @@ const (
 	// applies resurrection sickness (level-10 minutes up to 10 min of reduced stats).
 	sicknessLevel = 11
 	maxWait       = 25
-	// Do not walk further than this (yards) to a class trainer between quests.
-	maxTrainerDist = 1500
+	// Do not walk further than this (yards) to a class trainer between quests: the walk does not
+	// avoid monsters yet.
+	maxTrainerDist = 400
+	// Monsters more than this many levels above the character, or elites, are not hunted.
+	dangerLevels = 2
+	// Repair when an equipped item falls below this durability (percent).
+	repairBelow = 60
 )
 
 type job = jobs.Job[*pb.AutoStatus]
@@ -257,8 +262,16 @@ func (r *run) progress() {
 	if g, err := r.s.api.Gear(r.ctx); err == nil && len(g.Equipped) > 0 {
 		r.note("equipped %v", g.Equipped)
 	}
-	if t, err := r.s.api.Talents(r.ctx); err == nil && len(t.Learned) > 0 {
+	// Talents are spent in batches (one call stays short); several calls after a long break.
+	for i := 0; i < 8; i++ {
+		t, err := r.s.api.Talents(r.ctx)
+		if err != nil || len(t.Learned) == 0 {
+			break
+		}
 		r.note("talents %v", t.Learned)
+		if t.PointsLeft == 0 || !t.Ok {
+			break
+		}
 	}
 	chk, err := r.s.api.TrainCheck(r.ctx)
 	if err != nil || chk.Count == 0 || chk.Dist > maxTrainerDist {
@@ -462,6 +475,17 @@ func (r *run) objectives(info *worldpb.QuestInfo, q *statepb.Quest) error {
 	return nil
 }
 
+// tooDangerous explains why a creature should not be hunted at this level ("" when it is fine).
+func tooDangerous(sp *worldpb.Spawn, level uint32) string {
+	switch {
+	case sp.Rank == 1 || sp.Rank == 2 || sp.Rank == 3:
+		return fmt.Sprintf("%s is an elite (rank %d)", sp.Name, sp.Rank)
+	case sp.MinLevel > level+dangerLevels:
+		return fmt.Sprintf("%s is level %d-%d (character %d)", sp.Name, sp.MinLevel, sp.MaxLevel, level)
+	}
+	return ""
+}
+
 func (r *run) hunt(entry uint32, name string, count, itemEntry, itemCount uint32) error {
 	snap, err := r.snapshot()
 	if err != nil {
@@ -472,9 +496,12 @@ func (r *run) hunt(entry uint32, name string, count, itemEntry, itemCount uint32
 	if err != nil || len(sp) == 0 {
 		return fmt.Errorf("no spawn found for %s (%d)", name, entry)
 	}
+	if why := tooDangerous(sp[0], me.Level); why != "" {
+		return fmt.Errorf("too dangerous for now: %s", why)
+	}
 	r.step("hunt %s x%d", name, count)
 	// Spawn points are sorted by distance. When every monster around one is dead (they respawn slowly),
-	// go to the next point instead of waiting there. Progress is kept by the quest log / bags.
+	// go to the next point instead of waiting there; kills already made count.
 	var err2 error
 	for i := 0; i < len(sp) && i < 5; i++ {
 		if i > 0 || sp[0].Dist > 30 {
@@ -483,87 +510,119 @@ func (r *run) hunt(entry uint32, name string, count, itemEntry, itemCount uint32
 			}
 		}
 		req := &combatpb.KillRequest{Entry: entry, Count: count, ItemEntry: itemEntry, ItemCount: itemCount, Radius: 60, MaxS: 240, WaitS: 20}
-		if err2 = r.fightJob(req); err2 == nil || !strings.Contains(err2.Error(), "no live entry") {
+		var kills uint32
+		kills, err2 = r.fightJob(req)
+		if err2 == nil || !strings.Contains(err2.Error(), "no live entry") {
 			return err2
+		}
+		if count > 0 {
+			if kills >= count {
+				return nil
+			}
+			count -= kills
 		}
 		r.step("no %s left here, trying another spawn point", name)
 	}
 	return err2
 }
 
-// ensureSpace sells gray items when the backpack is nearly full.
+// ensureSpace visits the nearest vendor when the bags are nearly full or the gear is worn out:
+// it sells what the rules allow and repairs when the vendor can.
 func (r *run) ensureSpace() error {
 	snap, err := r.snapshot()
 	if err != nil {
 		return err
 	}
-	if snap.FreeSlots >= 3 {
+	needSell, needRepair := snap.FreeSlots < 3, snap.DurabilityPct < repairBelow
+	if !needSell && !needRepair {
 		return nil
 	}
-	r.step("bags nearly full: selling")
+	const vendorFlag, repairFlag = 128, 4096
+	flags := uint32(vendorFlag)
+	if needRepair {
+		flags = repairFlag
+	}
+	r.step("visiting a vendor (free slots %d, durability %d%%)", snap.FreeSlots, snap.DurabilityPct)
 	me := snap.Self
-	vendors, err := r.s.api.FindVendor(r.ctx, me.Map, me.X, me.Y)
+	vendors, err := r.s.api.FindVendor(r.ctx, me.Map, me.X, me.Y, flags)
 	if err != nil {
 		return err
 	}
 	// The server only accepts a sale within 5.5 yards: follow the vendor if it moved.
-	arrived := false
+	var npc *statepb.Obj
 	var lastErr error
 	for _, v := range vendors {
 		if len(v.Name) == 0 || v.Name[0] == '[' {
 			continue
 		}
-		npc, err := r.s.api.ApproachNpc(r.ctx, v.Entry, v.X, v.Y, v.Z)
+		o, err := r.s.api.ApproachNpc(r.ctx, v.Entry, v.X, v.Y, v.Z)
 		switch {
 		case err != nil:
 			lastErr = err
-		case npc == nil || npc.Dist > 5:
+		case o == nil || o.Dist > 5:
 			lastErr = fmt.Errorf("%s not found at its spawn", v.Name)
 		default:
-			arrived = true
+			npc = o
 		}
-		if arrived {
+		if npc != nil {
 			break
 		}
 	}
-	if !arrived {
-		return fmt.Errorf("no reachable vendor to sell (%d candidates): %v", len(vendors), lastErr)
+	if npc == nil {
+		return fmt.Errorf("no reachable vendor (%d candidates): %v", len(vendors), lastErr)
 	}
-	res, err := r.s.api.SellJunk(r.ctx)
-	if err != nil || !res.Ok {
-		return fmt.Errorf("sell: %v %s", err, res.GetReason())
+	if needSell || npc.NpcFlags&vendorFlag != 0 {
+		res, err := r.s.api.SellJunk(r.ctx)
+		if err != nil || !res.Ok {
+			return fmt.Errorf("sell: %v %s", err, res.GetReason())
+		}
+		if res.Sold > 0 {
+			r.note("sold %d stacks for %d copper (%d free slots)", res.Sold, res.Copper, res.FreeSlots)
+		}
+		if needSell && res.FreeSlots < 2 {
+			return fmt.Errorf("bags still full after selling %d items: nothing else may be sold (see town.sell_junk with dry_run and show_kept)", res.Sold)
+		}
 	}
-	r.note("sold %d stacks for %d copper (%d free slots)", res.Sold, res.Copper, res.FreeSlots)
-	if res.FreeSlots < 2 {
-		return fmt.Errorf("bags still full after selling %d items: nothing else may be sold (see town.sell_junk with dry_run and show_kept)", res.Sold)
+	if npc.NpcFlags&repairFlag != 0 && snap.DurabilityPct < 100 {
+		if res, err := r.s.api.Repair(r.ctx); err == nil && res.Ok {
+			r.note("repaired for %d copper (durability %d%%)", res.Copper, res.DurabilityPct)
+		} else if needRepair {
+			return fmt.Errorf("repair: %v %s", err, res.GetReason())
+		}
 	}
 	return nil
 }
 
-func (r *run) fightJob(req *combatpb.KillRequest) error {
+// fightJob runs combat.kill until it ends and returns the kills made (over the bags-full retries too).
+func (r *run) fightJob(req *combatpb.KillRequest) (uint32, error) {
+	var total uint32
 	for attempt := 0; ; attempt++ {
 		if err := r.ensureSpace(); err != nil {
-			return err
+			return total, err
 		}
 		st, err := r.s.api.CombatKill(r.ctx, req)
 		for err == nil && st.State == "running" {
-			r.step("combat: kills=%d items=%d hp=%d%% mana=%d%%", st.Kills, st.Items, st.HpPct, st.ManaPct)
+			r.step("combat: kills=%d items=%d hp=%d%% mana=%d%%", total+st.Kills, st.Items, st.HpPct, st.ManaPct)
 			if r.ctx.Err() != nil {
 				_ = r.s.api.CombatStop(context.Background())
-				return r.ctx.Err()
+				return total + st.Kills, r.ctx.Err()
 			}
 			st, err = r.s.api.CombatStatus(r.ctx, 20)
 		}
 		if err != nil {
-			return err
+			return total, err
 		}
+		total += st.Kills
 		switch {
 		case st.State == "failed" && st.Reason == "bags full" && attempt < 2:
-			continue // sell junk and resume
+			if req.Count > 0 {
+				req.Count -= min(req.Count, st.Kills)
+			}
+			continue // sell and resume
 		case st.State == "failed" && st.Reason != "time limit":
-			return fmt.Errorf("combat: %s", st.Reason)
+			return total, fmt.Errorf("combat: %s", st.Reason)
 		}
-		return nil
+		return total, nil
 	}
 }
 
@@ -583,14 +642,22 @@ func (r *run) collect(o *worldpb.QuestObjective) error {
 	me := snap.Self
 	var src *worldpb.ItemSource
 	var bestDist float32
+	var risky []string
 	for _, cand := range srcs {
 		sp, err := r.s.api.Spawns(r.ctx, cand.Entry, me.Map, me.X, me.Y, 2000, cand.Kind)
 		if err != nil || len(sp) == 0 {
 			continue
 		}
+		if why := tooDangerous(sp[0], me.Level); why != "" {
+			risky = append(risky, why)
+			continue
+		}
 		if src == nil || sp[0].Dist < bestDist {
 			src, bestDist = cand, sp[0].Dist
 		}
+	}
+	if src == nil && len(risky) > 0 {
+		return fmt.Errorf("too dangerous for now: %s", strings.Join(risky, "; "))
 	}
 	if src == nil {
 		return fmt.Errorf("no source of %s (%d) spawns on this map", o.Name, o.Entry)

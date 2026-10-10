@@ -120,3 +120,25 @@ func TestSnapshotIgnoresItemsNotCarried(t *testing.T) {
 		t.Fatalf("items = %v", resp.Items)
 	}
 }
+
+func TestDurabilityIsTheWorstEquippedItem(t *testing.T) {
+	st := NewStore(1)
+	me := st.obj(1, TypePlayer)
+	if got := st.durability(me); got != 100 {
+		t.Fatalf("nothing equipped: %d", got)
+	}
+	robe := st.obj(200, TypeItem)
+	robe.F[fItemDur], robe.F[fItemMaxDur] = 30, 60 // 50 %
+	boots := st.obj(201, TypeItem)
+	boots.F[fItemDur], boots.F[fItemMaxDur] = 18, 20 // 90 %
+	st.obj(202, TypeItem)                            // shirt: no durability
+	setGUID(me, uint16(fInvSlots+2*4), 200)
+	setGUID(me, uint16(fInvSlots+2*7), 201)
+	setGUID(me, uint16(fInvSlots+2*3), 202)
+	bagItem := st.obj(203, TypeItem) // in the backpack: ignored
+	bagItem.F[fItemDur], bagItem.F[fItemMaxDur] = 0, 40
+	setGUID(me, uint16(fInvSlots+2*slotPackFirst), 203)
+	if got := st.durability(me); got != 50 {
+		t.Fatalf("durability = %d, want 50", got)
+	}
+}

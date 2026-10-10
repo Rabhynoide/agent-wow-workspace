@@ -72,21 +72,32 @@ func main() {
 		os.Exit(1)
 	}
 	os.MkdirAll(*out, 0o755)
-	text := strings.ReplaceAll(string(b), "\r", "")
+	guides, stats := convert(string(b), filepath.Base(*src))
+	for i, g := range guides {
+		name := fmt.Sprintf("%s_%02d_%s.json", pick(*prefix, strings.ToLower(g.Faction)), i+1, slug(g.Zone))
+		data, _ := json.MarshalIndent(g, "", " ")
+		os.WriteFile(filepath.Join(*out, name), data, 0o644)
+		fmt.Printf("%s: %d steps\n", name, len(g.Steps))
+	}
+	var unk []string
+	for k, v := range stats {
+		unk = append(unk, fmt.Sprintf("%s=%d", k, v))
+	}
+	fmt.Println("ignored directives:", strings.Join(unk, " "))
+}
+
+// convert parses every RegisterGuide block of a Zygor guide file; stats counts the ignored directives.
+func convert(text, srcName string) ([]*guide, map[string]int) {
+	text = strings.ReplaceAll(text, "\r", "")
+	var guides []*guide
 	var cur *guide
 	var ctx ctxT
 	n, zs := 0, 0
-	idx := 0
 	stats := map[string]int{}
 	flush := func() {
-		if cur == nil {
-			return
+		if cur != nil {
+			guides = append(guides, cur)
 		}
-		idx++
-		name := fmt.Sprintf("%s_%02d_%s.json", pick(*prefix, strings.ToLower(cur.Faction)), idx, slug(cur.Zone))
-		data, _ := json.MarshalIndent(cur, "", " ")
-		os.WriteFile(filepath.Join(*out, name), data, 0o644)
-		fmt.Printf("%s: %d steps\n", name, len(cur.Steps))
 	}
 	for _, raw := range strings.Split(text, "\n") {
 		line := strings.TrimSpace(raw)
@@ -100,14 +111,14 @@ func main() {
 			if m != nil {
 				name = m[1]
 			}
-			cur = &guide{Source: "zygor:" + filepath.Base(*src), Race: "any", Zone: lastPart(name)}
+			cur = &guide{Source: "zygor:" + srcName, Race: "any", Zone: lastPart(name)}
 			if t := reTitle.FindStringSubmatch(name); t != nil {
 				cur.Zone = strings.TrimSpace(t[1]) + " (" + t[2] + "-" + t[3] + ")"
 				cur.Levels = t[2] + "-" + t[3]
 			}
 			n, zs, ctx = 0, 0, ctxT{}
 			continue
-		case line == "]])" || strings.HasPrefix(line, "]])"):
+		case strings.HasPrefix(line, "]])"):
 			flush()
 			cur = nil
 			continue
@@ -121,7 +132,9 @@ func main() {
 		}
 		switch key {
 		case "faction":
-			cur.Faction = strings.Title(rest)
+			if rest != "" {
+				cur.Faction = strings.ToUpper(rest[:1]) + rest[1:]
+			}
 		case "defaultfor":
 			cur.Race = strings.ReplaceAll(rest, "NightElf", "Night Elf")
 		case "startlevel":
@@ -133,20 +146,19 @@ func main() {
 			zs++
 			ctx = ctxT{place: ctx.place}
 		case "only":
-			cur.attachOnly(zs, parseOnly(rest))
+			// "only" may come before or after the actions of its step: apply it both ways.
+			ctx.only = parseOnly(rest)
+			cur.attachOnly(zs, ctx.only)
 		default:
 			emit(cur, &n, zs, &ctx, line, stats)
 		}
 	}
 	flush()
-	var unk []string
-	for k, v := range stats {
-		unk = append(unk, fmt.Sprintf("%s=%d", k, v))
-	}
-	fmt.Println("ignored directives:", strings.Join(unk, " "))
+	return guides, stats
 }
 
 type ctxT struct {
+	only          []only
 	place, coords string
 	npc           string
 	npcID         uint32
@@ -235,6 +247,9 @@ func add(g *guide, n *int, zs int, c *ctxT, s step) {
 	s.N, s.ZStep = *n, zs
 	s.Place, s.Coords = c.place, c.coords
 	g.Steps = append(g.Steps, s)
+	if len(c.only) > 0 {
+		g.attachOnly(zs, c.only)
+	}
 }
 
 func emit(g *guide, n *int, zs int, c *ctxT, line string, stats map[string]int) {

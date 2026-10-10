@@ -12,5 +12,6 @@ grpc:
   descriptor_set: module.pb
 rpc:
   sell_junk: /wowagent.town.v1.Town/SellJunk
+  repair: /wowagent.town.v1.Town/Repair
 lifecycle:
   before_logout: /wowagent.town.v1.Town/BeforeLogout

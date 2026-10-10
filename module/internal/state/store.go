@@ -37,6 +37,8 @@ const (
 	fXP          = 634
 	fNextXP      = 635
 	fCoinage     = 1170
+	fItemDur     = 60 // ITEM_FIELD_DURABILITY
+	fItemMaxDur  = 61 // ITEM_FIELD_MAXDURABILITY
 	fBagSlots    = 64 // CONTAINER_FIELD_NUM_SLOTS
 	fBagSlot1    = 66 // CONTAINER_FIELD_SLOT_1 (guid pairs)
 )

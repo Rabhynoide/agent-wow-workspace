@@ -4,7 +4,7 @@
 EmptyB}
 com.google.protobufB
 EmptyProtoPZ.google.golang.org/protobuf/types/known/emptypbø¢GPBªGoogle.Protobuf.WellKnownTypesbproto3
-´
+†
 
 town.protowowagent.town.v1google/protobuf/empty.proto"^
 SellRequest
@@ -27,7 +27,14 @@ SellResult
 
 free_slots (R	freeSlots
 vendor (	Rvendor0
-lines (2.wowagent.town.v1.SellLineRlines2
+lines (2.wowagent.town.v1.SellLineRlines"
+RepairResult
+ok (Rok
+reason (	Rreason
+copper (Rcopper%
+durability_pct (RdurabilityPct
+vendor (	Rvendor2Ñ
 TownG
-SellJunk.wowagent.town.v1.SellRequest.wowagent.town.v1.SellResult>
+SellJunk.wowagent.town.v1.SellRequest.wowagent.town.v1.SellResult@
+Repair.google.protobuf.Empty.wowagent.town.v1.RepairResult>
 BeforeLogout.google.protobuf.Empty.google.protobuf.EmptyBZwowagent/gen/townv1;townv1bproto3

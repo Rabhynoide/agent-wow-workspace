@@ -4,7 +4,7 @@
 EmptyB}
 com.google.protobufB
 EmptyProtoPZ.google.golang.org/protobuf/types/known/emptypbø¢GPBªGoogle.Protobuf.WellKnownTypesbproto3
-½$
+Ñ$
 world.protowowagent.world.v1google/protobuf/empty.proto"Î
 FindNpcRequest
 name (	Rname
@@ -16,7 +16,7 @@ map_filter (R	mapFilter
 y (Ry
 radius (Rradius
 max (Rmax
-	npc_flags	 (RnpcFlags"ò
+	npc_flags	 (RnpcFlags"†
 Spawn
 entry (Rentry
 name (	Rname
@@ -29,7 +29,8 @@ map_filter (R	mapFilter
 y	 (Ry
 z
  (Rz
-dist (Rdist"C
+dist (Rdist
+rank (Rrank"C
 FindNpcResponse0
 spawns (2.wowagent.world.v1.SpawnRspawns"8
 QuestInfoRequest

@@ -237,3 +237,50 @@ func (s *Service) SellJunk(ctx context.Context, r *pb.SellRequest) (*pb.SellResu
 	sort.SliceStable(res.Lines, func(i, j int) bool { return res.Lines[i].Action == "sell" && res.Lines[j].Action != "sell" })
 	return res, nil
 }
+
+// npcRepair is UNIT_NPC_FLAG_REPAIR.
+const npcRepair = 0x1000
+
+// Repair repairs every item (equipped and in bags) at a repair vendor within 5 yards.
+func (s *Service) Repair(ctx context.Context, _ *emptypb.Empty) (*pb.RepairResult, error) {
+	before, err := s.api.Brief(ctx)
+	if err != nil || before.Self == nil {
+		return &pb.RepairResult{Reason: fmt.Sprintf("state unavailable: %v", err)}, nil
+	}
+	if before.DurabilityPct >= 100 {
+		return &pb.RepairResult{Ok: true, DurabilityPct: 100, Reason: "nothing to repair"}, nil
+	}
+	near, err := s.api.Nearby(ctx, &statepb.NearbyRequest{Kind: "unit", Radius: 12, Max: 6, NpcFlags: npcRepair})
+	if err != nil {
+		return &pb.RepairResult{Reason: "nearby: " + err.Error()}, nil
+	}
+	var npc *statepb.Obj
+	for _, o := range near.Objs {
+		if o.Hp > 0 && o.Dist <= interact && (npc == nil || o.Dist < npc.Dist) {
+			npc = o
+		}
+	}
+	if npc == nil {
+		return &pb.RepairResult{Reason: "no repair vendor within 5 yards"}, nil
+	}
+	w := &wire.Writer{}
+	w.U64(npc.Guid)
+	w.U64(0) // 0 = every item
+	w.U8(0)  // not from the guild bank
+	if err := moveio.Packet(ctx, s.s, uint32(opcode.CMSGRepairItem), w.B); err != nil {
+		return &pb.RepairResult{Reason: "send: " + err.Error()}, nil
+	}
+	time.Sleep(800 * time.Millisecond)
+	after, err := s.api.Brief(ctx)
+	if err != nil || after.Self == nil {
+		return &pb.RepairResult{Ok: true, Vendor: fmt.Sprint(npc.Entry)}, nil
+	}
+	res := &pb.RepairResult{Ok: after.DurabilityPct > before.DurabilityPct, Vendor: fmt.Sprint(npc.Entry), DurabilityPct: after.DurabilityPct}
+	if before.Self.Money > after.Self.Money {
+		res.Copper = before.Self.Money - after.Self.Money
+	}
+	if !res.Ok {
+		res.Reason = "durability unchanged (not enough money?)"
+	}
+	return res, nil
+}

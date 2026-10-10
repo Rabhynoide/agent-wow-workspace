@@ -31,7 +31,7 @@ EmptyProtoPZ.google.golang.org/protobuf/types/known/emptypbø¢GPBªGoogle.P
 SendPacket%.agentwow.module.v1.SendPacketRequest.google.protobuf.EmptyE
 GetClock.google.protobuf.Empty!.agentwow.module.v1.ClockResponsea
 InvokeModule'.agentwow.module.v1.InvokeModuleRequest(.agentwow.module.v1.InvokeModuleResponseB5Z3github.com/agent-wow/agent-wow/pkg/modules/v1;modv1bproto3
-­
+û
 state.protowowagent.state.v1api/module/v1/session.protogoogle/protobuf/empty.proto"ˆ
 SelfInfo
 guid (Rguid
@@ -71,7 +71,7 @@ unit_flags (R	unitFlags
 Quest
 id (Rid
 state (Rstate
-counts (Rcounts"÷
+counts (Rcounts"ž
 SnapshotResponse/
 self (2.wowagent.state.v1.SelfInfoRself-
 items (2.wowagent.state.v1.ItemRitems0
@@ -79,12 +79,14 @@ unit_flags (R	unitFlags
 objects (Robjects
 packets (Rpackets
 
-free_slots (R	freeSlots"‘
+free_slots (R	freeSlots%
+durability_pct (RdurabilityPct"¸
 BriefResponse/
 self (2.wowagent.state.v1.SelfInfoRself0
 quests (2.wowagent.state.v1.QuestRquests
 
-free_slots (R	freeSlots"Ÿ
+free_slots (R	freeSlots%
+durability_pct (RdurabilityPct"Ÿ
 NearbyRequest
 kind (	Rkind
 entry (Rentry

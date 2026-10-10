@@ -201,9 +201,10 @@ func (c C) CombatStop(ctx context.Context) error {
 	return invoke.Call(ctx, c.S, "combat", "stop", &emptypb.Empty{}, &r)
 }
 
-func (c C) FindVendor(ctx context.Context, mapID uint32, x, y float32) ([]*worldpb.Spawn, error) {
+// FindVendor lists the nearest NPCs with any of the npc flags (128 vendor, 4096 repair).
+func (c C) FindVendor(ctx context.Context, mapID uint32, x, y float32, flags uint32) ([]*worldpb.Spawn, error) {
 	var r worldpb.FindNpcResponse
-	err := invoke.Call(ctx, c.S, "world", "find_npc", &worldpb.FindNpcRequest{MapFilter: true, Map: mapID, X: x, Y: y, Radius: 500, Max: 12, NpcFlags: 128}, &r)
+	err := invoke.Call(ctx, c.S, "world", "find_npc", &worldpb.FindNpcRequest{MapFilter: true, Map: mapID, X: x, Y: y, Radius: 500, Max: 12, NpcFlags: flags}, &r)
 	return r.Spawns, err
 }
 
@@ -264,6 +265,12 @@ func (c C) Gear(ctx context.Context) (*progresspb.GearResult, error) {
 func (c C) PickReward(ctx context.Context, items []uint32) (*progresspb.PickRewardResult, error) {
 	var r progresspb.PickRewardResult
 	err := invoke.Call(ctx, c.S, "progress", "pick_reward", &progresspb.PickRewardRequest{Items: items}, &r)
+	return &r, err
+}
+
+func (c C) Repair(ctx context.Context) (*townpb.RepairResult, error) {
+	var r townpb.RepairResult
+	err := invoke.Call(ctx, c.S, "town", "repair", &emptypb.Empty{}, &r)
 	return &r, err
 }
 

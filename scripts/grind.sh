@@ -7,9 +7,10 @@ dir=$(dirname "$0")
 target=$1; shift
 entries=("$@")
 deaths=0; start=$(date +%s); round=0
-brief() { "$dir/rpc.sh" state.brief '{}' self | python3 -Ic 'import sys,json;d=json.load(sys.stdin);print(d["level"],d["xp"],d["nextXp"],d["money"],"dead" if d.get("dead") else "alive")'; }
+brief() { "$dir/rpc.sh" state.brief '{}' self | python3 -Ic 'import sys,json;d=json.load(sys.stdin);g=lambda k:d.get(k,0);print(g("level"),g("xp"),g("nextXp"),g("money"),"dead" if d.get("dead") else "alive")'; }
 while :; do
   read -r lvl xp next money alive < <(brief)
+  [ -z "${lvl:-}" ] && { echo "state unavailable (session closed?)"; exit 3; }
   echo "[$(( $(date +%s) - start ))s] level $lvl xp $xp/$next money $money $alive deaths $deaths"
   [ "$lvl" -ge "$target" ] && { echo "target level reached"; exit 0; }
   [ "$deaths" -ge 3 ] && { echo "stopping: 3 deaths"; exit 1; }

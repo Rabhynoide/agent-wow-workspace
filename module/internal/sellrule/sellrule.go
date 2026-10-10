@@ -116,7 +116,9 @@ func decide(s Stack, c Ctx) Decision {
 		return keep(s, "consumable")
 	case classWeapon, classArmor:
 		return decideGear(s, c)
-	case classTrade, classRecipe, classGem, classProjectile, classQuiver, classReagent:
+	case classReagent:
+		return keep(s, "reagent (some spells need them)")
+	case classTrade, classRecipe, classGem, classProjectile, classQuiver:
 		return sell(s, 3, "trade good / unusable class of item")
 	case classMisc:
 		if it.Subclass == 0 {
