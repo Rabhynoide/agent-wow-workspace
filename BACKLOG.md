@@ -10,19 +10,19 @@ Légende : [ ] à faire, [~] partiel, [x] fait.
 - [ ] Rotation d'ombre (guides de leveling) : le build prend Mind Flay (20), Shadowform (40), Vampiric Touch (50) mais `combat` ne les lance pas. A ajouter avec les rangs vérifiés par test : Dévorer (Devouring Plague, niveau 20), Attaque mentale puis Fouet mental, Étreinte vampirique, Forme d'ombre (bloque les sorts du Sacré : Bouclier, Soins, Châtiment ; donc à gérer ensemble), Toucher vampirique. Niveau requis : Opus pour la logique de combat.
 - [ ] Baguette : les guides la jugent très importante dès le niveau 5 (Tir, sans mana). `progress.gear` la privilégie (poids 2,0), `combat` la utilise une fois équipée ; il faut en obtenir une (butin, récompense de quête ou achat).
 - [ ] Maître d'armes (dagues pour le prêtre) : non géré ; `progress.gear` ignore les armes sans compétence.
-- [~] Saccades/téléportations sur escaliers et terrain accidenté (remarque utilisateur) : lissage z, vitesse horizontale, heartbeat 250 ms ajoutés ; à revérifier visuellement, sinon envoyer plus de paquets ou ajuster les flags de mouvement.
-- [~] Hauteur : le personnage flottait ou s'enfonçait. Corrigé en partie : pas de 1,5 yard, hauteur du terrain réel (`assets/maps`) uniquement si l'écart au navmesh < 0,8 yard. A revérifier visuellement.
-- [~] Le personnage passait sous les ponts / à travers des barrières. Corrigé en partie : hauteurs prises dans les seuls polygones du couloir A* (plus de coupe entre niveaux superposés), test `TestPathStaysOnMesh` (0 % hors couloir). Les barrières absentes du navmesh ne peuvent pas être évitées par ce moyen : à revérifier visuellement, sinon ajouter les vmaps/doodads.
+- [~] Saccades/téléportations sur escaliers et terrain accidenté (remarque utilisateur) : chemin lissé sur la surface du navmesh (2 yards), sol comme le serveur (terrain ou vmaps), heartbeat 250 ms. A revérifier visuellement (gros test).
+- [~] Hauteur : le personnage flottait ou s'enfonçait. Corrigé : hauteur du sol calculée comme le serveur (vmaps : 0,1-0,2 yard des références dans l'auberge, l'abbaye, la cathédrale). A revérifier visuellement.
+- [~] Le personnage passait sous les ponts / à travers des barrières. Corrigé : chemin qui glisse le long des polygones marchables (plus de coupe de coin) et ponts/bâtiments lus dans les vmaps. Les barrières absentes du navmesh restent possibles : à revérifier visuellement.
 - [x] Le personnage était mort/fantôme (1 PV) : détection du fantôme via PLAYER_FLAGS, `auto.recover` (libérer l'âme, courir au cadavre, ressusciter), reprise automatique dans `auto.run`.
-- [ ] Consigner ces remarques dans un fichier/issues git (ce fichier). Eventuellement créer des issues sur le fork.
+- [x] Consigner ces remarques : ce fichier.
 
 ## Problèmes connus (moi)
 - [ ] Éviter de mourir : `combat` doit fuir/soigner/utiliser Bouclier, et ne pas laisser le personnage inactif au milieu des mobs après un arrêt.
 - [ ] `session.logout` est refusé en combat (reason 1) : attendre la fin du combat.
 - [x] Coffre « Milly's Harvest » : verrou « Open Kneeling » => sort 22810 lancé par `quest.use`.
-- [~] Vente de camelote : fonctionne ; la marche a échoué une fois (cause : arrivée mesurée en 2D) ; vendre aussi les objets blancs inutiles.
+- [x] Vente de camelote : règles `sellrule` + distance 5 yards + PNJ « [DND] » ignorés (voir « Revente »).
 - [~] Hostilité (factions) non résolue : `combat` ne chasse que des entrées explicites ; les agresseurs doivent être en combat (UNIT_FLAG_IN_COMBAT).
-- [~] Durée de démarrage : `char play --module-timeout 8m` nécessaire (8 images Docker) ; `scripts/start.sh` attend à notre place.
+- [~] Durée de démarrage : `char play --module-timeout 8m` nécessaire (9 images Docker) ; `scripts/start.sh` attend à notre place.
 - [x] `go vet` signalait des copies de messages protobuf (move/combat/auto) : package `jobs` + `proto.Clone`.
 - [x] Compteurs d'objectifs de quête : 4 x uint16 sur 2 champs (était lu comme 4 octets d'un seul champ) ; indexés par emplacement RequiredNpcOrGo.
 - [ ] Compte MySQL en lecture seule pour `world` : créer `agent_ro` (SELECT sur acore_world) et remplir `modules/world/.env`.
@@ -56,8 +56,8 @@ Légende : [ ] à faire, [~] partiel, [x] fait.
 - [ ] Évitement des monstres hostiles dans l'A* (coût autour des monstres). Opus.
 
 ## Sécurité du personnage (morts répétées constatées le 2026-10-10)
-- [ ] Pathfinding qui évite les monstres hostiles (idée utilisateur) : aujourd'hui `move` va tout droit dans le couloir navmesh, y compris au milieu d'un camp (ex. kobolds de la mine de Fargodeep : 3 morts de suite). A faire : (1) coût supplémentaire dans l'A* autour des monstres connus (positions de spawn `creature` de la base + unités vivantes vues par `state`), rayon d'aggro ≈ 20 yards + 1 yard par niveau d'écart (hostiles seulement : niveau > niveau du joueur - 3 ou faction hostile) ; (2) option `avoid_hostiles` dans `move.goto` (activée par défaut dans `auto`) ; (3) si aucun chemin sûr, échouer avec la raison plutôt que traverser. Niveau requis : Opus (navmesh + hostilité).
-- [ ] `auto.collect` / `auto.hunt` : choisir la source d'objet selon le niveau (ne pas chasser des mobs de niveau > joueur + 1 ; ex. quêtes 60 et 47 ne se font que sur des kobolds 5-8 dans la mine : à reporter au niveau 7+). Passer aussi un indicateur « trop dangereux » dans le statut.
+- [ ] Pathfinding qui évite les monstres hostiles (idée utilisateur) : voir « Déplacement ». Cause des 3 morts dans la mine de Fargodeep.
+- [~] `auto.collect` / `auto.hunt` : monstres élites ou de plus de 2 niveaux au-dessus refusés (fait) ; reste le danger des groupes (quêtes 60, 47, 87 de la mine).
 - [x] Mort pendant une marche : `move` s'arrête désormais (« character died »).
 - [x] `auto.recover` : résurrection chez l'esprit guérisseur du cimetière s'il est à moins de 150 yards (le corps est souvent dans le camp), niveaux 1-10 seulement (malus de résurrection dès le niveau 11, `Death.SicknessLevel`) ; sinon course au corps avec attente jusqu'à 4 minutes (délai de récupération croissant). Testé en jeu au niveau 5.
 - [ ] Dès le niveau 11 : le corps reste souvent dans le camp qui nous a tués. A faire : avant de réclamer, attendre/éviter les monstres proches du corps (vue du fantôme), ou ne pas partir au corps tant que les monstres n'ont pas quitté la zone ; envisager de fuir plus tôt (voir pathfinding qui évite les monstres). Niveau requis : Opus.
@@ -89,6 +89,8 @@ Icy Veins bloque ma lecture (403) : à chaque palier ci-dessous, prévenir l'uti
 - [ ] Dès qu'on change de zone (Elwynn Forest, puis Westfall...) : parcours de quêtes par niveau recommandé par le guide.
 - [ ] Autre classe ou autre spécialisation : demander le guide de leveling complet correspondant.
 
-## Prochaines étapes suggérées
-- Quêtes suivantes : Elwynn Forest (Goldshire, quête 54 puis zone suivante), Auberge (2158).
-- Tests visuels (utilisateur) de la marche.
+## Prochaines étapes suggérées (2026-10-10)
+- Test guerrier de zéro par l'utilisateur (Sonnet) : NOTES « Nouveau personnage ».
+- Gros test visuel du déplacement : escaliers, ponts, intérieurs, virages serrés, et le recul vers la ligne de vue en combat près des bâtiments.
+- Claudia : niveaux 6 → 10 (quêtes du plan sans la mine, chasse), puis vérifier les talents automatiques au niveau 10.
+- Évitement des monstres hostiles dans l'A* (Opus), puis quêtes de soin / buff sur PNJ.

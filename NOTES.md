@@ -10,14 +10,14 @@ Les sections « Etat du personnage » et « Pièges » parlent de Claudia (prêt
 6. Guerrier : rotation de base (Charge, Battle Shout + Bloodrage, Victory Rush, Execute, Overpower, Rend, Thunder Clap avant 20, Heroic Strike avec la rage en trop, Mortal Strike / Slam plus tard). Pas de postures (quêtes de classe 10 et 30 à faire, mais la posture n'est pas utilisée), pas de Premiers soins, pas de nourriture : `combat.rest` attend les PV.
 7. Classes sans fichier dans `journal/classes/` : pas de talents automatiques ; combat de prêtre (sorts absents) = attaque automatique seulement.
 
-## Etat du personnage (fin de session 2026-10-10, soir)
-- Claudia, humain prêtre (guid 1), niveau 6 (Bouclier et Châtiment 2 appris), XP 1550/3600, 29 cuivres, 171 PV max, équipement réparé à 100 % (il était à 15 % après les morts du 2026-10-10). Position : Elwynn, sud-ouest de Goldshire (après un sanglier), map 0. Session fermée. Quêtes faites en plus : la chaîne Maclure 85, 86, 106, 84, 111, 107. En cours dans le journal : 60 (Kobold Candles, NE PAS la faire avant le niveau 7+, voir mine de Fargodeep). Position : Goldshire, devant le marchand Brog Hamfist (~-9465,12,58), map 0. Session fermée.
-- Sacs : 12 emplacements libres (revente automatique faite le 2026-10-10 ; `auto` vend tout seul à moins de 3 emplacements libres). Marchands de Goldshire : Brog Hamfist (151) à (-9465,10,57), aussi Farley 295, Dobbins 465, Toddrick 3935.
-- Quêtes faites : celles de Northshire + 54 « Report to Goldshire » + 2158 « Rest and Relaxation ». Aucune quête en cours. Les autres quêtes d'Elwynn proposées à son niveau sont soit dangereuses (60, 47 : kobolds 5-8 dans la mine de Fargodeep, 3 morts), soit non gérées (5624 soin de Guard Roberts ; 62 exploration).
-- Entraîneur de classe de Goldshire : Priestess Josetta (377) à (-9461,33). Au niveau 6 : Bouclier (100 pc) et Châtiment 2 (100 pc) : il faut ~200 pc.
-- Talents : première dépense au niveau 10 (build Ombre dans `priest.Build`).
-- Chasse utile à son niveau (35 XP/kill) : Loup galeux 525, Sanglier défenseur 113, Araignée de forêt 30, Coupe-bourse défias 94 (tous niveau 5-6, autour de Goldshire). `scripts/grind.sh 6 113 94 30 525` enchaîne les chasses jusqu'au niveau voulu.
-- NE PAS aller dans la mine de Fargodeep (-9741,114) ni près du cimetière de la mine : kobolds 5-7 en groupes + élite niveau 10.
+## Etat du personnage : Claudia (fin de session 2026-10-10)
+- Humain prêtre (guid 1), niveau 6, XP 1818/3600, 29 cuivres, 171 PV max, équipement réparé à 100 %. Sorts : Châtiment 2, Soins inférieurs 2, Bouclier, Mot de l'ombre : Douleur, Robustesse. Position : Elwynn, sud-ouest de Goldshire (~-9540,67), map 0. Session fermée.
+- Quêtes faites : Northshire, 54 « Report to Goldshire », 2158 « Rest and Relaxation », chaîne Maclure (85, 86, 106, 84, 111, 107). Dans le journal : 60 (Kobold Candles) — NE PAS la faire avant 8+ (kobolds en groupes dans la mine).
+- Suite : `guidecheck -plan -char Claudia -race Human -class Priest -level 6` (MODULES « zygor2route »). Le plan propose encore 60, 47, 87 (mine de Fargodeep) : les écarter tant que l'évitement des groupes de monstres n'existe pas.
+- Prochains sorts au niveau 8 (Priestess Josetta 377 à Goldshire, -9461,33 ; ou le « Priest Trainer » 26328 tout près). Talents automatiques dès le niveau 10 (`journal/classes/priest.yaml`).
+- Chasse utile à son niveau (~35 XP/kill) : Loup galeux 525, Sanglier 113, Araignée de forêt 30, Coupe-bourse défias 94, autour de Goldshire : `scripts/grind.sh 7 113 94 30 525`.
+- Marchands de Goldshire : Brog Hamfist 151 (-9465,10,57), Farley 295 ; réparateurs : Andrew Krighton 2046 (-9462,88,58), Corina Steele 54.
+- NE PAS aller dans la mine de Fargodeep (-9741,114) : kobolds 5-7 en groupes + élite niveau 10 (3 morts le 2026-10-10).
 
 ## Choix du modèle (à suggérer à l'utilisateur, en une ligne, avant de commencer la tâche)
 Je ne peux pas changer de modèle moi-même : je propose `/model <nom>` quand le modèle courant ne colle pas à la tâche, puis je continue avec celui que l'utilisateur garde. Changer via `/model` dans la même session (le contexte est conservé).
@@ -27,11 +27,12 @@ Je ne peux pas changer de modèle moi-même : je propose `/model <nom>` quand le
 - En Sonnet : noter dans BACKLOG les doutes de protocole (« à vérifier : … ») et écrire des tests (paquets réels de `logs/state_bad_N.hex`) pour alléger la revue.
 
 ## Builds et guides (voir BACKLOG « A demander à l'utilisateur »)
-Icy Veins bloque ma lecture (403). Aux paliers de niveau listés dans BACKLOG (9, 19, 39, 49, 59, changement de zone), prévenir l'utilisateur en une ligne pour qu'il colle le guide complet, avant de modifier `priest.Build`, les poids de `gear` ou la rotation de `combat`.
+Icy Veins bloque ma lecture (403). Aux paliers de niveau listés dans BACKLOG (9, 19, 39, 49, 59, changement de zone), prévenir l'utilisateur en une ligne pour qu'il colle le guide complet, avant de modifier `journal/classes/<classe>.yaml`, les profils de `gear` ou la rotation de `combat`.
 
 ## Guides de leveling
-Données de classe (talents, rotation, sorts) : `journal/classes/<classe>.yaml`, à valider avec `cmd/classcheck` avant usage.
-Source principale : guides Zygor (voir MODULES.md « zygor2route ») → `assets/routes/`. Les routes extraites par Claude Desktop (en pause) iraient dans `journal/guides/` (format : README du dossier). Valider avec `cd module && go run ./cmd/guidecheck -dir ../journal/guides`, jouer avec `... -ids -from <niveau> -to <niveau>` puis `scripts/job.sh auto.run '<json>'`. Les guides ont 2-3 ans (WotLK Classic ≠ 3.3.5) : la base du serveur fait foi, guidecheck signale les écarts.
+- Données de classe (talents, rotation, sorts) : `journal/classes/<classe>.yaml` (prêtre, guerrier), à valider avec `cmd/classcheck`.
+- Routes de quêtes : guides Zygor convertis dans `assets/routes/` (MODULES « zygor2route »). `guidecheck -plan` donne les prochaines quêtes du personnage, `scripts/job.sh auto.run '<json>'` les fait. Les guides ont 2-3 ans (WotLK Classic ≠ 3.3.5) : la base du serveur fait foi.
+- Extraction Claude Desktop (en pause) : `journal/guides/` (format : README du dossier).
 
 ## Démarrer / arrêter
 - Démarrer : `scripts/start.sh` (vérifie auth + port, lance `char play` en arrière-plan, attend "world session ready", 1 à 3 min ; une seule ligne en sortie). Lancer la commande Bash avec un timeout de 10 min.
@@ -40,10 +41,11 @@ Source principale : guides Zygor (voir MODULES.md « zygor2route ») → `assets
 - Vérifier côté serveur (lecture seule) : `docker exec ac-database mysql -uroot -ppassword -N acore_characters -e "select ... from characters where name='Claudia'"`.
 
 ## Flux de jeu typique (économie de tokens : peu d'appels, sorties courtes)
-1. `scripts/job.sh auto.run '{"quests":[ids]}'` : lance le job et attend la fin (9 min max, une ligne par changement d'étape). Code 2 = encore en cours : relancer `scripts/job.sh auto.status`. Idéalement en Bash `run_in_background` (notification à la fin). Grouper toutes les quêtes dans un seul `auto.run`. Même usage pour `combat.kill`, `combat.rest`, `auto.recover`, `move.goto`.
-2. État courant : `state.brief` (sans la liste d'objets) plutôt que `state.snapshot`.
-2. Trouver les quêtes d'un PNJ : `world.quests_for_npc {entry}` ; détail : `world.quest_info {id}`.
-3. `auto.recover` si le personnage est mort/fantôme. `combat.rest` pour récupérer PV/mana.
+1. Démarrer (`scripts/start.sh <Nom>`), puis le plan de quêtes (`guidecheck -plan ...`, voir « Guides de leveling »).
+2. `scripts/job.sh auto.run '{"quests":[ids]}'` : lance le job et attend la fin (9 min max, une ligne par changement d'étape). Code 2 = encore en cours : relancer `scripts/job.sh auto.status`. Idéalement en Bash `run_in_background`. Grouper les quêtes dans un seul `auto.run`. Même usage pour `combat.kill`, `combat.rest`, `auto.recover`, `move.goto`. `auto` gère seul l'équipement, les talents, l'entraîneur proche, la revente, la réparation et la résurrection.
+3. Entre deux plans, ou si les quêtes manquent : `scripts/grind.sh <niveau> <entrées>`.
+4. État courant : `state.brief` (sans la liste d'objets) plutôt que `state.snapshot`. Quêtes d'un PNJ : `world.quests_for_npc {entry}` ; détail : `world.quest_info {id}`.
+5. Mort : `auto.recover`. Repos : `combat.rest`. Arrêter : `scripts/rpc.sh session.logout`.
 
 ## Environnement
 - Serveur AzerothCore en Docker local (ac-worldserver/authserver/database). Realm 127.0.0.1:8085. DB `acore_world` (lecture seule) sur 192.168.100.7:3306. Pas de client mysql sur l'hôte : `docker exec ac-database mysql ...`.
@@ -55,15 +57,17 @@ Source principale : guides Zygor (voir MODULES.md « zygor2route ») → `assets
 - Après une résurrection le personnage a 50 % de PV : ne JAMAIS rester immobile près d'un camp ; `auto.recover` ressuscite chez l'esprit guérisseur du cimetière (CMSG_SPIRIT_HEALER_ACTIVATE, flag PNJ 0x4000) s'il est à moins de 150 yards, UNIQUEMENT aux niveaux 1-10 ; à partir du niveau 11 (`Death.SicknessLevel = 11` du serveur) l'esprit guérisseur applique le malus de résurrection (stats très réduites pendant niveau-10 minutes, 10 min dès le niveau 20) : il court alors au corps (la récupération du corps n'applique jamais le malus). Le guérisseur coûte aussi 25 % de durabilité. Le corps est souvent dans le groupe qui nous a tués.
 - Un `move.goto` s'arrête maintenant si le personnage meurt (avant, le corps « marchait » dans le modèle de position).
 - Le délai de récupération du corps grandit avec les morts rapprochées (jusqu'à ~2 min) : `recover` insiste 4 minutes.
-- `auto.run` choisit la source d'objet la plus proche sans regarder le niveau : peut envoyer dans un camp trop fort (voir BACKLOG).
+- `auto` refuse les monstres élites ou de plus de 2 niveaux au-dessus (« too dangerous for now ») mais pas les GROUPES de monstres de niveau correct (mine de Fargodeep) : choisir les quêtes en conséquence.
 - `kill -f` / `pkill -f scripts/...` dans une commande Bash qui contient ce motif tue aussi la commande elle-même (code 144) : utiliser `rpc.sh combat.stop` / `auto.stop` / `move.stop`.
 - Appels module : timeout 30 s => actions longues en jobs asynchrones (wait_s <= 25).
-- Démarrage de 8 modules > 2 min : toujours `--module-timeout 8m`.
+- Démarrage de 9 modules (images Docker) > 2 min : toujours `--module-timeout 8m` (`scripts/start.sh` le fait).
 - MSG_MOVE_* client->serveur : GUID packé en tête obligatoire, sinon ignoré silencieusement.
 - Noms de fichiers mmtile = indices ADT, pas Detour : indexation par en-tête (nav.LoadMap).
-- Hauteurs : navmesh seul faux de ~1 yard ; sol réel via `.map` si écart < 0,8 ; hauteurs ponts/étages via polygones du couloir A* uniquement.
+- Hauteurs : navmesh seul faux de ~1 yard. Désormais chemin lissé sur la surface du navmesh puis sol choisi comme le serveur (terrain `.map` ou vmaps). Ne pas revenir à l'interpolation en ligne droite.
 - Fantôme = 1 PV (PLAYER_FLAGS & 0x10), pas 0 PV. `state.snapshot.self.ghost/dead`.
-- Sac plein (16 emplacements sac à dos) : le butin est refusé en silence. `town.sell_junk` + `auto` gèrent.
+- Sac plein (16 emplacements sac à dos) : le butin est refusé en silence. `auto` vend (règles `sellrule`) et répare chez le marchand le plus proche.
+- Les PNJ « [DND] ... » sont techniques (61 autour de Goldshire avec les flags marchand/réparateur) : `world.find_npc` les ignore.
+- Résultat de sort 40 = interrompu, 47 = ligne de vue ; les sorts ignorent les doodads M2 pour la ligne de vue (comme `move.los`).
 - Coffres verrouillés (Lock.dbc type 13 "Open Kneeling") : lancer le sort 22810 sur l'objet (fait dans quest.use).
 - Un rpc protobuf ne peut pas avoir le même nom que son message de réponse.
 - Distances d'interaction : 3D ! (PNJ à l'étage = hors de portée même au même x/y).
