@@ -47,7 +47,7 @@ Source principale : guides Zygor (voir MODULES.md « zygor2route ») → `assets
 
 ## Environnement
 - Serveur AzerothCore en Docker local (ac-worldserver/authserver/database). Realm 127.0.0.1:8085. DB `acore_world` (lecture seule) sur 192.168.100.7:3306. Pas de client mysql sur l'hôte : `docker exec ac-database mysql ...`.
-- Données copiées depuis le volume ac-worldserver, dans `assets/` (gitignoré) : `mmaps/` (navmesh, 2.1G), `maps/` (hauteurs terrain, 295M), `dbc/` (Lock, Spell, Talent, TalentTab, SkillLineAbility ; requis par `progress` ; autres DBC dans `/azerothcore/env/dist/data/dbc`). Les recréer : `docker cp ac-worldserver:/azerothcore/env/dist/data/<mmaps|maps> assets/`.
+- Données copiées depuis le volume ac-worldserver, dans `assets/` (gitignoré) : `mmaps/` (navmesh, 2.1G), `maps/` (hauteurs terrain, 295M), `dbc/` (Lock, Spell, Talent, TalentTab, SkillLineAbility ; requis par `progress` ; autres DBC dans `/azerothcore/env/dist/data/dbc`), `vmaps/` (657M, géométrie de collision : hauteurs dans les bâtiments et ligne de vue, requis par `move`). Les recréer : `docker cp ac-worldserver:/azerothcore/env/dist/data/<mmaps|maps|vmaps> assets/`.
 - DB `acore_world` : le module world lit `modules/world/.env` (ignoré par git) pour un compte en lecture seule (WORLD_DB_USER/WORLD_DB_PASSWORD) ; sans ce fichier, repli sur root/password.
 - Git : remote `origin` = fork Rabhynoide/agent-wow-workspace, `upstream` = agent-wow/agent-wow-workspace. Branche de travail `claudia-modules`. Token GitHub dans `.env` (GITHUB_TOKEN, ignoré par git) : pousser avec un GIT_ASKPASS temporaire qui lit .env, sans jamais l'écrire dans la config git.
 

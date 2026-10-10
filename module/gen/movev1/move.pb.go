@@ -391,6 +391,119 @@ func (x *PathResponse) GetError() string {
 	return ""
 }
 
+type LosRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Target position (world); the check runs from our eyes to the target's (+2 yards each).
+	X             float32 `protobuf:"fixed32,1,opt,name=x,proto3" json:"x,omitempty"`
+	Y             float32 `protobuf:"fixed32,2,opt,name=y,proto3" json:"y,omitempty"`
+	Z             float32 `protobuf:"fixed32,3,opt,name=z,proto3" json:"z,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LosRequest) Reset() {
+	*x = LosRequest{}
+	mi := &file_move_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LosRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LosRequest) ProtoMessage() {}
+
+func (x *LosRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_move_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LosRequest.ProtoReflect.Descriptor instead.
+func (*LosRequest) Descriptor() ([]byte, []int) {
+	return file_move_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *LosRequest) GetX() float32 {
+	if x != nil {
+		return x.X
+	}
+	return 0
+}
+
+func (x *LosRequest) GetY() float32 {
+	if x != nil {
+		return x.Y
+	}
+	return 0
+}
+
+func (x *LosRequest) GetZ() float32 {
+	if x != nil {
+		return x.Z
+	}
+	return 0
+}
+
+type LosResult struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Visible       bool                   `protobuf:"varint,1,opt,name=visible,proto3" json:"visible,omitempty"`
+	Reason        string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LosResult) Reset() {
+	*x = LosResult{}
+	mi := &file_move_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LosResult) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LosResult) ProtoMessage() {}
+
+func (x *LosResult) ProtoReflect() protoreflect.Message {
+	mi := &file_move_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LosResult.ProtoReflect.Descriptor instead.
+func (*LosResult) Descriptor() ([]byte, []int) {
+	return file_move_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *LosResult) GetVisible() bool {
+	if x != nil {
+		return x.Visible
+	}
+	return false
+}
+
+func (x *LosResult) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
 var File_move_proto protoreflect.FileDescriptor
 
 const file_move_proto_rawDesc = "" +
@@ -426,12 +539,21 @@ const file_move_proto_rawDesc = "" +
 	"\fPathResponse\x12\x16\n" +
 	"\x06points\x18\x01 \x01(\rR\x06points\x12\x16\n" +
 	"\x06length\x18\x02 \x01(\x02R\x06length\x12\x14\n" +
-	"\x05error\x18\x03 \x01(\tR\x05error2\xd9\x02\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"6\n" +
+	"\n" +
+	"LosRequest\x12\f\n" +
+	"\x01x\x18\x01 \x01(\x02R\x01x\x12\f\n" +
+	"\x01y\x18\x02 \x01(\x02R\x01y\x12\f\n" +
+	"\x01z\x18\x03 \x01(\x02R\x01z\"=\n" +
+	"\tLosResult\x12\x18\n" +
+	"\avisible\x18\x01 \x01(\bR\avisible\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason2\xa3\x03\n" +
 	"\x04Move\x12C\n" +
 	"\x04Goto\x12\x1d.wowagent.move.v1.GotoRequest\x1a\x1c.wowagent.move.v1.MoveStatus\x12G\n" +
 	"\x06Status\x12\x1f.wowagent.move.v1.StatusRequest\x1a\x1c.wowagent.move.v1.MoveStatus\x12<\n" +
 	"\x04Stop\x12\x16.google.protobuf.Empty\x1a\x1c.wowagent.move.v1.MoveStatus\x12E\n" +
-	"\x04Path\x12\x1d.wowagent.move.v1.PathRequest\x1a\x1e.wowagent.move.v1.PathResponse\x12>\n" +
+	"\x04Path\x12\x1d.wowagent.move.v1.PathRequest\x1a\x1e.wowagent.move.v1.PathResponse\x12H\n" +
+	"\vLineOfSight\x12\x1c.wowagent.move.v1.LosRequest\x1a\x1b.wowagent.move.v1.LosResult\x12>\n" +
 	"\fBeforeLogout\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.EmptyB\x1cZ\x1awowagent/gen/movev1;movev1b\x06proto3"
 
 var (
@@ -446,28 +568,32 @@ func file_move_proto_rawDescGZIP() []byte {
 	return file_move_proto_rawDescData
 }
 
-var file_move_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_move_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_move_proto_goTypes = []any{
 	(*GotoRequest)(nil),   // 0: wowagent.move.v1.GotoRequest
 	(*StatusRequest)(nil), // 1: wowagent.move.v1.StatusRequest
 	(*MoveStatus)(nil),    // 2: wowagent.move.v1.MoveStatus
 	(*PathRequest)(nil),   // 3: wowagent.move.v1.PathRequest
 	(*PathResponse)(nil),  // 4: wowagent.move.v1.PathResponse
-	(*emptypb.Empty)(nil), // 5: google.protobuf.Empty
+	(*LosRequest)(nil),    // 5: wowagent.move.v1.LosRequest
+	(*LosResult)(nil),     // 6: wowagent.move.v1.LosResult
+	(*emptypb.Empty)(nil), // 7: google.protobuf.Empty
 }
 var file_move_proto_depIdxs = []int32{
 	0, // 0: wowagent.move.v1.Move.Goto:input_type -> wowagent.move.v1.GotoRequest
 	1, // 1: wowagent.move.v1.Move.Status:input_type -> wowagent.move.v1.StatusRequest
-	5, // 2: wowagent.move.v1.Move.Stop:input_type -> google.protobuf.Empty
+	7, // 2: wowagent.move.v1.Move.Stop:input_type -> google.protobuf.Empty
 	3, // 3: wowagent.move.v1.Move.Path:input_type -> wowagent.move.v1.PathRequest
-	5, // 4: wowagent.move.v1.Move.BeforeLogout:input_type -> google.protobuf.Empty
-	2, // 5: wowagent.move.v1.Move.Goto:output_type -> wowagent.move.v1.MoveStatus
-	2, // 6: wowagent.move.v1.Move.Status:output_type -> wowagent.move.v1.MoveStatus
-	2, // 7: wowagent.move.v1.Move.Stop:output_type -> wowagent.move.v1.MoveStatus
-	4, // 8: wowagent.move.v1.Move.Path:output_type -> wowagent.move.v1.PathResponse
-	5, // 9: wowagent.move.v1.Move.BeforeLogout:output_type -> google.protobuf.Empty
-	5, // [5:10] is the sub-list for method output_type
-	0, // [0:5] is the sub-list for method input_type
+	5, // 4: wowagent.move.v1.Move.LineOfSight:input_type -> wowagent.move.v1.LosRequest
+	7, // 5: wowagent.move.v1.Move.BeforeLogout:input_type -> google.protobuf.Empty
+	2, // 6: wowagent.move.v1.Move.Goto:output_type -> wowagent.move.v1.MoveStatus
+	2, // 7: wowagent.move.v1.Move.Status:output_type -> wowagent.move.v1.MoveStatus
+	2, // 8: wowagent.move.v1.Move.Stop:output_type -> wowagent.move.v1.MoveStatus
+	4, // 9: wowagent.move.v1.Move.Path:output_type -> wowagent.move.v1.PathResponse
+	6, // 10: wowagent.move.v1.Move.LineOfSight:output_type -> wowagent.move.v1.LosResult
+	7, // 11: wowagent.move.v1.Move.BeforeLogout:output_type -> google.protobuf.Empty
+	6, // [6:12] is the sub-list for method output_type
+	0, // [0:6] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -484,7 +610,7 @@ func file_move_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_move_proto_rawDesc), len(file_move_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

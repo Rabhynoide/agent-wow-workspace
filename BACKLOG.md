@@ -49,7 +49,8 @@ Légende : [ ] à faire, [~] partiel, [x] fait.
 
 ## Déplacement (idées des bots du serveur, 2026-10-10)
 - [x] Lissage du chemin collé à la surface (port de `findSmoothPath`/`moveAlongSurface`) : fait, testé hors ligne et en jeu (auberge de Goldshire, poursuite en combat). A valider visuellement lors du « gros test » (escaliers, ponts, virages serrés).
-- [ ] Hauteurs vmaps (bâtiments, ponts, rochers) comme `Map::GetHeight` du serveur : copier `vmaps` depuis ac-worldserver dans `assets/vmaps`, lire l'arbre BIH et les modèles, choisir entre hauteur terrain et vmap. Donne aussi la ligne de vue (placement pour lancer un sort). Opus.
+- [x] Hauteurs vmaps (port de StaticMapTree/BIH/WorldModel du serveur, `internal/vmap`) : sols des bâtiments à 0,1-0,2 yard des créatures de référence (auberge sur 2 étages, abbaye, cathédrale), choix terrain/vmap comme `Map::GetHeight`. Testé en jeu (étage de l'auberge par l'escalier). Ligne de vue : `move.los`, testée (plafond bloque).
+- [ ] Utiliser `move.los` dans `combat` : se placer là où la cible est visible au lieu de passer en mêlée après 3 échecs de sort (Opus).
 - [ ] Idées mod-playerbots (src/Ai, mouvements) : suivre une cible (distance/angle), vérifier qu'une destination est atteignable avant d'y aller, se débloquer.
 - [ ] Évitement des monstres hostiles dans l'A* (coût autour des monstres). Opus.
 

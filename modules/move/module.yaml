@@ -13,5 +13,6 @@ rpc:
   status: /wowagent.move.v1.Move/Status
   stop: /wowagent.move.v1.Move/Stop
   path: /wowagent.move.v1.Move/Path
+  los: /wowagent.move.v1.Move/LineOfSight
 lifecycle:
   before_logout: /wowagent.move.v1.Move/BeforeLogout

@@ -24,6 +24,7 @@ const (
 	Move_Status_FullMethodName       = "/wowagent.move.v1.Move/Status"
 	Move_Stop_FullMethodName         = "/wowagent.move.v1.Move/Stop"
 	Move_Path_FullMethodName         = "/wowagent.move.v1.Move/Path"
+	Move_LineOfSight_FullMethodName  = "/wowagent.move.v1.Move/LineOfSight"
 	Move_BeforeLogout_FullMethodName = "/wowagent.move.v1.Move/BeforeLogout"
 )
 
@@ -35,6 +36,7 @@ type MoveClient interface {
 	Status(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*MoveStatus, error)
 	Stop(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*MoveStatus, error)
 	Path(ctx context.Context, in *PathRequest, opts ...grpc.CallOption) (*PathResponse, error)
+	LineOfSight(ctx context.Context, in *LosRequest, opts ...grpc.CallOption) (*LosResult, error)
 	BeforeLogout(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
@@ -86,6 +88,16 @@ func (c *moveClient) Path(ctx context.Context, in *PathRequest, opts ...grpc.Cal
 	return out, nil
 }
 
+func (c *moveClient) LineOfSight(ctx context.Context, in *LosRequest, opts ...grpc.CallOption) (*LosResult, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(LosResult)
+	err := c.cc.Invoke(ctx, Move_LineOfSight_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *moveClient) BeforeLogout(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -104,6 +116,7 @@ type MoveServer interface {
 	Status(context.Context, *StatusRequest) (*MoveStatus, error)
 	Stop(context.Context, *emptypb.Empty) (*MoveStatus, error)
 	Path(context.Context, *PathRequest) (*PathResponse, error)
+	LineOfSight(context.Context, *LosRequest) (*LosResult, error)
 	BeforeLogout(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	mustEmbedUnimplementedMoveServer()
 }
@@ -126,6 +139,9 @@ func (UnimplementedMoveServer) Stop(context.Context, *emptypb.Empty) (*MoveStatu
 }
 func (UnimplementedMoveServer) Path(context.Context, *PathRequest) (*PathResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Path not implemented")
+}
+func (UnimplementedMoveServer) LineOfSight(context.Context, *LosRequest) (*LosResult, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method LineOfSight not implemented")
 }
 func (UnimplementedMoveServer) BeforeLogout(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method BeforeLogout not implemented")
@@ -223,6 +239,24 @@ func _Move_Path_Handler(srv interface{}, ctx context.Context, dec func(interface
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Move_LineOfSight_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LosRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MoveServer).LineOfSight(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Move_LineOfSight_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MoveServer).LineOfSight(ctx, req.(*LosRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Move_BeforeLogout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
@@ -263,6 +297,10 @@ var Move_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Path",
 			Handler:    _Move_Path_Handler,
+		},
+		{
+			MethodName: "LineOfSight",
+			Handler:    _Move_LineOfSight_Handler,
 		},
 		{
 			MethodName: "BeforeLogout",

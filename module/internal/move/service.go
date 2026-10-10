@@ -23,6 +23,7 @@ import (
 	"wowagent/internal/moveio"
 	"wowagent/internal/nav"
 	"wowagent/internal/terrain"
+	"wowagent/internal/vmap"
 )
 
 const (
@@ -54,6 +55,7 @@ type Service struct {
 	mu     sync.Mutex
 	meshes map[uint32]*nav.Mesh
 	terr   map[uint32]*terrain.Maps
+	vmaps  map[uint32]*vmap.Tree // nil value: no vmaps for that map
 	maps   string
 
 	rmu       sync.Mutex
@@ -71,7 +73,7 @@ func Register(s grpc.ServiceRegistrar, session modv1.SessionClient) {
 	runner := jobs.NewRunner(&pb.MoveStatus{State: "idle"})
 	runner.Decorate = func(j *job, st *pb.MoveStatus) { st.ElapsedS = float32(time.Since(j.Start).Seconds()) }
 	pb.RegisterMoveServer(s, &Service{session: session, api: api.C{S: session}, dir: dir, guid: guid, jobs: runner,
-		meshes: map[uint32]*nav.Mesh{}, terr: map[uint32]*terrain.Maps{}, maps: mapsDir()})
+		meshes: map[uint32]*nav.Mesh{}, terr: map[uint32]*terrain.Maps{}, vmaps: map[uint32]*vmap.Tree{}, maps: mapsDir()})
 }
 
 func mapsDir() string {
@@ -79,6 +81,26 @@ func mapsDir() string {
 		return d
 	}
 	return "/maps"
+}
+
+// vmapFor opens the collision geometry of a map once (nil when absent).
+func (s *Service) vmapFor(id uint32) *vmap.Tree {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if t, ok := s.vmaps[id]; ok {
+		return t
+	}
+	dir := os.Getenv("VMAPS_DIR")
+	if dir == "" {
+		dir = "/vmaps"
+	}
+	t, err := vmap.Open(dir, id)
+	if err != nil {
+		slog.Warn("no vmaps: heights from terrain and navmesh only", "map", id, "err", err)
+		t = nil
+	}
+	s.vmaps[id] = t
+	return t
 }
 
 func (s *Service) terrainFor(id uint32) *terrain.Maps {
@@ -174,7 +196,7 @@ func smoothZ(p [][3]float32) [][3]float32 {
 	out := make([][3]float32, len(p))
 	copy(out, p)
 	const w = 3
-	for i := range p {
+	for i := 1; i < len(p)-1; i++ { // the end points keep their exact floor height
 		var sum, n float32
 		for j := max(0, i-w); j <= min(len(p)-1, i+w); j++ {
 			if math.Abs(float64(p[j][2]-p[i][2])) > 2.5 {
@@ -201,7 +223,7 @@ func (s *Service) plan(mapID uint32, from [3]float32, x, y, z float32) ([][3]flo
 	// Points every 2 yards that slide along the walkable polygons (the server's own smoothing), heights
 	// from the polygon reached; the old funnel + interpolation is the fallback.
 	if pts, err := m.SmoothPath(src, dst, nav.GroundOnly, nav.SmoothStep, nav.SmoothSlop); err == nil {
-		dense = onGround(pts, tm)
+		dense = onGround(pts, tm, s.vmapFor(mapID))
 	} else {
 		slog.Info("smooth path failed, using the funnel path", "err", err)
 		pts, corridor, err := m.PathCorridor(src, dst, nav.GroundOnly)
@@ -217,21 +239,55 @@ func (s *Service) plan(mapID uint32, from [3]float32, x, y, z float32) ([][3]flo
 	return dense, l, nil
 }
 
-// onGround converts navmesh points to WoW space; outdoors the real terrain height replaces the navmesh
-// one when they agree within 0.8 yard (the navmesh is up to a yard off), indoors and on bridges the
-// navmesh height is kept. Heights are then low-passed so stairs become ramps.
-func onGround(pts []nav.V3, tm *terrain.Maps) [][3]float32 {
+// onGround converts navmesh points to WoW space and puts them on the real floor the way the server
+// does (WorldObject::GetMapHeight + Map::GetHeight): search 2 yards above the point; the terrain
+// height counts when we are not under it, the vmap floor (buildings, bridges, rocks) when one is
+// found; between both, the vmap one wins when it is above the terrain or closer. A floor more than
+// 3 yards from the navmesh is ignored (another layer). Heights are then low-passed (stairs → ramps).
+func onGround(pts []nav.V3, tm *terrain.Maps, vm *vmap.Tree) [][3]float32 {
 	out := make([][3]float32, 0, len(pts))
 	for _, v := range pts {
 		x, y, z := v.ToWoW()
-		if tm != nil {
-			if th, ok := tm.Height(x, y); ok && math.Abs(float64(th-z)) < 0.8 {
-				z = th
-			}
+		if h, ok := floor(x, y, z, tm, vm); ok && math.Abs(float64(h-z)) < 3 {
+			z = h
 		}
 		out = append(out, [3]float32{x, y, z})
 	}
 	return smoothZ(out)
+}
+
+// floor is Map::GetHeight for a walker standing at z (the search starts 2 yards higher).
+func floor(x, y, z float32, tm *terrain.Maps, vm *vmap.Tree) (float32, bool) {
+	const tolerance = 0.05 // GROUND_HEIGHT_TOLERANCE
+	zq := z + 2
+	mapH, mapOK := float32(0), false
+	if tm != nil {
+		if th, ok := tm.Height(x, y); ok && zq >= th-tolerance {
+			mapH, mapOK = th, true
+		}
+	}
+	if vm != nil {
+		if vh, ok := vm.Height(x, y, z); ok {
+			if !mapOK || vh > mapH || math.Abs(float64(mapH-zq)) > math.Abs(float64(vh-zq)) {
+				return vh, true
+			}
+		}
+	}
+	return mapH, mapOK
+}
+
+// LineOfSight checks the static geometry between our eyes and the target's (2 yards above each).
+func (s *Service) LineOfSight(ctx context.Context, r *pb.LosRequest) (*pb.LosResult, error) {
+	self, err := s.self(ctx)
+	if err != nil {
+		return &pb.LosResult{Reason: err.Error()}, nil
+	}
+	vm := s.vmapFor(self.Map)
+	if vm == nil {
+		return &pb.LosResult{Visible: true, Reason: "no vmaps for this map"}, nil
+	}
+	ok := vm.LineOfSight([3]float32{self.X, self.Y, self.Z + 2}, [3]float32{r.X, r.Y, r.Z + 2})
+	return &pb.LosResult{Visible: ok}, nil
 }
 
 func dist(a, b [3]float32) float32 {

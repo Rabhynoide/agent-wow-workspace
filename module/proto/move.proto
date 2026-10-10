@@ -48,10 +48,23 @@ message PathResponse {
   string error = 3;
 }
 
+message LosRequest {
+  // Target position (world); the check runs from our eyes to the target's (+2 yards each).
+  float x = 1;
+  float y = 2;
+  float z = 3;
+}
+
+message LosResult {
+  bool visible = 1;
+  string reason = 2;
+}
+
 service Move {
   rpc Goto(GotoRequest) returns (MoveStatus);
   rpc Status(StatusRequest) returns (MoveStatus);
   rpc Stop(google.protobuf.Empty) returns (MoveStatus);
   rpc Path(PathRequest) returns (PathResponse);
+  rpc LineOfSight(LosRequest) returns (LosResult);
   rpc BeforeLogout(google.protobuf.Empty) returns (google.protobuf.Empty);
 }
