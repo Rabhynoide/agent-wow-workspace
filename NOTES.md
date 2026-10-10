@@ -1,7 +1,7 @@
 # NOTES (lire en premier à chaque session)
 
 ## Etat du personnage (fin de session 2026-10-10, soir)
-- Claudia, humain prêtre (guid 1), niveau 6 (atteint le 2026-10-10 via la chaîne Maclure 85-86-...; Bouclier et Châtiment 2 appris), XP ~343/3600, ~47 cuivres, 171 PV max. Voir la fin de session pour la position. Position : Goldshire, devant le marchand Brog Hamfist (~-9465,12,58), map 0. Session fermée.
+- Claudia, humain prêtre (guid 1), niveau 6 (le 2026-10-10 ; Bouclier et Châtiment 2 appris), XP 1475/3600, 47 cuivres, 171 PV max. Position : Goldshire (~-9463,32,57), map 0. Session fermée. Quêtes faites en plus : la chaîne Maclure 85, 86, 106, 84, 111, 107. En cours dans le journal : 60 (Kobold Candles, NE PAS la faire avant le niveau 7+, voir mine de Fargodeep). Position : Goldshire, devant le marchand Brog Hamfist (~-9465,12,58), map 0. Session fermée.
 - Sacs : 12 emplacements libres (revente automatique faite le 2026-10-10 ; `auto` vend tout seul à moins de 3 emplacements libres). Marchands de Goldshire : Brog Hamfist (151) à (-9465,10,57), aussi Farley 295, Dobbins 465, Toddrick 3935.
 - Quêtes faites : celles de Northshire + 54 « Report to Goldshire » + 2158 « Rest and Relaxation ». Aucune quête en cours. Les autres quêtes d'Elwynn proposées à son niveau sont soit dangereuses (60, 47 : kobolds 5-8 dans la mine de Fargodeep, 3 morts), soit non gérées (5624 soin de Guard Roberts ; 62 exploration).
 - Entraîneur de classe de Goldshire : Priestess Josetta (377) à (-9461,33). Au niveau 6 : Bouclier (100 pc) et Châtiment 2 (100 pc) : il faut ~200 pc.
