@@ -101,6 +101,16 @@ func (s *Service) OnPacket(_ context.Context, p *modv1.WorldPacket) (*emptypb.Em
 	return &emptypb.Empty{}, nil
 }
 
+func (s *Service) Goto(ctx context.Context, r *pb.GotoRequest) (*pb.AutoStatus, error) {
+	radius := r.Radius
+	if radius <= 0 {
+		radius = 3
+	}
+	return s.start(ctx, r.WaitS, &pb.AutoStatus{State: "running", Step: "walking"}, func(run *run) error {
+		return run.walk(r.X, r.Y, r.Z, radius)
+	}), nil
+}
+
 func (s *Service) Recover(ctx context.Context, r *pb.StatusRequest) (*pb.AutoStatus, error) {
 	return s.start(ctx, r.WaitS, &pb.AutoStatus{State: "running", Step: "recovering corpse"}, func(r *run) error { return r.recover() }), nil
 }

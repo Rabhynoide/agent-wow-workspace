@@ -46,11 +46,22 @@ message AutoStatus {
   repeated string progress = 9;
 }
 
+message GotoRequest {
+  float x = 1;
+  float y = 2;
+  float z = 3;
+  // Arrival radius (default 3).
+  float radius = 4;
+  uint32 wait_s = 5;
+}
+
 service Auto {
   rpc Recover(StatusRequest) returns (AutoStatus);
   rpc OnPacket(agentwow.module.v1.WorldPacket) returns (google.protobuf.Empty);
   rpc Run(RunRequest) returns (AutoStatus);
   rpc Grind(GrindRequest) returns (AutoStatus);
+  // Walks there, fighting back when attacked on the way (move.goto alone does not).
+  rpc Goto(GotoRequest) returns (AutoStatus);
   rpc Status(StatusRequest) returns (AutoStatus);
   rpc Stop(google.protobuf.Empty) returns (AutoStatus);
   rpc BeforeLogout(google.protobuf.Empty) returns (google.protobuf.Empty);

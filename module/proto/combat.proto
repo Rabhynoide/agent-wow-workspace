@@ -21,6 +21,12 @@ message KillRequest {
   // Seconds to block before returning the current status (default 20, max 25).
   uint32 wait_s = 7;
   bool no_loot = 8;
+  // Monsters (weighted by level) we accept to fight at once; 0 = default by level (1, 1.5 from 20, 2
+  // from 40). A target with more around it is body pulled or skipped.
+  float max_pull = 9;
+  // Try to body pull a crowded target alone (experimental: see BACKLOG); otherwise crowded targets
+  // are skipped for a while.
+  bool body_pull = 10;
 }
 
 message RestRequest {

@@ -37,8 +37,14 @@ type KillRequest struct {
 	// Job time limit in seconds (default 600).
 	MaxS uint32 `protobuf:"varint,6,opt,name=max_s,json=maxS,proto3" json:"max_s,omitempty"`
 	// Seconds to block before returning the current status (default 20, max 25).
-	WaitS         uint32 `protobuf:"varint,7,opt,name=wait_s,json=waitS,proto3" json:"wait_s,omitempty"`
-	NoLoot        bool   `protobuf:"varint,8,opt,name=no_loot,json=noLoot,proto3" json:"no_loot,omitempty"`
+	WaitS  uint32 `protobuf:"varint,7,opt,name=wait_s,json=waitS,proto3" json:"wait_s,omitempty"`
+	NoLoot bool   `protobuf:"varint,8,opt,name=no_loot,json=noLoot,proto3" json:"no_loot,omitempty"`
+	// Monsters (weighted by level) we accept to fight at once; 0 = default by level (1, 1.5 from 20, 2
+	// from 40). A target with more around it is body pulled or skipped.
+	MaxPull float32 `protobuf:"fixed32,9,opt,name=max_pull,json=maxPull,proto3" json:"max_pull,omitempty"`
+	// Try to body pull a crowded target alone (experimental: see BACKLOG); otherwise crowded targets
+	// are skipped for a while.
+	BodyPull      bool `protobuf:"varint,10,opt,name=body_pull,json=bodyPull,proto3" json:"body_pull,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -125,6 +131,20 @@ func (x *KillRequest) GetWaitS() uint32 {
 func (x *KillRequest) GetNoLoot() bool {
 	if x != nil {
 		return x.NoLoot
+	}
+	return false
+}
+
+func (x *KillRequest) GetMaxPull() float32 {
+	if x != nil {
+		return x.MaxPull
+	}
+	return 0
+}
+
+func (x *KillRequest) GetBodyPull() bool {
+	if x != nil {
+		return x.BodyPull
 	}
 	return false
 }
@@ -330,7 +350,7 @@ var File_combat_proto protoreflect.FileDescriptor
 
 const file_combat_proto_rawDesc = "" +
 	"\n" +
-	"\fcombat.proto\x12\x12wowagent.combat.v1\x1a\x1bapi/module/v1/session.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xd4\x01\n" +
+	"\fcombat.proto\x12\x12wowagent.combat.v1\x1a\x1bapi/module/v1/session.proto\x1a\x1bgoogle/protobuf/empty.proto\"\x8c\x02\n" +
 	"\vKillRequest\x12\x14\n" +
 	"\x05entry\x18\x01 \x01(\rR\x05entry\x12\x14\n" +
 	"\x05count\x18\x02 \x01(\rR\x05count\x12\x1d\n" +
@@ -341,7 +361,10 @@ const file_combat_proto_rawDesc = "" +
 	"\x06radius\x18\x05 \x01(\x02R\x06radius\x12\x13\n" +
 	"\x05max_s\x18\x06 \x01(\rR\x04maxS\x12\x15\n" +
 	"\x06wait_s\x18\a \x01(\rR\x05waitS\x12\x17\n" +
-	"\ano_loot\x18\b \x01(\bR\x06noLoot\"$\n" +
+	"\ano_loot\x18\b \x01(\bR\x06noLoot\x12\x19\n" +
+	"\bmax_pull\x18\t \x01(\x02R\amaxPull\x12\x1b\n" +
+	"\tbody_pull\x18\n" +
+	" \x01(\bR\bbodyPull\"$\n" +
 	"\vRestRequest\x12\x15\n" +
 	"\x06wait_s\x18\x01 \x01(\rR\x05waitS\"&\n" +
 	"\rStatusRequest\x12\x15\n" +

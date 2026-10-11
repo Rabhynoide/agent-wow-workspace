@@ -31,7 +31,8 @@ EmptyProtoPZ.google.golang.org/protobuf/types/known/emptypbø¢GPBªGoogle.P
 SendPacket%.agentwow.module.v1.SendPacketRequest.google.protobuf.EmptyE
 GetClock.google.protobuf.Empty!.agentwow.module.v1.ClockResponsea
 InvokeModule'.agentwow.module.v1.InvokeModuleRequest(.agentwow.module.v1.InvokeModuleResponseB5Z3github.com/agent-wow/agent-wow/pkg/modules/v1;modv1bproto3
-À	
+í
+
 
 auto.protowowagent.auto.v1api/module/v1/session.protogoogle/protobuf/empty.proto"Ý
 
@@ -62,12 +63,19 @@ AutoStatus
 level (Rlevel
 xp (Rxp
 	elapsed_s (RelapsedS
-progress	 (	Rprogress2æ
+progress	 (	Rprogress"f
+GotoRequest
+x (Rx
+y (Ry
+z (Rz
+radius (Rradius
+wait_s (RwaitS2«
 AutoH
 Recover.wowagent.auto.v1.StatusRequest.wowagent.auto.v1.AutoStatusC
 OnPacket.agentwow.module.v1.WorldPacket.google.protobuf.EmptyA
 Run.wowagent.auto.v1.RunRequest.wowagent.auto.v1.AutoStatusE
-Grind.wowagent.auto.v1.GrindRequest.wowagent.auto.v1.AutoStatusG
+Grind.wowagent.auto.v1.GrindRequest.wowagent.auto.v1.AutoStatusC
+Goto.wowagent.auto.v1.GotoRequest.wowagent.auto.v1.AutoStatusG
 Status.wowagent.auto.v1.StatusRequest.wowagent.auto.v1.AutoStatus<
 Stop.google.protobuf.Empty.wowagent.auto.v1.AutoStatus>
 BeforeLogout.google.protobuf.Empty.google.protobuf.EmptyBZwowagent/gen/autov1;autov1bproto3

@@ -25,6 +25,7 @@ const (
 	Auto_OnPacket_FullMethodName     = "/wowagent.auto.v1.Auto/OnPacket"
 	Auto_Run_FullMethodName          = "/wowagent.auto.v1.Auto/Run"
 	Auto_Grind_FullMethodName        = "/wowagent.auto.v1.Auto/Grind"
+	Auto_Goto_FullMethodName         = "/wowagent.auto.v1.Auto/Goto"
 	Auto_Status_FullMethodName       = "/wowagent.auto.v1.Auto/Status"
 	Auto_Stop_FullMethodName         = "/wowagent.auto.v1.Auto/Stop"
 	Auto_BeforeLogout_FullMethodName = "/wowagent.auto.v1.Auto/BeforeLogout"
@@ -38,6 +39,8 @@ type AutoClient interface {
 	OnPacket(ctx context.Context, in *v1.WorldPacket, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Run(ctx context.Context, in *RunRequest, opts ...grpc.CallOption) (*AutoStatus, error)
 	Grind(ctx context.Context, in *GrindRequest, opts ...grpc.CallOption) (*AutoStatus, error)
+	// Walks there, fighting back when attacked on the way (move.goto alone does not).
+	Goto(ctx context.Context, in *GotoRequest, opts ...grpc.CallOption) (*AutoStatus, error)
 	Status(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*AutoStatus, error)
 	Stop(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*AutoStatus, error)
 	BeforeLogout(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -91,6 +94,16 @@ func (c *autoClient) Grind(ctx context.Context, in *GrindRequest, opts ...grpc.C
 	return out, nil
 }
 
+func (c *autoClient) Goto(ctx context.Context, in *GotoRequest, opts ...grpc.CallOption) (*AutoStatus, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AutoStatus)
+	err := c.cc.Invoke(ctx, Auto_Goto_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *autoClient) Status(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*AutoStatus, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AutoStatus)
@@ -129,6 +142,8 @@ type AutoServer interface {
 	OnPacket(context.Context, *v1.WorldPacket) (*emptypb.Empty, error)
 	Run(context.Context, *RunRequest) (*AutoStatus, error)
 	Grind(context.Context, *GrindRequest) (*AutoStatus, error)
+	// Walks there, fighting back when attacked on the way (move.goto alone does not).
+	Goto(context.Context, *GotoRequest) (*AutoStatus, error)
 	Status(context.Context, *StatusRequest) (*AutoStatus, error)
 	Stop(context.Context, *emptypb.Empty) (*AutoStatus, error)
 	BeforeLogout(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
@@ -153,6 +168,9 @@ func (UnimplementedAutoServer) Run(context.Context, *RunRequest) (*AutoStatus, e
 }
 func (UnimplementedAutoServer) Grind(context.Context, *GrindRequest) (*AutoStatus, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Grind not implemented")
+}
+func (UnimplementedAutoServer) Goto(context.Context, *GotoRequest) (*AutoStatus, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Goto not implemented")
 }
 func (UnimplementedAutoServer) Status(context.Context, *StatusRequest) (*AutoStatus, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Status not implemented")
@@ -256,6 +274,24 @@ func _Auto_Grind_Handler(srv interface{}, ctx context.Context, dec func(interfac
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Auto_Goto_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GotoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AutoServer).Goto(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Auto_Goto_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AutoServer).Goto(ctx, req.(*GotoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Auto_Status_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(StatusRequest)
 	if err := dec(in); err != nil {
@@ -332,6 +368,10 @@ var Auto_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Grind",
 			Handler:    _Auto_Grind_Handler,
+		},
+		{
+			MethodName: "Goto",
+			Handler:    _Auto_Goto_Handler,
 		},
 		{
 			MethodName: "Status",

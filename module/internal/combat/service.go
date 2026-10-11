@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -310,26 +311,6 @@ func (s *Service) rest(ctx context.Context, j *job, hpTarget, manaTarget uint32,
 	return "done", "rest timeout"
 }
 
-func (s *Service) pickTarget(ctx context.Context, me *statepb.SelfInfo, entry uint32, radius float32) (*statepb.Obj, error) {
-	r, err := s.api.Nearby(ctx, &statepb.NearbyRequest{Kind: "unit", Entry: entry, Radius: radius, Max: 8, AliveOnly: true})
-	if err != nil {
-		return nil, err
-	}
-	var fallback *statepb.Obj
-	for _, o := range r.Objs {
-		if s.wasAbandoned(o.Guid) {
-			continue
-		}
-		if o.Target == 0 || o.Target == me.Guid {
-			return o, nil
-		}
-		if fallback == nil {
-			fallback = o
-		}
-	}
-	return fallback, nil
-}
-
 func (s *Service) aggressor(ctx context.Context, me *statepb.SelfInfo) *statepb.Obj {
 	r, err := s.api.Nearby(ctx, &statepb.NearbyRequest{Kind: "unit", Radius: 30, Max: 12, AliveOnly: true})
 	if err != nil {
@@ -355,7 +336,7 @@ func (s *Service) kill(ctx context.Context, j *job, r *pb.KillRequest) (string, 
 	}
 	deadline := time.Now().Add(maxS)
 	var kills uint32
-	noTarget := 0
+	noTarget, unreachable := 0, 0
 	for time.Now().Before(deadline) {
 		if ctx.Err() != nil {
 			return "stopped", "cancelled"
@@ -413,13 +394,13 @@ func (s *Service) kill(ctx context.Context, j *job, r *pb.KillRequest) (string, 
 			continue
 		}
 		s.buff(ctx, me)
-		t, err := s.pickTarget(ctx, snap.Self, r.Entry, radius)
+		t, err := s.choosePull(ctx, j, snap.Self, r, radius)
 		if err != nil {
 			return "failed", err.Error()
 		}
 		if t == nil {
 			if noTarget++; noTarget > 6 {
-				return "failed", fmt.Sprintf("no live entry %d within %.0f yards", r.Entry, radius)
+				return "failed", fmt.Sprintf("no live entry %d within %.0f yards (or only ones with too many monsters around)", r.Entry, radius)
 			}
 			if !sleep(ctx, 3*time.Second) {
 				return "stopped", "cancelled"
@@ -429,6 +410,15 @@ func (s *Service) kill(ctx context.Context, j *job, r *pb.KillRequest) (string, 
 		noTarget = 0
 		j.Update(func(st *pb.CombatStatus) { st.Doing = fmt.Sprintf("fighting %d", t.Entry) })
 		dead, why := s.fight(ctx, j, t.Guid)
+		if strings.HasPrefix(why, "cannot approach target") {
+			// On a roof, a ledge or across water: try another one.
+			s.abandon(t.Guid, why, t.Entry)
+			if unreachable++; unreachable > 4 {
+				return "failed", why
+			}
+			continue
+		}
+		unreachable = 0
 		if why != "" {
 			return "failed", why
 		}

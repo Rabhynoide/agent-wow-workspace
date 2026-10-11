@@ -111,7 +111,7 @@ triches serveur (sorts, talents, équipement et consommables offerts, téléport
 - [x] Marche qui riposte quand un monstre attaque en route (fait et testé : niveau 10 → 11 sans mort, quêtes des murlocs 112/114 faites).
 - [~] FleeManager (point sûr) : `move.safe_point` fait et testé, utilisé pour la résurrection au corps (pas encore vu en jeu sur une vraie mort). Reste : recul après pull, fuite, distance des lanceurs.
 - [x] Réaction des unités (hostile/neutre/amical) dans `state` (FactionTemplate.dbc).
-- [ ] Adds possibles + pull d'un seul monstre (voir « Points à réfléchir »).
+- [~] Adds possibles + pull où l'on est susceptible de gagner (voir « Points à réfléchir »).
 - [ ] Cible de grind : attaquants d'abord, même hauteur (± 5 yards), en vue ; en route, seulement ce qui sert aux quêtes ou nous attaque.
 - [ ] `quest_poi` / `quest_poi_points` pour trouver la zone de chaque objectif et du rendu.
 - [ ] Mêlée : se placer derrière la cible ; lanceurs : garder la distance.
@@ -162,7 +162,11 @@ Ordre proposé :
 
 ## Points à réfléchir (utilisateur, 2026-10-11, redemandés le même jour)
 - [ ] Implémenter la nage (voir « Nage, eau et quêtes d'eau »).
-- [ ] Pull d'un seul monstre : tirer (body pull : s'approcher juste à portée d'aggro, ou attaque à distance — tir/lancer pour le guerrier) puis reculer pour combattre loin du groupe, au lieu de courir sur la cible et d'aggro tout le camp. Demande : rayon d'aggro (niveau, ~20 yards), position des voisins, point de repli dégagé. Lié à l'évitement des monstres dans l'A*.
+- [~] Pull où l'on est susceptible de GAGNER (reformulation utilisateur, 2026-10-11) : le critère est l'issue probable du combat (cible + adds, leurs niveaux, nos PV/ressource, nos sorts de zone et défensifs), pas « un seul monstre » ; isoler un monstre n'est qu'un moyen d'y arriver. FAIT = choix d'une cible dont la charge (cible + adds pondérés par niveau) tient dans la capacité, sinon on la laisse et `auto` va ailleurs. EXPÉRIMENTAL (`body_pull`, désactivé) : se placer à portée d'aggro de la seule cible puis reculer. Test : le bandit n'a pas réagi en 8 s, puis mort contre un camp de Defias. À faire :
+  - avancer pas à pas (2 yards) vers la cible en vérifiant la marge avec les autres, au lieu d'attendre sur place ; vérifier la formule de portée (Creature::GetAggroRange + DetectionRange de creature_template ; ligne de vue) ;
+  - pull à distance : acheter une arme de lancer (guerrier : Throw) ou utiliser l'arme à distance, tirer à 25-30 yards, reculer ;
+  - groupes liés (creature_formations, SmartAI « call for help ») : ils viennent ensemble quelle que soit la distance → compter tout le groupe comme adds.
+- [ ] Capacité qui évolue (demande utilisateur ; c'est l'estimation « susceptible de gagner ») : aujourd'hui 1 / 1,5 (niv. 20) / 2 (niv. 40). La faire dépendre des sorts de zone appris (Thunder Clap, Sweeping Strikes, Bladestorm, Cleave), de l'équipement (PV, armure) et surtout APPRENDRE des combats : PV perdus par monstre selon l'écart de niveau → augmenter la capacité si les combats à 2 finissent au-dessus de 50 % de PV, la baisser après une mort.
 
 ## Leveling guidé par des guides extraits (décidé le 2026-10-10)
 Ordre des travaux :

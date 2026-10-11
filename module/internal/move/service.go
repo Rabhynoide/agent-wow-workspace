@@ -221,7 +221,10 @@ func (s *Service) plan(mapID uint32, from [3]float32, x, y, z float32) ([][3]flo
 	tm, vm := s.terrainFor(mapID), s.vmapFor(mapID)
 	to := [3]float32{x, y, z}
 	dense, err := navPlan(m, tm, vm, from, to)
-	if errors.Is(err, nav.ErrNoPath) || errors.Is(err, nav.ErrNoStartPoly) {
+	// Only when the START is the problem: an unreachable destination would make every escape try
+	// search the whole area (seconds each).
+	if errors.Is(err, nav.ErrNoStartPoly) || (errors.Is(err, nav.ErrNoPath) &&
+		m.IslandSize(nav.ToRecast(from[0], from[1], from[2]), nav.GroundOnly, islandPolys) < islandPolys) {
 		// Pushed onto a scrap of navmesh cut from the rest (ledge, rock) or off it: walk a short
 		// straight line on the ground to a point that has a path, then follow it.
 		if out, ok := escape(m, tm, vm, from, to); ok {
@@ -238,6 +241,9 @@ func (s *Service) plan(mapID uint32, from [3]float32, x, y, z float32) ([][3]flo
 	}
 	return dense, l, nil
 }
+
+// islandPolys: a start reaching fewer polygons than this is on an island (cut from the rest).
+const islandPolys = 300
 
 func navPlan(m *nav.Mesh, tm *terrain.Maps, vm *vmap.Tree, from, to [3]float32) ([][3]float32, error) {
 	src, dst := nav.ToRecast(from[0], from[1], from[2]), nav.ToRecast(to[0], to[1], to[2])

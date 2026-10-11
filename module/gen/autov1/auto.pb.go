@@ -321,6 +321,83 @@ func (x *AutoStatus) GetProgress() []string {
 	return nil
 }
 
+type GotoRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	X     float32                `protobuf:"fixed32,1,opt,name=x,proto3" json:"x,omitempty"`
+	Y     float32                `protobuf:"fixed32,2,opt,name=y,proto3" json:"y,omitempty"`
+	Z     float32                `protobuf:"fixed32,3,opt,name=z,proto3" json:"z,omitempty"`
+	// Arrival radius (default 3).
+	Radius        float32 `protobuf:"fixed32,4,opt,name=radius,proto3" json:"radius,omitempty"`
+	WaitS         uint32  `protobuf:"varint,5,opt,name=wait_s,json=waitS,proto3" json:"wait_s,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GotoRequest) Reset() {
+	*x = GotoRequest{}
+	mi := &file_auto_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GotoRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GotoRequest) ProtoMessage() {}
+
+func (x *GotoRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_auto_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GotoRequest.ProtoReflect.Descriptor instead.
+func (*GotoRequest) Descriptor() ([]byte, []int) {
+	return file_auto_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *GotoRequest) GetX() float32 {
+	if x != nil {
+		return x.X
+	}
+	return 0
+}
+
+func (x *GotoRequest) GetY() float32 {
+	if x != nil {
+		return x.Y
+	}
+	return 0
+}
+
+func (x *GotoRequest) GetZ() float32 {
+	if x != nil {
+		return x.Z
+	}
+	return 0
+}
+
+func (x *GotoRequest) GetRadius() float32 {
+	if x != nil {
+		return x.Radius
+	}
+	return 0
+}
+
+func (x *GotoRequest) GetWaitS() uint32 {
+	if x != nil {
+		return x.WaitS
+	}
+	return 0
+}
+
 var File_auto_proto protoreflect.FileDescriptor
 
 const file_auto_proto_rawDesc = "" +
@@ -355,12 +432,19 @@ const file_auto_proto_rawDesc = "" +
 	"\x05level\x18\x06 \x01(\rR\x05level\x12\x0e\n" +
 	"\x02xp\x18\a \x01(\rR\x02xp\x12\x1b\n" +
 	"\telapsed_s\x18\b \x01(\rR\belapsedS\x12\x1a\n" +
-	"\bprogress\x18\t \x03(\tR\bprogress2\xe6\x03\n" +
+	"\bprogress\x18\t \x03(\tR\bprogress\"f\n" +
+	"\vGotoRequest\x12\f\n" +
+	"\x01x\x18\x01 \x01(\x02R\x01x\x12\f\n" +
+	"\x01y\x18\x02 \x01(\x02R\x01y\x12\f\n" +
+	"\x01z\x18\x03 \x01(\x02R\x01z\x12\x16\n" +
+	"\x06radius\x18\x04 \x01(\x02R\x06radius\x12\x15\n" +
+	"\x06wait_s\x18\x05 \x01(\rR\x05waitS2\xab\x04\n" +
 	"\x04Auto\x12H\n" +
 	"\aRecover\x12\x1f.wowagent.auto.v1.StatusRequest\x1a\x1c.wowagent.auto.v1.AutoStatus\x12C\n" +
 	"\bOnPacket\x12\x1f.agentwow.module.v1.WorldPacket\x1a\x16.google.protobuf.Empty\x12A\n" +
 	"\x03Run\x12\x1c.wowagent.auto.v1.RunRequest\x1a\x1c.wowagent.auto.v1.AutoStatus\x12E\n" +
-	"\x05Grind\x12\x1e.wowagent.auto.v1.GrindRequest\x1a\x1c.wowagent.auto.v1.AutoStatus\x12G\n" +
+	"\x05Grind\x12\x1e.wowagent.auto.v1.GrindRequest\x1a\x1c.wowagent.auto.v1.AutoStatus\x12C\n" +
+	"\x04Goto\x12\x1d.wowagent.auto.v1.GotoRequest\x1a\x1c.wowagent.auto.v1.AutoStatus\x12G\n" +
 	"\x06Status\x12\x1f.wowagent.auto.v1.StatusRequest\x1a\x1c.wowagent.auto.v1.AutoStatus\x12<\n" +
 	"\x04Stop\x12\x16.google.protobuf.Empty\x1a\x1c.wowagent.auto.v1.AutoStatus\x12>\n" +
 	"\fBeforeLogout\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.EmptyB\x1cZ\x1awowagent/gen/autov1;autov1b\x06proto3"
@@ -377,34 +461,37 @@ func file_auto_proto_rawDescGZIP() []byte {
 	return file_auto_proto_rawDescData
 }
 
-var file_auto_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_auto_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_auto_proto_goTypes = []any{
 	(*RunRequest)(nil),     // 0: wowagent.auto.v1.RunRequest
 	(*StatusRequest)(nil),  // 1: wowagent.auto.v1.StatusRequest
 	(*GrindRequest)(nil),   // 2: wowagent.auto.v1.GrindRequest
 	(*AutoStatus)(nil),     // 3: wowagent.auto.v1.AutoStatus
-	nil,                    // 4: wowagent.auto.v1.RunRequest.RewardsEntry
-	(*v1.WorldPacket)(nil), // 5: agentwow.module.v1.WorldPacket
-	(*emptypb.Empty)(nil),  // 6: google.protobuf.Empty
+	(*GotoRequest)(nil),    // 4: wowagent.auto.v1.GotoRequest
+	nil,                    // 5: wowagent.auto.v1.RunRequest.RewardsEntry
+	(*v1.WorldPacket)(nil), // 6: agentwow.module.v1.WorldPacket
+	(*emptypb.Empty)(nil),  // 7: google.protobuf.Empty
 }
 var file_auto_proto_depIdxs = []int32{
-	4, // 0: wowagent.auto.v1.RunRequest.rewards:type_name -> wowagent.auto.v1.RunRequest.RewardsEntry
+	5, // 0: wowagent.auto.v1.RunRequest.rewards:type_name -> wowagent.auto.v1.RunRequest.RewardsEntry
 	1, // 1: wowagent.auto.v1.Auto.Recover:input_type -> wowagent.auto.v1.StatusRequest
-	5, // 2: wowagent.auto.v1.Auto.OnPacket:input_type -> agentwow.module.v1.WorldPacket
+	6, // 2: wowagent.auto.v1.Auto.OnPacket:input_type -> agentwow.module.v1.WorldPacket
 	0, // 3: wowagent.auto.v1.Auto.Run:input_type -> wowagent.auto.v1.RunRequest
 	2, // 4: wowagent.auto.v1.Auto.Grind:input_type -> wowagent.auto.v1.GrindRequest
-	1, // 5: wowagent.auto.v1.Auto.Status:input_type -> wowagent.auto.v1.StatusRequest
-	6, // 6: wowagent.auto.v1.Auto.Stop:input_type -> google.protobuf.Empty
-	6, // 7: wowagent.auto.v1.Auto.BeforeLogout:input_type -> google.protobuf.Empty
-	3, // 8: wowagent.auto.v1.Auto.Recover:output_type -> wowagent.auto.v1.AutoStatus
-	6, // 9: wowagent.auto.v1.Auto.OnPacket:output_type -> google.protobuf.Empty
-	3, // 10: wowagent.auto.v1.Auto.Run:output_type -> wowagent.auto.v1.AutoStatus
-	3, // 11: wowagent.auto.v1.Auto.Grind:output_type -> wowagent.auto.v1.AutoStatus
-	3, // 12: wowagent.auto.v1.Auto.Status:output_type -> wowagent.auto.v1.AutoStatus
-	3, // 13: wowagent.auto.v1.Auto.Stop:output_type -> wowagent.auto.v1.AutoStatus
-	6, // 14: wowagent.auto.v1.Auto.BeforeLogout:output_type -> google.protobuf.Empty
-	8, // [8:15] is the sub-list for method output_type
-	1, // [1:8] is the sub-list for method input_type
+	4, // 5: wowagent.auto.v1.Auto.Goto:input_type -> wowagent.auto.v1.GotoRequest
+	1, // 6: wowagent.auto.v1.Auto.Status:input_type -> wowagent.auto.v1.StatusRequest
+	7, // 7: wowagent.auto.v1.Auto.Stop:input_type -> google.protobuf.Empty
+	7, // 8: wowagent.auto.v1.Auto.BeforeLogout:input_type -> google.protobuf.Empty
+	3, // 9: wowagent.auto.v1.Auto.Recover:output_type -> wowagent.auto.v1.AutoStatus
+	7, // 10: wowagent.auto.v1.Auto.OnPacket:output_type -> google.protobuf.Empty
+	3, // 11: wowagent.auto.v1.Auto.Run:output_type -> wowagent.auto.v1.AutoStatus
+	3, // 12: wowagent.auto.v1.Auto.Grind:output_type -> wowagent.auto.v1.AutoStatus
+	3, // 13: wowagent.auto.v1.Auto.Goto:output_type -> wowagent.auto.v1.AutoStatus
+	3, // 14: wowagent.auto.v1.Auto.Status:output_type -> wowagent.auto.v1.AutoStatus
+	3, // 15: wowagent.auto.v1.Auto.Stop:output_type -> wowagent.auto.v1.AutoStatus
+	7, // 16: wowagent.auto.v1.Auto.BeforeLogout:output_type -> google.protobuf.Empty
+	9, // [9:17] is the sub-list for method output_type
+	1, // [1:9] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
 	1, // [1:1] is the sub-list for extension extendee
 	0, // [0:1] is the sub-list for field type_name
@@ -421,7 +508,7 @@ func file_auto_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_auto_proto_rawDesc), len(file_auto_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

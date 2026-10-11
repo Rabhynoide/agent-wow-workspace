@@ -526,3 +526,26 @@ func (m *Mesh) HeightInCorridor(pt V3, corridor []polyRef) (float32, bool) {
 	}
 	return h, found
 }
+
+// IslandSize counts the polygons reachable from the one under pt, stopping at limit: a small number
+// means the point sits on a scrap of navmesh cut from the rest (a rock, a ledge). It returns 0 when pt
+// is not on the navmesh.
+func (m *Mesh) IslandSize(pt V3, f Filter, limit int) int {
+	ref, _, ok := m.NearestPoly(pt, f, 6, 3)
+	if !ok {
+		return 0
+	}
+	seen := map[polyRef]bool{ref: true}
+	queue := []polyRef{ref}
+	for len(queue) > 0 && len(seen) < limit {
+		r := queue[0]
+		queue = queue[1:]
+		for _, l := range m.links(r, f) {
+			if !seen[l.to] {
+				seen[l.to] = true
+				queue = append(queue, l.to)
+			}
+		}
+	}
+	return len(seen)
+}
