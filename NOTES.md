@@ -46,6 +46,9 @@ Icy Veins bloque ma lecture (403). Aux paliers de niveau listés dans BACKLOG (9
 - Si le port 8086 est pris : variable AGENT_WOW_WORLDRPC_PORT (aussi pour scripts/rpc.sh).
 - Vérifier côté serveur (lecture seule) : `docker exec ac-database mysql -uroot -ppassword -N acore_characters -e "select ... from characters where name='Claudia'"`.
 
+## Benchmark
+- Après une fonctionnalité / avant de pousser : `scripts/bench.sh 6 60` en arrière-plan (humain guerrier 1 → 6), puis comparer `journal/bench/results.csv`. Historique et analyses dans `journal/bench/`.
+
 ## Flux de jeu typique (économie de tokens : peu d'appels, sorties courtes)
 1. Démarrer (`scripts/start.sh <Nom>`), puis le plan de quêtes (`guidecheck -plan ...`, voir « Guides de leveling »).
 2. Le plus simple : `scripts/level.sh <Nom> <niveau>` en arrière-plan (tout le leveling ; voir MODULES « level.sh »). Sinon `scripts/job.sh auto.run '{"quests":[ids]}'` : lance le job et attend la fin (9 min max, une ligne par changement d'étape). Code 2 = encore en cours : relancer `scripts/job.sh auto.status`. Idéalement en Bash `run_in_background`. Grouper les quêtes dans un seul `auto.run`. Même usage pour `combat.kill`, `combat.rest`, `auto.recover`, `auto.goto`. Pour se déplacer hors combat : `auto.goto` (riposte si attaqué), PAS `move.goto` (ne se défend pas : 3 morts le 2026-10-11). `auto` gère seul l'équipement, les talents, l'entraîneur proche, la revente, la réparation et la résurrection.

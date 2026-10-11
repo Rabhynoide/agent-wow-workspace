@@ -40,6 +40,18 @@ func nextBatch(entries []routeQuest, cache map[uint32]*quest, manual map[uint32]
 	race, class uint32, raceName, className string, level uint32, above, n int) (batch []uint32, need, blocker uint32) {
 	seen := map[uint32]bool{}
 	for _, e := range entries {
+		if e.gate > 0 {
+			if len(e.only) > 0 && !onlyMatches(e.only, race, class) {
+				continue
+			}
+			if e.gate > level {
+				if len(batch) == 0 {
+					return nil, e.gate, 0 // grind here, where the guide says so
+				}
+				return batch, 0, 0
+			}
+			continue
+		}
 		q := cache[e.id]
 		if q == nil || seen[e.id] || ps.finished[e.id] || ps.skipped[e.id] != "" || manual[e.id] != "" {
 			continue
@@ -352,10 +364,14 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 				targets = c.grindTargets(me.Map, me.X, me.Y, 600, me.Level, class, factions[playerFactions[race]], factions)
 			}
 			if len(targets) == 0 {
-				say("STOP: quest %d %s needs level %d and no monster to grind near (%.0f,%.0f)", blocker, c.cache[blocker].Title, need, me.X, me.Y)
+				say("STOP: level %d needed (quest %d) and no monster to grind near (%.0f,%.0f)", need, blocker, me.X, me.Y)
 				return 1
 			}
-			say("L%d grind to %d (next quest %d %s needs %d) on %v", me.Level, me.Level+1, blocker, c.cache[blocker].Title, need, targets)
+			why := fmt.Sprintf("the guide says reach level %d here", need)
+			if blocker != 0 {
+				why = fmt.Sprintf("next quest %d %s needs %d", blocker, c.cache[blocker].Title, need)
+			}
+			say("L%d grind to %d (%s) on %v", me.Level, me.Level+1, why, targets)
 			left := time.Duration(maxMin)*time.Minute - time.Since(start)
 			grindS := min(1500, max(60, int(left.Seconds())))
 			st, err := r.job("auto.grind", map[string]any{"entries": targets, "until_level": me.Level + 1, "max_s": grindS}, detail)

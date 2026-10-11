@@ -52,6 +52,8 @@ type Service struct {
 	jobs   *jobs.Runner[*pb.AutoStatus]
 	guard  atomic.Bool // defend when attacked between jobs
 	items  sync.Map    // item entry -> *worldpb.ItemInfo (food checks)
+	// money when a repair failed (not enough): no new repair trip before we earn a silver more
+	repairFailedAt atomic.Uint32
 }
 
 func Register(g grpc.ServiceRegistrar, s modv1.SessionClient) {
@@ -162,6 +164,7 @@ func (r *run) recover() error {
 	// debuff from sicknessLevel on; reclaiming the corpse never applies it). It still costs durability.
 	if snap.Self.Level < sicknessLevel {
 		if ok := r.healerRez(send); ok {
+			r.restAfterRez()
 			return nil
 		}
 	}
@@ -214,18 +217,21 @@ func (r *run) recover() error {
 			return r.ctx.Err()
 		}
 		if s, err := r.s.api.Brief(r.ctx); err == nil && s.Self != nil && !s.Self.Dead {
-			// Back with half health: rest (and eat) before anything else.
-			if st, err := r.s.api.CombatRest(r.ctx); err == nil {
-				for st.State == "running" {
-					if st, err = r.s.api.CombatStatus(r.ctx, 20); err != nil {
-						break
-					}
-				}
-			}
+			r.restAfterRez()
 			return nil
 		}
 	}
 	return fmt.Errorf("could not resurrect at corpse")
+}
+
+// restAfterRez: back with half health, rest (and eat) before anything else; leaving at once got the
+// character killed again on the way (bench of 2026-10-11: four deaths in a row near Goldshire).
+func (r *run) restAfterRez() {
+	r.step("resting after resurrection")
+	st, err := r.s.api.CombatRest(r.ctx)
+	for err == nil && st.State == "running" {
+		st, err = r.s.api.CombatStatus(r.ctx, 20)
+	}
 }
 
 // healerRez walks to a spirit healer within 150 yards and resurrects there.
@@ -933,6 +939,9 @@ func (r *run) ensureSpace() error {
 		wantDrink = drinkWanted
 	}
 	needSell, needRepair := snap.FreeSlots < 3, snap.DurabilityPct < repairBelow
+	if failed := r.s.repairFailedAt.Load(); failed > 0 && me.Money < failed+100 {
+		needRepair = false
+	}
 	needFood := (food < suppliesLow || (wantDrink > 0 && drink < suppliesLow)) && me.Money >= minMoneyForFood
 	if !needSell && !needRepair && !needFood {
 		return nil
@@ -1019,9 +1028,12 @@ func (r *run) ensureSpace() error {
 	}
 	if npc.NpcFlags&repairFlag != 0 && snap.DurabilityPct < 100 {
 		if res, err := r.s.api.Repair(r.ctx); err == nil && res.Ok {
+			r.s.repairFailedAt.Store(0)
 			r.note("repaired for %d copper (durability %d%%)", res.Copper, res.DurabilityPct)
-		} else if needRepair {
-			return fmt.Errorf("repair: %v %s", err, res.GetReason())
+		} else {
+			// Not enough money: play on with worn gear, the next sales pay for it.
+			r.note("could not repair: %v %s", err, res.GetReason())
+			r.s.repairFailedAt.Store(max(me.Money, 1))
 		}
 	}
 	return nil

@@ -189,6 +189,15 @@ Icy Veins bloque ma lecture (403) : à chaque palier ci-dessous, prévenir l'uti
 - [ ] Dès qu'on change de zone (Elwynn Forest, puis Westfall...) : parcours de quêtes par niveau recommandé par le guide.
 - [ ] Autre classe ou autre spécialisation : demander le guide de leveling complet correspondant.
 
+## Benchmark 1 → 6 (2026-10-11, voir journal/bench/)
+- [x] Capacité : la cible seule compte au plus 1 (un Thug niveau 4 seul était écarté au niveau 2).
+- [x] Repos après toute résurrection (esprit guérisseur compris).
+- [x] Étapes « reach this level N » de la route respectées.
+- [x] Réparation impossible (pas d'argent) non bloquante ; pas de nouvel essai avant d'avoir gagné 1 pa.
+- [ ] Quête 62 (mine de Fargodeep) mortelle au niveau 5 : kobolds en groupe sur le chemin → fuite quand les PV baissent / évitement des monstres sur le chemin.
+- [ ] Argent très juste au niveau 5 (nourriture + réparations) : budget nourriture selon l'argent, vendre plus.
+- [ ] Heroic Strike refusé souvent (code 30) : comprendre.
+
 ## Prochaines étapes suggérées (2026-10-11)
 - FAIT : suivi des auras et aura state (« Rotation et combat » étape 1). SUITE : « peut lancer » générique, moteur de priorités, rotations Guerrier/Prêtre en tables ; tester le prêtre (Claudia) en jeu.
 - Pull où l'on est susceptible de gagner (voir « Points à réfléchir ») et capacité qui apprend des combats.

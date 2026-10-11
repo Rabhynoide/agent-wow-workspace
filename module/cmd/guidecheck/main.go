@@ -222,6 +222,14 @@ func (c *checker) check(file string, g *guide) {
 		if s.N != i+1 {
 			c.problem(file, s, "step number should be %d", i+1)
 		}
+		// "reach this level N": the guide expects us to level up here before going on.
+		if s.Action == "note" && strings.EqualFold(strings.TrimSpace(s.Note), "reach this level") {
+			if m := firstInt.Find(s.Level); m != nil {
+				lvl, _ := strconv.Atoi(string(m))
+				c.entries = append(c.entries, routeQuest{gate: uint32(lvl), only: s.Only})
+			}
+			continue
+		}
 		if s.Quest == "" && s.QuestID == 0 {
 			continue
 		}
@@ -573,6 +581,7 @@ type routeQuest struct {
 	id    uint32
 	steps []string
 	only  []only
+	gate  uint32 // a "reach this level" step (no quest): level to reach before going on
 }
 
 // printPlan lists the next quests of the route this character has not rewarded yet.

@@ -33,6 +33,11 @@ func TestAddsAndPullSpot(t *testing.T) {
 	if load := pullLoad(target, adds, lvl); load != 2 || load <= pullCapacity(lvl) {
 		t.Fatalf("load %v: the pair must exceed a level-10 capacity", load)
 	}
+	// Alone, a monster above our level still fits the capacity.
+	strong := &statepb.Obj{Guid: 5, Level: 12}
+	if load := pullLoad(strong, nil, lvl); load > pullCapacity(lvl) {
+		t.Fatalf("a lone level-12 monster has load %v at level 10", load)
+	}
 	if len(addsOf(far, all, lvl)) != 0 {
 		t.Fatal("the far one is alone")
 	}

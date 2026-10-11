@@ -33,6 +33,22 @@ func TestNextBatchKeepsRouteOrder(t *testing.T) {
 	}
 }
 
+func TestLevelGateStopsTheRoute(t *testing.T) {
+	cache := map[uint32]*quest{1: {ID: 1, MinLevel: 1, Level: 2}, 2: {ID: 2, MinLevel: 1, Level: 3}}
+	entries := []routeQuest{{id: 1}, {gate: 5}, {id: 2}}
+	ps := &playState{finished: map[uint32]bool{}, skipped: map[uint32]string{}, retryAt: map[uint32]uint32{}}
+	if batch, need, _ := nextBatch(entries, cache, nil, ps, 1, 1, "human", "warrior", 4, 2, 5); len(batch) != 1 || need != 0 {
+		t.Fatalf("batch %v need %d: quest 1, then stop at the gate", batch, need)
+	}
+	ps.finished[1] = true
+	if batch, need, blocker := nextBatch(entries, cache, nil, ps, 1, 1, "human", "warrior", 4, 2, 5); batch != nil || need != 5 || blocker != 0 {
+		t.Fatalf("batch %v need %d blocker %d: grind to 5 here", batch, need, blocker)
+	}
+	if batch, _, _ := nextBatch(entries, cache, nil, ps, 1, 1, "human", "warrior", 5, 2, 5); len(batch) != 1 || batch[0] != 2 {
+		t.Fatalf("at level 5 the route goes on: %v", batch)
+	}
+}
+
 func TestGrayLevel(t *testing.T) {
 	for l, want := range map[uint32]uint32{5: 0, 8: 3, 20: 13, 45: 35, 70: 61} {
 		if g := grayLevel(l); g != want {

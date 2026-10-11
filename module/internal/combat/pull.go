@@ -72,9 +72,11 @@ func addsOf(t *statepb.Obj, hostiles []*statepb.Obj, level uint32) []*statepb.Ob
 	return out
 }
 
-// pullLoad is the weighted count of the target and its adds.
+// pullLoad is the weighted count of the target and its adds. The target alone counts at most 1: a
+// monster a level or two above us is still fine alone (too strong ones are refused before, by the
+// danger margin); only the adds can push the load over the capacity.
 func pullLoad(t *statepb.Obj, adds []*statepb.Obj, level uint32) float32 {
-	w := pullWeight(level, t.Level)
+	w := min(pullWeight(level, t.Level), 1)
 	for _, a := range adds {
 		w += pullWeight(level, a.Level)
 	}
