@@ -80,6 +80,7 @@ type checker struct {
 	done     map[uint32]bool
 	order    []uint32
 	entries  []routeQuest
+	where    map[uint32]string // quest -> route file where it is first accepted
 }
 
 func main() {
@@ -88,6 +89,7 @@ func main() {
 	from := flag.Int("from", 0, "with -ids: first quest min level")
 	to := flag.Int("to", 100, "with -ids: last quest min level")
 	maxShow := flag.Int("max", 8, "problems shown per category")
+	manualList := flag.Bool("manual", false, "list the quests of the route auto cannot do, with the reason and the level")
 	plan := flag.Bool("plan", false, "print the next quests of the route for a character (see -char -race -class -level -n)")
 	char := flag.String("char", "", "with -plan: character name (quests already rewarded are skipped)")
 	race := flag.String("race", "", "with -plan: race of the character (e.g. Human)")
@@ -112,7 +114,7 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	c := &checker{db: db, cache: map[uint32]*quest{}, manual: map[uint32]string{}, accepted: map[uint32]bool{}, done: map[uint32]bool{}}
+	c := &checker{db: db, cache: map[uint32]*quest{}, manual: map[uint32]string{}, accepted: map[uint32]bool{}, done: map[uint32]bool{}, where: map[uint32]string{}}
 	total := 0
 	for _, f := range files {
 		var g guide
@@ -132,6 +134,10 @@ func main() {
 	}
 	if *ids {
 		c.printIDs(*from, *to)
+		return
+	}
+	if *manualList {
+		c.printManual(raceIDs[strings.ToLower(*race)], classIDs[strings.ToLower(*class)], *class)
 		return
 	}
 	if *plan {
@@ -220,6 +226,9 @@ func (c *checker) check(file string, g *guide) {
 				c.order = append(c.order, q.ID)
 			}
 			c.entries = append(c.entries, routeQuest{id: q.ID, only: s.Only})
+			if _, ok := c.where[q.ID]; !ok {
+				c.where[q.ID] = file
+			}
 			c.classify(q)
 		case "turnin":
 			if s.NPC != "" && len(q.Enders) > 0 && !has(q.Enders, s.NPC) {
@@ -306,7 +315,58 @@ func (c *checker) classify(q *quest) {
 		c.manual[q.ID] = fmt.Sprintf("group of %d recommended", q.Group)
 	case manualTypes[q.Type] != "":
 		c.manual[q.ID] = manualTypes[q.Type]
+	default:
+		if why := c.objectiveProblem(q); why != "" {
+			c.manual[q.ID] = why
+		}
 	}
+}
+
+// objectiveProblem finds objectives auto cannot reach: a creature or object that is never spawned
+// (kill credit given by a script or an event), an item nothing drops (given by a script, bought,
+// crafted). The quest's own start item counts as owned.
+func (c *checker) objectiveProblem(q *quest) string {
+	var npc [4]int64
+	var item [6]uint32
+	var startItem uint32
+	err := c.db.QueryRow(`SELECT RequiredNpcOrGo1, RequiredNpcOrGo2, RequiredNpcOrGo3, RequiredNpcOrGo4,
+		RequiredItemId1, RequiredItemId2, RequiredItemId3, RequiredItemId4, RequiredItemId5, RequiredItemId6, StartItem
+		FROM quest_template WHERE ID=?`, q.ID).Scan(&npc[0], &npc[1], &npc[2], &npc[3], &item[0], &item[1], &item[2], &item[3], &item[4], &item[5], &startItem)
+	if err != nil {
+		return ""
+	}
+	exists := func(query string, arg any) bool {
+		var one int
+		return c.db.QueryRow(query, arg).Scan(&one) == nil
+	}
+	for _, n := range npc {
+		switch {
+		case n > 0 && !exists("SELECT 1 FROM creature WHERE id=? LIMIT 1", n):
+			return fmt.Sprintf("kill credit for creature %d that is never spawned (script or event)", n)
+		case n < 0 && !exists("SELECT 1 FROM gameobject WHERE id=? LIMIT 1", -n):
+			return fmt.Sprintf("object %d that is never spawned (script or event)", -n)
+		}
+	}
+	for _, it := range item {
+		if it == 0 || it == startItem {
+			continue
+		}
+		dropped := exists("SELECT 1 FROM creature_loot_template WHERE Item=? LIMIT 1", it) ||
+			exists("SELECT 1 FROM gameobject_loot_template WHERE Item=? LIMIT 1", it) ||
+			exists("SELECT 1 FROM reference_loot_template WHERE Item=? LIMIT 1", it) ||
+			exists("SELECT 1 FROM item_loot_template WHERE Item=? LIMIT 1", it)
+		if dropped {
+			continue
+		}
+		if exists("SELECT 1 FROM npc_vendor WHERE item=? LIMIT 1", it) {
+			return fmt.Sprintf("item %d must be bought from a vendor", it)
+		}
+		if exists("SELECT 1 FROM quest_template WHERE StartItem=? LIMIT 1", it) {
+			continue // given by another quest of the chain
+		}
+		return fmt.Sprintf("item %d is not dropped by anything (given by a script, crafted or used on a target)", it)
+	}
+	return ""
 }
 
 func (c *checker) resolve(file string, s step, race uint32) *quest {
@@ -522,4 +582,33 @@ func onlyMatches(o []only, race, class uint32) bool {
 		}
 	}
 	return false
+}
+
+// printManual lists, in route order, the quests auto cannot complete alone (markdown table).
+func (c *checker) printManual(race, class uint32, className string) {
+	counts := map[string]int{}
+	fmt.Println("| quête | titre | niv. | min | guide | raison |")
+	fmt.Println("|---|---|---|---|---|---|")
+	seen := map[uint32]bool{}
+	for _, e := range c.entries {
+		q := c.cache[e.id]
+		why := c.manual[e.id]
+		if q == nil || why == "" || seen[e.id] {
+			continue
+		}
+		if race != 0 && ((len(e.only) > 0 && !onlyMatches(e.only, race, class)) || !allowed(q, step{Only: e.only, Class: className}, race)) {
+			continue
+		}
+		seen[e.id] = true
+		kind := why
+		if i := strings.IndexAny(kind, "0123456789("); i > 0 {
+			kind = strings.TrimSpace(kind[:i])
+		}
+		counts[kind]++
+		fmt.Printf("| %d | %s | %d | %d | %s | %s |\n", e.id, q.Title, q.Level, q.MinLevel, strings.TrimSuffix(c.where[e.id], ".json"), why)
+	}
+	fmt.Println()
+	for k, n := range counts {
+		fmt.Printf("- %s : %d\n", k, n)
+	}
 }

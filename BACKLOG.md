@@ -81,6 +81,16 @@ Légende : [ ] à faire, [~] partiel, [x] fait.
 - [ ] Quêtes de soin / de buff sur des PNJ (beaucoup de quêtes de prêtre : ex. 5624 « Garments of the Light » : soigner Guard Roberts avec Soins inférieurs rang 2, puis Robustesse, etc.). Aujourd'hui `auto` les traite comme un objectif « kill » et risquerait d'attaquer le PNJ allié : elles sont sautées à la main. A faire : détecter les objectifs dont le PNJ est allié (faction non hostile / pas de statut « attaquable »), ne jamais appeler `combat.kill` dessus, et ajouter une action `quest.cast {spell, npc_entry}` (lancer un sort sur un PNJ, avec la liste des sorts demandés lue dans le texte de la quête ou saisie à la main). Niveau requis : Opus (protocole + logique de ciblage).
 - [ ] Quêtes « explorer une zone » (ex. 62 The Fargodeep Mine) : non gérées par `auto` (déclencheur de zone).
 
+## Sélection des quêtes de la route (décisions utilisateur, 2026-10-11)
+- [x] Quêtes déjà faites : sautées.
+- [x] Quêtes interdites à la race/classe : sautées.
+- [ ] L'ORDRE DES ÉTAPES ZYGOR EST À RESPECTER : quand la prochaine quête demande un niveau plus haut (niveau minimum, ou monstres hors de la marge de danger), `auto` doit grinder près de là jusqu'au niveau voulu au lieu de passer à la suite. A changer dans `guidecheck -plan` / le futur plan intégré d'`auto`.
+- [ ] Quêtes qu'`auto` ne sait pas faire (liste complète : `journal/quests_manual_human_warrior.md`, 356 sur 1925, généré par `guidecheck -manual`) : l'utilisateur décide au cas par cas entre nouveau module et abandon. Catégories : crédit de kill d'une créature jamais présente (126, dont 10 obtenables en tuant les créatures dont KillCredit1/2 pointe dessus) ; exploration ou événement (112, dont 24 zones-déclencheurs `areatrigger_involvedrelation`, le reste escortes/scripts/duels) ; objet non lâché (53 : acheté, fabriqué, donné par script ou utilisé sur une cible) ; sort lancé sur une cible (48) ; groupe (8), élite (4), donjon (3), JcJ (1), objet de jeu (1).
+
+## Points à réfléchir (utilisateur, 2026-10-11)
+- [ ] Implémenter la nage (voir « Nage, eau et quêtes d'eau »).
+- [ ] Pull d'un seul monstre : tirer (body pull : s'approcher juste à portée d'aggro, ou attaque à distance — tir/lancer pour le guerrier) puis reculer pour combattre loin du groupe, au lieu de courir sur la cible et d'aggro tout le camp. Demande : rayon d'aggro (niveau, ~20 yards), position des voisins, point de repli dégagé. Lié à l'évitement des monstres dans l'A*.
+
 ## Leveling guidé par des guides extraits (décidé le 2026-10-10)
 Ordre des travaux :
 0. [x] SOURCE TROUVÉE : guides Zygor (1-80, Alliance et Horde, avec ids) lus par `cmd/zygor2route` + `guidecheck -plan`. L'extraction Claude Desktop est en pause (utile surtout pour les guides de classe : talents/rotation).
