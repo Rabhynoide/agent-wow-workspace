@@ -504,6 +504,185 @@ func (x *LosResult) GetReason() string {
 	return ""
 }
 
+type SafePointRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Center of the search (e.g. our corpse); points within max_dist of it (default 30).
+	X       float32 `protobuf:"fixed32,1,opt,name=x,proto3" json:"x,omitempty"`
+	Y       float32 `protobuf:"fixed32,2,opt,name=y,proto3" json:"y,omitempty"`
+	Z       float32 `protobuf:"fixed32,3,opt,name=z,proto3" json:"z,omitempty"`
+	MaxDist float32 `protobuf:"fixed32,4,opt,name=max_dist,json=maxDist,proto3" json:"max_dist,omitempty"`
+	MinDist float32 `protobuf:"fixed32,5,opt,name=min_dist,json=minDist,proto3" json:"min_dist,omitempty"`
+	// Also keep the walk there away from monsters (alive character); a ghost can ignore it.
+	PathClear     bool `protobuf:"varint,6,opt,name=path_clear,json=pathClear,proto3" json:"path_clear,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SafePointRequest) Reset() {
+	*x = SafePointRequest{}
+	mi := &file_move_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SafePointRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SafePointRequest) ProtoMessage() {}
+
+func (x *SafePointRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_move_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SafePointRequest.ProtoReflect.Descriptor instead.
+func (*SafePointRequest) Descriptor() ([]byte, []int) {
+	return file_move_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *SafePointRequest) GetX() float32 {
+	if x != nil {
+		return x.X
+	}
+	return 0
+}
+
+func (x *SafePointRequest) GetY() float32 {
+	if x != nil {
+		return x.Y
+	}
+	return 0
+}
+
+func (x *SafePointRequest) GetZ() float32 {
+	if x != nil {
+		return x.Z
+	}
+	return 0
+}
+
+func (x *SafePointRequest) GetMaxDist() float32 {
+	if x != nil {
+		return x.MaxDist
+	}
+	return 0
+}
+
+func (x *SafePointRequest) GetMinDist() float32 {
+	if x != nil {
+		return x.MinDist
+	}
+	return 0
+}
+
+func (x *SafePointRequest) GetPathClear() bool {
+	if x != nil {
+		return x.PathClear
+	}
+	return false
+}
+
+type SafePointResult struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Ok     bool                   `protobuf:"varint,1,opt,name=ok,proto3" json:"ok,omitempty"`
+	Reason string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	X      float32                `protobuf:"fixed32,3,opt,name=x,proto3" json:"x,omitempty"`
+	Y      float32                `protobuf:"fixed32,4,opt,name=y,proto3" json:"y,omitempty"`
+	Z      float32                `protobuf:"fixed32,5,opt,name=z,proto3" json:"z,omitempty"`
+	// Distance from the point (and from the path with path_clear) to the nearest hostile monster.
+	Clearance     float32 `protobuf:"fixed32,6,opt,name=clearance,proto3" json:"clearance,omitempty"`
+	Threats       uint32  `protobuf:"varint,7,opt,name=threats,proto3" json:"threats,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SafePointResult) Reset() {
+	*x = SafePointResult{}
+	mi := &file_move_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SafePointResult) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SafePointResult) ProtoMessage() {}
+
+func (x *SafePointResult) ProtoReflect() protoreflect.Message {
+	mi := &file_move_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SafePointResult.ProtoReflect.Descriptor instead.
+func (*SafePointResult) Descriptor() ([]byte, []int) {
+	return file_move_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *SafePointResult) GetOk() bool {
+	if x != nil {
+		return x.Ok
+	}
+	return false
+}
+
+func (x *SafePointResult) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *SafePointResult) GetX() float32 {
+	if x != nil {
+		return x.X
+	}
+	return 0
+}
+
+func (x *SafePointResult) GetY() float32 {
+	if x != nil {
+		return x.Y
+	}
+	return 0
+}
+
+func (x *SafePointResult) GetZ() float32 {
+	if x != nil {
+		return x.Z
+	}
+	return 0
+}
+
+func (x *SafePointResult) GetClearance() float32 {
+	if x != nil {
+		return x.Clearance
+	}
+	return 0
+}
+
+func (x *SafePointResult) GetThreats() uint32 {
+	if x != nil {
+		return x.Threats
+	}
+	return 0
+}
+
 var File_move_proto protoreflect.FileDescriptor
 
 const file_move_proto_rawDesc = "" +
@@ -547,13 +726,30 @@ const file_move_proto_rawDesc = "" +
 	"\x01z\x18\x03 \x01(\x02R\x01z\"=\n" +
 	"\tLosResult\x12\x18\n" +
 	"\avisible\x18\x01 \x01(\bR\avisible\x12\x16\n" +
-	"\x06reason\x18\x02 \x01(\tR\x06reason2\xa3\x03\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\"\x91\x01\n" +
+	"\x10SafePointRequest\x12\f\n" +
+	"\x01x\x18\x01 \x01(\x02R\x01x\x12\f\n" +
+	"\x01y\x18\x02 \x01(\x02R\x01y\x12\f\n" +
+	"\x01z\x18\x03 \x01(\x02R\x01z\x12\x19\n" +
+	"\bmax_dist\x18\x04 \x01(\x02R\amaxDist\x12\x19\n" +
+	"\bmin_dist\x18\x05 \x01(\x02R\aminDist\x12\x1d\n" +
+	"\n" +
+	"path_clear\x18\x06 \x01(\bR\tpathClear\"\x9b\x01\n" +
+	"\x0fSafePointResult\x12\x0e\n" +
+	"\x02ok\x18\x01 \x01(\bR\x02ok\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\f\n" +
+	"\x01x\x18\x03 \x01(\x02R\x01x\x12\f\n" +
+	"\x01y\x18\x04 \x01(\x02R\x01y\x12\f\n" +
+	"\x01z\x18\x05 \x01(\x02R\x01z\x12\x1c\n" +
+	"\tclearance\x18\x06 \x01(\x02R\tclearance\x12\x18\n" +
+	"\athreats\x18\a \x01(\rR\athreats2\xf7\x03\n" +
 	"\x04Move\x12C\n" +
 	"\x04Goto\x12\x1d.wowagent.move.v1.GotoRequest\x1a\x1c.wowagent.move.v1.MoveStatus\x12G\n" +
 	"\x06Status\x12\x1f.wowagent.move.v1.StatusRequest\x1a\x1c.wowagent.move.v1.MoveStatus\x12<\n" +
 	"\x04Stop\x12\x16.google.protobuf.Empty\x1a\x1c.wowagent.move.v1.MoveStatus\x12E\n" +
 	"\x04Path\x12\x1d.wowagent.move.v1.PathRequest\x1a\x1e.wowagent.move.v1.PathResponse\x12H\n" +
-	"\vLineOfSight\x12\x1c.wowagent.move.v1.LosRequest\x1a\x1b.wowagent.move.v1.LosResult\x12>\n" +
+	"\vLineOfSight\x12\x1c.wowagent.move.v1.LosRequest\x1a\x1b.wowagent.move.v1.LosResult\x12R\n" +
+	"\tSafePoint\x12\".wowagent.move.v1.SafePointRequest\x1a!.wowagent.move.v1.SafePointResult\x12>\n" +
 	"\fBeforeLogout\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.EmptyB\x1cZ\x1awowagent/gen/movev1;movev1b\x06proto3"
 
 var (
@@ -568,32 +764,36 @@ func file_move_proto_rawDescGZIP() []byte {
 	return file_move_proto_rawDescData
 }
 
-var file_move_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_move_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_move_proto_goTypes = []any{
-	(*GotoRequest)(nil),   // 0: wowagent.move.v1.GotoRequest
-	(*StatusRequest)(nil), // 1: wowagent.move.v1.StatusRequest
-	(*MoveStatus)(nil),    // 2: wowagent.move.v1.MoveStatus
-	(*PathRequest)(nil),   // 3: wowagent.move.v1.PathRequest
-	(*PathResponse)(nil),  // 4: wowagent.move.v1.PathResponse
-	(*LosRequest)(nil),    // 5: wowagent.move.v1.LosRequest
-	(*LosResult)(nil),     // 6: wowagent.move.v1.LosResult
-	(*emptypb.Empty)(nil), // 7: google.protobuf.Empty
+	(*GotoRequest)(nil),      // 0: wowagent.move.v1.GotoRequest
+	(*StatusRequest)(nil),    // 1: wowagent.move.v1.StatusRequest
+	(*MoveStatus)(nil),       // 2: wowagent.move.v1.MoveStatus
+	(*PathRequest)(nil),      // 3: wowagent.move.v1.PathRequest
+	(*PathResponse)(nil),     // 4: wowagent.move.v1.PathResponse
+	(*LosRequest)(nil),       // 5: wowagent.move.v1.LosRequest
+	(*LosResult)(nil),        // 6: wowagent.move.v1.LosResult
+	(*SafePointRequest)(nil), // 7: wowagent.move.v1.SafePointRequest
+	(*SafePointResult)(nil),  // 8: wowagent.move.v1.SafePointResult
+	(*emptypb.Empty)(nil),    // 9: google.protobuf.Empty
 }
 var file_move_proto_depIdxs = []int32{
 	0, // 0: wowagent.move.v1.Move.Goto:input_type -> wowagent.move.v1.GotoRequest
 	1, // 1: wowagent.move.v1.Move.Status:input_type -> wowagent.move.v1.StatusRequest
-	7, // 2: wowagent.move.v1.Move.Stop:input_type -> google.protobuf.Empty
+	9, // 2: wowagent.move.v1.Move.Stop:input_type -> google.protobuf.Empty
 	3, // 3: wowagent.move.v1.Move.Path:input_type -> wowagent.move.v1.PathRequest
 	5, // 4: wowagent.move.v1.Move.LineOfSight:input_type -> wowagent.move.v1.LosRequest
-	7, // 5: wowagent.move.v1.Move.BeforeLogout:input_type -> google.protobuf.Empty
-	2, // 6: wowagent.move.v1.Move.Goto:output_type -> wowagent.move.v1.MoveStatus
-	2, // 7: wowagent.move.v1.Move.Status:output_type -> wowagent.move.v1.MoveStatus
-	2, // 8: wowagent.move.v1.Move.Stop:output_type -> wowagent.move.v1.MoveStatus
-	4, // 9: wowagent.move.v1.Move.Path:output_type -> wowagent.move.v1.PathResponse
-	6, // 10: wowagent.move.v1.Move.LineOfSight:output_type -> wowagent.move.v1.LosResult
-	7, // 11: wowagent.move.v1.Move.BeforeLogout:output_type -> google.protobuf.Empty
-	6, // [6:12] is the sub-list for method output_type
-	0, // [0:6] is the sub-list for method input_type
+	7, // 5: wowagent.move.v1.Move.SafePoint:input_type -> wowagent.move.v1.SafePointRequest
+	9, // 6: wowagent.move.v1.Move.BeforeLogout:input_type -> google.protobuf.Empty
+	2, // 7: wowagent.move.v1.Move.Goto:output_type -> wowagent.move.v1.MoveStatus
+	2, // 8: wowagent.move.v1.Move.Status:output_type -> wowagent.move.v1.MoveStatus
+	2, // 9: wowagent.move.v1.Move.Stop:output_type -> wowagent.move.v1.MoveStatus
+	4, // 10: wowagent.move.v1.Move.Path:output_type -> wowagent.move.v1.PathResponse
+	6, // 11: wowagent.move.v1.Move.LineOfSight:output_type -> wowagent.move.v1.LosResult
+	8, // 12: wowagent.move.v1.Move.SafePoint:output_type -> wowagent.move.v1.SafePointResult
+	9, // 13: wowagent.move.v1.Move.BeforeLogout:output_type -> google.protobuf.Empty
+	7, // [7:14] is the sub-list for method output_type
+	0, // [0:7] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -610,7 +810,7 @@ func file_move_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_move_proto_rawDesc), len(file_move_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

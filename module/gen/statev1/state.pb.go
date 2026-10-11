@@ -571,7 +571,9 @@ type NearbyRequest struct {
 	Max       uint32 `protobuf:"varint,4,opt,name=max,proto3" json:"max,omitempty"`
 	AliveOnly bool   `protobuf:"varint,5,opt,name=alive_only,json=aliveOnly,proto3" json:"alive_only,omitempty"`
 	// Keep only units whose npc_flags intersect this mask.
-	NpcFlags      uint32 `protobuf:"varint,6,opt,name=npc_flags,json=npcFlags,proto3" json:"npc_flags,omitempty"`
+	NpcFlags uint32 `protobuf:"varint,6,opt,name=npc_flags,json=npcFlags,proto3" json:"npc_flags,omitempty"`
+	// Keep only units hostile to us (they attack on sight), from FactionTemplate.dbc.
+	HostileOnly   bool `protobuf:"varint,7,opt,name=hostile_only,json=hostileOnly,proto3" json:"hostile_only,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -648,23 +650,32 @@ func (x *NearbyRequest) GetNpcFlags() uint32 {
 	return 0
 }
 
+func (x *NearbyRequest) GetHostileOnly() bool {
+	if x != nil {
+		return x.HostileOnly
+	}
+	return false
+}
+
 type Obj struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Guid          uint64                 `protobuf:"varint,1,opt,name=guid,proto3" json:"guid,omitempty"`
-	Entry         uint32                 `protobuf:"varint,2,opt,name=entry,proto3" json:"entry,omitempty"`
-	Kind          string                 `protobuf:"bytes,3,opt,name=kind,proto3" json:"kind,omitempty"`
-	X             float32                `protobuf:"fixed32,4,opt,name=x,proto3" json:"x,omitempty"`
-	Y             float32                `protobuf:"fixed32,5,opt,name=y,proto3" json:"y,omitempty"`
-	Z             float32                `protobuf:"fixed32,6,opt,name=z,proto3" json:"z,omitempty"`
-	Dist          float32                `protobuf:"fixed32,7,opt,name=dist,proto3" json:"dist,omitempty"`
-	Level         uint32                 `protobuf:"varint,8,opt,name=level,proto3" json:"level,omitempty"`
-	Hp            uint32                 `protobuf:"varint,9,opt,name=hp,proto3" json:"hp,omitempty"`
-	MaxHp         uint32                 `protobuf:"varint,10,opt,name=max_hp,json=maxHp,proto3" json:"max_hp,omitempty"`
-	Faction       uint32                 `protobuf:"varint,11,opt,name=faction,proto3" json:"faction,omitempty"`
-	UnitFlags     uint32                 `protobuf:"varint,12,opt,name=unit_flags,json=unitFlags,proto3" json:"unit_flags,omitempty"`
-	NpcFlags      uint32                 `protobuf:"varint,13,opt,name=npc_flags,json=npcFlags,proto3" json:"npc_flags,omitempty"`
-	DynFlags      uint32                 `protobuf:"varint,14,opt,name=dyn_flags,json=dynFlags,proto3" json:"dyn_flags,omitempty"`
-	Target        uint64                 `protobuf:"varint,15,opt,name=target,proto3" json:"target,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Guid      uint64                 `protobuf:"varint,1,opt,name=guid,proto3" json:"guid,omitempty"`
+	Entry     uint32                 `protobuf:"varint,2,opt,name=entry,proto3" json:"entry,omitempty"`
+	Kind      string                 `protobuf:"bytes,3,opt,name=kind,proto3" json:"kind,omitempty"`
+	X         float32                `protobuf:"fixed32,4,opt,name=x,proto3" json:"x,omitempty"`
+	Y         float32                `protobuf:"fixed32,5,opt,name=y,proto3" json:"y,omitempty"`
+	Z         float32                `protobuf:"fixed32,6,opt,name=z,proto3" json:"z,omitempty"`
+	Dist      float32                `protobuf:"fixed32,7,opt,name=dist,proto3" json:"dist,omitempty"`
+	Level     uint32                 `protobuf:"varint,8,opt,name=level,proto3" json:"level,omitempty"`
+	Hp        uint32                 `protobuf:"varint,9,opt,name=hp,proto3" json:"hp,omitempty"`
+	MaxHp     uint32                 `protobuf:"varint,10,opt,name=max_hp,json=maxHp,proto3" json:"max_hp,omitempty"`
+	Faction   uint32                 `protobuf:"varint,11,opt,name=faction,proto3" json:"faction,omitempty"`
+	UnitFlags uint32                 `protobuf:"varint,12,opt,name=unit_flags,json=unitFlags,proto3" json:"unit_flags,omitempty"`
+	NpcFlags  uint32                 `protobuf:"varint,13,opt,name=npc_flags,json=npcFlags,proto3" json:"npc_flags,omitempty"`
+	DynFlags  uint32                 `protobuf:"varint,14,opt,name=dyn_flags,json=dynFlags,proto3" json:"dyn_flags,omitempty"`
+	Target    uint64                 `protobuf:"varint,15,opt,name=target,proto3" json:"target,omitempty"`
+	// Reaction to us: "hostile" (attacks on sight), "neutral" (attackable), "friendly"; "" if unknown.
+	Reaction      string `protobuf:"bytes,16,opt,name=reaction,proto3" json:"reaction,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -802,6 +813,13 @@ func (x *Obj) GetTarget() uint64 {
 		return x.Target
 	}
 	return 0
+}
+
+func (x *Obj) GetReaction() string {
+	if x != nil {
+		return x.Reaction
+	}
+	return ""
 }
 
 type NearbyResponse struct {
@@ -1079,7 +1097,7 @@ const file_state_proto_rawDesc = "" +
 	"\x06quests\x18\x02 \x03(\v2\x18.wowagent.state.v1.QuestR\x06quests\x12\x1d\n" +
 	"\n" +
 	"free_slots\x18\x03 \x01(\rR\tfreeSlots\x12%\n" +
-	"\x0edurability_pct\x18\x04 \x01(\rR\rdurabilityPct\"\x9f\x01\n" +
+	"\x0edurability_pct\x18\x04 \x01(\rR\rdurabilityPct\"\xc2\x01\n" +
 	"\rNearbyRequest\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x14\n" +
 	"\x05entry\x18\x02 \x01(\rR\x05entry\x12\x16\n" +
@@ -1087,7 +1105,8 @@ const file_state_proto_rawDesc = "" +
 	"\x03max\x18\x04 \x01(\rR\x03max\x12\x1d\n" +
 	"\n" +
 	"alive_only\x18\x05 \x01(\bR\taliveOnly\x12\x1b\n" +
-	"\tnpc_flags\x18\x06 \x01(\rR\bnpcFlags\"\xc9\x02\n" +
+	"\tnpc_flags\x18\x06 \x01(\rR\bnpcFlags\x12!\n" +
+	"\fhostile_only\x18\a \x01(\bR\vhostileOnly\"\xe5\x02\n" +
 	"\x03Obj\x12\x12\n" +
 	"\x04guid\x18\x01 \x01(\x04R\x04guid\x12\x14\n" +
 	"\x05entry\x18\x02 \x01(\rR\x05entry\x12\x12\n" +
@@ -1105,7 +1124,8 @@ const file_state_proto_rawDesc = "" +
 	"unit_flags\x18\f \x01(\rR\tunitFlags\x12\x1b\n" +
 	"\tnpc_flags\x18\r \x01(\rR\bnpcFlags\x12\x1b\n" +
 	"\tdyn_flags\x18\x0e \x01(\rR\bdynFlags\x12\x16\n" +
-	"\x06target\x18\x0f \x01(\x04R\x06target\"R\n" +
+	"\x06target\x18\x0f \x01(\x04R\x06target\x12\x1a\n" +
+	"\breaction\x18\x10 \x01(\tR\breaction\"R\n" +
 	"\x0eNearbyResponse\x12*\n" +
 	"\x04objs\x18\x01 \x03(\v2\x16.wowagent.state.v1.ObjR\x04objs\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\rR\x05total\"Y\n" +

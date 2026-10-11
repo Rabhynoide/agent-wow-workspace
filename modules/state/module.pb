@@ -31,7 +31,7 @@ EmptyProtoPZ.google.golang.org/protobuf/types/known/emptypbø¢GPBªGoogle.P
 SendPacket%.agentwow.module.v1.SendPacketRequest.google.protobuf.EmptyE
 GetClock.google.protobuf.Empty!.agentwow.module.v1.ClockResponsea
 InvokeModule'.agentwow.module.v1.InvokeModuleRequest(.agentwow.module.v1.InvokeModuleResponseB5Z3github.com/agent-wow/agent-wow/pkg/modules/v1;modv1bproto3
-û
+º
 state.protowowagent.state.v1api/module/v1/session.protogoogle/protobuf/empty.proto"ˆ
 SelfInfo
 guid (Rguid
@@ -86,7 +86,7 @@ free_slots (R	freeSlots%
 quests (2.wowagent.state.v1.QuestRquests
 
 free_slots (R	freeSlots%
-durability_pct (RdurabilityPct"Ÿ
+durability_pct (RdurabilityPct"Â
 NearbyRequest
 kind (	Rkind
 entry (Rentry
@@ -94,7 +94,8 @@ free_slots (R	freeSlots%
 max (Rmax
 
 alive_only (R	aliveOnly
-	npc_flags (RnpcFlags"É
+	npc_flags (RnpcFlags!
+hostile_only (RhostileOnly"å
 Obj
 guid (Rguid
 entry (Rentry
@@ -112,7 +113,8 @@ alive_only (R	aliveOnly
 unit_flags (R	unitFlags
 	npc_flags (RnpcFlags
 	dyn_flags (RdynFlags
-target (Rtarget"R
+target (Rtarget
+reaction (	Rreaction"R
 NearbyResponse*
 objs (2.wowagent.state.v1.ObjRobjs
 total (Rtotal"Y

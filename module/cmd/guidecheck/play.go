@@ -22,7 +22,7 @@ import (
 	"syscall"
 	"time"
 
-	"wowagent/internal/dbc"
+	"wowagent/internal/faction"
 )
 
 // playState is what the route walk needs besides the route: quests finished (rewarded before the run
@@ -107,48 +107,9 @@ func dangerMargin(class uint32) uint32 {
 // playerFactions maps a race to its player faction template (ChrRaces.dbc).
 var playerFactions = map[uint32]uint32{1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 115, 8: 116, 10: 1610, 11: 1629}
 
-type factionTpl struct {
-	id, faction, group, friendGroup uint32
-	enemies, friends                [4]uint32
-}
-
-func loadFactions(dir string) (map[uint32]factionTpl, error) {
-	f, err := dbc.Open(filepath.Join(dir, "FactionTemplate.dbc"))
-	if err != nil {
-		return nil, err
-	}
-	out := make(map[uint32]factionTpl, f.Records)
-	for r := 0; r < f.Records; r++ {
-		t := factionTpl{id: f.U32(r, 0), faction: f.U32(r, 1), group: f.U32(r, 3), friendGroup: f.U32(r, 4)}
-		for i := 0; i < 4; i++ {
-			t.enemies[i], t.friends[i] = f.U32(r, 6+i), f.U32(r, 10+i)
-		}
-		out[t.id] = t
-	}
-	return out, nil
-}
-
-// friendly mirrors FactionTemplateEntry::IsFriendlyTo: such creatures cannot be attacked.
-func friendly(a, p factionTpl) bool {
-	if a.id == p.id {
-		return true
-	}
-	for _, e := range a.enemies {
-		if e != 0 && e == p.faction {
-			return false
-		}
-	}
-	for _, f := range a.friends {
-		if f != 0 && f == p.faction {
-			return true
-		}
-	}
-	return a.friendGroup&p.group != 0 || a.group&p.friendGroup != 0
-}
-
 // grindTargets lists attackable, non-elite monsters spawned at least 3 times within radius of (x, y)
 // that give experience and are not too dangerous, nearest first.
-func (c *checker) grindTargets(mapID uint32, x, y, radius float64, level, class uint32, player factionTpl, factions map[uint32]factionTpl) []uint32 {
+func (c *checker) grindTargets(mapID uint32, x, y, radius float64, level, class uint32, player faction.Template, factions faction.Table) []uint32 {
 	lo := max(grayLevel(level)+1, level-min(level-1, 3))
 	hi := level + dangerMargin(class)
 	rows, err := c.db.Query(`SELECT t.entry, t.faction, COUNT(*) n,
@@ -168,12 +129,12 @@ func (c *checker) grindTargets(mapID uint32, x, y, radius float64, level, class 
 	defer rows.Close()
 	var out []uint32
 	for rows.Next() {
-		var entry, faction, n uint32
+		var entry, fac, n uint32
 		var d float64
-		if rows.Scan(&entry, &faction, &n, &d) != nil {
+		if rows.Scan(&entry, &fac, &n, &d) != nil {
 			continue
 		}
-		if t, ok := factions[faction]; ok && friendly(t, player) {
+		if t, ok := factions[fac]; ok && faction.Friendly(t, player) {
 			continue
 		}
 		out = append(out, entry)
@@ -310,7 +271,7 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 		os.Exit(130)
 	}()
 
-	factions, err := loadFactions(dbcDir)
+	factions, err := faction.Load(dbcDir)
 	if err != nil {
 		say("warning: %v (friendly monsters are not filtered)", err)
 	}

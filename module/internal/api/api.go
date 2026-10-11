@@ -81,6 +81,13 @@ func (c C) LineOfSight(ctx context.Context, x, y, z float32) (bool, error) {
 	return r.Visible, err
 }
 
+// SafePoint asks move for the point near (x, y, z) farthest from hostile monsters.
+func (c C) SafePoint(ctx context.Context, x, y, z, maxDist float32, pathClear bool) (*movepb.SafePointResult, error) {
+	var r movepb.SafePointResult
+	err := invoke.Call(ctx, c.S, "move", "safe_point", &movepb.SafePointRequest{X: x, Y: y, Z: z, MaxDist: maxDist, PathClear: pathClear}, &r)
+	return &r, err
+}
+
 func (c C) MoveStop(ctx context.Context) error {
 	var r movepb.MoveStatus
 	return invoke.Call(ctx, c.S, "move", "stop", &emptypb.Empty{}, &r)

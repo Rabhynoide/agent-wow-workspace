@@ -2,10 +2,12 @@ package state
 
 import (
 	"context"
+	"log/slog"
 	"math"
 	"os"
 	"sort"
 	"strconv"
+	"wowagent/internal/faction"
 
 	modv1 "github.com/agent-wow/agent-wow/pkg/modules/v1"
 	"google.golang.org/grpc"
@@ -19,13 +21,22 @@ import (
 // Service exposes the store over gRPC.
 type Service struct {
 	pb.UnimplementedStateServer
-	st   *Store
-	sess modv1.SessionClient
+	st       *Store
+	sess     modv1.SessionClient
+	factions faction.Table // nil when FactionTemplate.dbc is missing
 }
 
 func Register(s grpc.ServiceRegistrar, sess modv1.SessionClient) {
 	guid, _ := strconv.ParseUint(os.Getenv("AGENT_WOW_CHARACTER_GUID"), 10, 64)
-	pb.RegisterStateServer(s, &Service{st: NewStore(guid), sess: sess})
+	dir := os.Getenv("DBC_DIR")
+	if dir == "" {
+		dir = "/dbc"
+	}
+	tab, err := faction.Load(dir)
+	if err != nil {
+		slog.Warn("no FactionTemplate.dbc: unit reactions unknown", "err", err)
+	}
+	pb.RegisterStateServer(s, &Service{st: NewStore(guid), sess: sess, factions: tab})
 }
 
 func (s *Service) OnPacket(ctx context.Context, p *modv1.WorldPacket) (*emptypb.Empty, error) {
@@ -230,6 +241,12 @@ func (s *Service) Nearby(_ context.Context, r *pb.NearbyRequest) (*pb.NearbyResp
 			continue
 		}
 		p := o.toPB(me.X, me.Y, me.Z)
+		if o.Type == TypeUnit || o.Type == TypePlayer {
+			p.Reaction = s.factions.Reaction(o.u(fUnitFaction), me.u(fUnitFaction))
+		}
+		if r.HostileOnly && p.Reaction != "hostile" {
+			continue
+		}
 		if r.Radius > 0 && p.Dist > r.Radius {
 			continue
 		}

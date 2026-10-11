@@ -6,3 +6,4 @@ services:
         CMD: state
     volumes:
       - ../../logs:/logs
+      - ../../assets/dbc:/dbc:ro

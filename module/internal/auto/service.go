@@ -168,8 +168,32 @@ func (r *run) recover() error {
 		return r.ctx.Err()
 	}
 	r.step("running to corpse (%.0f,%.0f)", pos[1], pos[2])
-	if err := r.walk(pos[1], pos[2], pos[3], 15); err != nil {
+	if err := r.walk(pos[1], pos[2], pos[3], 30); err != nil {
 		return err
+	}
+	// The corpse often lies in the camp that killed us: come back to life at the edge of the
+	// reclaim radius (39 yards), as far as possible from the monsters (mod-playerbots does the same).
+	for wait := 0; ; wait++ {
+		sp, err := r.s.api.SafePoint(r.ctx, pos[1], pos[2], pos[3], 33, false)
+		if err != nil || !sp.Ok {
+			r.note("no safe point near the corpse: %v %s", err, sp.GetReason())
+			if err := r.walk(pos[1], pos[2], pos[3], 15); err != nil {
+				return err
+			}
+			break
+		}
+		if sp.Clearance < 25 && wait < 4 {
+			r.step("monsters near the corpse (nearest %.0f yards): waiting for them to move", sp.Clearance)
+			if !jobs.Sleep(r.ctx, 15*time.Second) {
+				return r.ctx.Err()
+			}
+			continue
+		}
+		r.step("going to a safe spot near the corpse (%.0f yards from the nearest monster)", sp.Clearance)
+		if err := r.walk(sp.X, sp.Y, sp.Z, 1.5); err != nil {
+			return err
+		}
+		break
 	}
 	// The reclaim delay grows with repeated deaths (up to 2 minutes): keep trying for 4 minutes.
 	for i := 0; i < 80; i++ {
@@ -180,6 +204,14 @@ func (r *run) recover() error {
 			return r.ctx.Err()
 		}
 		if s, err := r.s.api.Brief(r.ctx); err == nil && s.Self != nil && !s.Self.Dead {
+			// Back with half health: rest (and eat) before anything else.
+			if st, err := r.s.api.CombatRest(r.ctx); err == nil {
+				for st.State == "running" {
+					if st, err = r.s.api.CombatStatus(r.ctx, 20); err != nil {
+						break
+					}
+				}
+			}
 			return nil
 		}
 	}

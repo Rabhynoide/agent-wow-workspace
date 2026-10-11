@@ -75,7 +75,7 @@ Légende : [ ] à faire, [~] partiel, [x] fait.
 - [~] `auto.collect` / `auto.hunt` : monstres élites ou de plus de 2 niveaux au-dessus refusés (fait) ; reste le danger des groupes (quêtes 60, 47, 87 de la mine).
 - [x] Mort pendant une marche : `move` s'arrête désormais (« character died »).
 - [x] `auto.recover` : résurrection chez l'esprit guérisseur du cimetière s'il est à moins de 150 yards (le corps est souvent dans le camp), niveaux 1-10 seulement (malus de résurrection dès le niveau 11, `Death.SicknessLevel`) ; sinon course au corps avec attente jusqu'à 4 minutes (délai de récupération croissant). Testé en jeu au niveau 5.
-- [ ] Dès le niveau 11 : le corps reste souvent dans le camp qui nous a tués. A faire : avant de réclamer, attendre/éviter les monstres proches du corps (vue du fantôme), ou ne pas partir au corps tant que les monstres n'ont pas quitté la zone ; envisager de fuir plus tôt (voir pathfinding qui évite les monstres). Niveau requis : Opus.
+- [~] (point sûr près du corps : fait, à valider sur une vraie mort) Dès le niveau 11 : le corps reste souvent dans le camp qui nous a tués. A faire : avant de réclamer, attendre/éviter les monstres proches du corps (vue du fantôme), ou ne pas partir au corps tant que les monstres n'ont pas quitté la zone ; envisager de fuir plus tôt (voir pathfinding qui évite les monstres). Niveau requis : Opus.
 - [~] Après une résurrection, se reposer avant toute autre action (sinon mort immédiate à 50 % de PV) : l'esprit guérisseur redonne ~75 % de PV loin du danger ; ajouter un repos automatique à la fin de `auto.recover`.
 - [x] `scripts/grind.sh` : chasse en boucle jusqu'au niveau voulu avec résurrection et arrêt après 3 morts (sans mort pendant le test, 580 s, +510 XP).
 
@@ -109,7 +109,8 @@ triches serveur (sorts, talents, équipement et consommables offerts, téléport
 - [x] Repos réel : manger/boire au repos, achat de nourriture/boisson de son niveau (fait et testé le 2026-10-11).
 - [ ] Potions/pierre de soins à PV critiques ; racials par déclencheur.
 - [x] Marche qui riposte quand un monstre attaque en route (fait et testé : niveau 10 → 11 sans mort, quêtes des murlocs 112/114 faites).
-- [ ] FleeManager (point sûr) : résurrection au bord du rayon du corps loin des monstres, recul après pull, fuite, distance des lanceurs.
+- [~] FleeManager (point sûr) : `move.safe_point` fait et testé, utilisé pour la résurrection au corps (pas encore vu en jeu sur une vraie mort). Reste : recul après pull, fuite, distance des lanceurs.
+- [x] Réaction des unités (hostile/neutre/amical) dans `state` (FactionTemplate.dbc).
 - [ ] Adds possibles + pull d'un seul monstre (voir « Points à réfléchir »).
 - [ ] Cible de grind : attaquants d'abord, même hauteur (± 5 yards), en vue ; en route, seulement ce qui sert aux quêtes ou nous attaque.
 - [ ] `quest_poi` / `quest_poi_points` pour trouver la zone de chaque objectif et du rendu.

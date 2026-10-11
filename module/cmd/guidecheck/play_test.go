@@ -1,7 +1,6 @@
 package main
 
 import (
-	"os"
 	"reflect"
 	"testing"
 )
@@ -38,26 +37,6 @@ func TestGrayLevel(t *testing.T) {
 	for l, want := range map[uint32]uint32{5: 0, 8: 3, 20: 13, 45: 35, 70: 61} {
 		if g := grayLevel(l); g != want {
 			t.Errorf("grayLevel(%d) = %d, want %d", l, g, want)
-		}
-	}
-}
-
-func TestFriendlyFactions(t *testing.T) {
-	f, err := loadFactions("../../../assets/dbc")
-	if os.IsNotExist(err) || (err != nil && f == nil) {
-		t.Skip("no FactionTemplate.dbc in assets/dbc")
-	}
-	human := f[playerFactions[1]]
-	cases := map[uint32]bool{
-		12: true,  // Stormwind guards
-		14: false, // monsters
-		7:  false, // neutral creatures (boars, wolves)
-		18: false, // murlocs
-		85: false, // Orgrimmar
-	}
-	for id, want := range cases {
-		if got := friendly(f[id], human); got != want {
-			t.Errorf("faction template %d friendly to humans = %v, want %v", id, got, want)
 		}
 	}
 }

@@ -14,5 +14,6 @@ rpc:
   stop: /wowagent.move.v1.Move/Stop
   path: /wowagent.move.v1.Move/Path
   los: /wowagent.move.v1.Move/LineOfSight
+  safe_point: /wowagent.move.v1.Move/SafePoint
 lifecycle:
   before_logout: /wowagent.move.v1.Move/BeforeLogout

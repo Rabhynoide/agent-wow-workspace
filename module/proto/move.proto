@@ -60,11 +60,35 @@ message LosResult {
   string reason = 2;
 }
 
+message SafePointRequest {
+  // Center of the search (e.g. our corpse); points within max_dist of it (default 30).
+  float x = 1;
+  float y = 2;
+  float z = 3;
+  float max_dist = 4;
+  float min_dist = 5;
+  // Also keep the walk there away from monsters (alive character); a ghost can ignore it.
+  bool path_clear = 6;
+}
+
+message SafePointResult {
+  bool ok = 1;
+  string reason = 2;
+  float x = 3;
+  float y = 4;
+  float z = 5;
+  // Distance from the point (and from the path with path_clear) to the nearest hostile monster.
+  float clearance = 6;
+  uint32 threats = 7;
+}
+
 service Move {
   rpc Goto(GotoRequest) returns (MoveStatus);
   rpc Status(StatusRequest) returns (MoveStatus);
   rpc Stop(google.protobuf.Empty) returns (MoveStatus);
   rpc Path(PathRequest) returns (PathResponse);
   rpc LineOfSight(LosRequest) returns (LosResult);
+  // Point near (x, y, z) farthest from the hostile monsters we see, reachable on foot.
+  rpc SafePoint(SafePointRequest) returns (SafePointResult);
   rpc BeforeLogout(google.protobuf.Empty) returns (google.protobuf.Empty);
 }
