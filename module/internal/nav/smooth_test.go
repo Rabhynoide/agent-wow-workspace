@@ -76,3 +76,27 @@ func TestSmoothPathOnSurface(t *testing.T) {
 		t.Logf("%s: %d points, %.0f yards (funnel %.0f), %d off-surface, %v", name, len(pts), l, ls, off, took)
 	}
 }
+
+func TestDestinationInWaterGoesToTheShore(t *testing.T) {
+	if _, err := os.Stat(mmapDir); err != nil {
+		t.Skip("no mmaps")
+	}
+	m, _ := LoadMap(mmapDir, 0)
+	from := ToRecast(-9462, 16, 58)       // Goldshire
+	to := ToRecast(-9472.1, -220.7, 56.3) // murloc spawn at the lake (not on the walkable navmesh)
+	if _, _, ok := m.NearestPoly(to, GroundOnly, 6, 3); ok {
+		t.Skip("the spawn point is on the navmesh in this data")
+	}
+	if _, err := m.SmoothPath(from, to, GroundOnly, SmoothStep, SmoothSlop); err == nil {
+		t.Fatal("without Partial a destination in the water must be an error")
+	}
+	pts, err := m.SmoothPath(from, to, GroundPartial, SmoothStep, SmoothSlop)
+	if err != nil && err != ErrSmoothStuck {
+		t.Fatalf("no path to the shore: %v", err)
+	}
+	last := pts[len(pts)-1]
+	if d := dist2D(last, to); d > 32 {
+		t.Fatalf("the path ends %.0f yards from the water spawn", d)
+	}
+	t.Logf("%d points, ends %.0f yards from the spawn", len(pts), dist2D(last, to))
+}

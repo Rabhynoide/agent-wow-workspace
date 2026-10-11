@@ -6,6 +6,10 @@ import (
 	"math"
 )
 
+// partialReach is how far (yards) the closest reachable point may be from an unreachable destination
+// for the path to end there instead of failing.
+const partialReach = 40
+
 var (
 	ErrNoStartPoly = errors.New("start position is not on the navmesh")
 	ErrNoEndPoly   = errors.New("destination is not on the navmesh")
@@ -13,9 +17,17 @@ var (
 )
 
 // Filter selects walkable polygons.
-type Filter struct{ Include uint16 }
+// Partial lets a path end at the closest reachable point when the destination is in water, on a
+// cliff or on an island; without it such a destination is an error.
+type Filter struct {
+	Include uint16
+	Partial bool
+}
 
 var GroundOnly = Filter{Include: NavGround}
+
+// GroundPartial is GroundOnly with partial paths.
+var GroundPartial = Filter{Include: NavGround, Partial: true}
 
 func (f Filter) ok(p *poly) bool { return p.typ == 0 && p.flags&f.Include != 0 }
 
@@ -319,7 +331,14 @@ func (m *Mesh) corridor(from, to V3, f Filter) (V3, V3, []*node, error) {
 	}
 	eRef, ePt, ok := m.NearestPoly(to, f, 6, 3)
 	if !ok {
-		return V3{}, V3{}, nil, ErrNoEndPoly
+		// Destination in water, on a cliff or inside a wall: with Partial, like the server, go to
+		// the closest walkable point instead (within 30 yards); the path then ends short of the target.
+		if !f.Partial {
+			return V3{}, V3{}, nil, ErrNoEndPoly
+		}
+		if eRef, ePt, ok = m.NearestPoly(to, f, 12, 30); !ok {
+			return V3{}, V3{}, nil, ErrNoEndPoly
+		}
 	}
 	if sRef == eRef {
 		return sPt, ePt, []*node{{ref: sRef, pos: sPt}}, nil
@@ -332,15 +351,19 @@ func (m *Mesh) corridor(from, to V3, f Filter) (V3, V3, []*node, error) {
 	closed := map[polyRef]bool{}
 	var goal *node
 	var expansions int
+	closest, closestD := start, dist3D(sPt, ePt) // closest node explored, for an incomplete path
 	for open.Len() > 0 {
 		cur := heap.Pop(open).(*node)
 		if cur.ref == eRef {
 			goal = cur
 			break
 		}
+		if d := dist3D(cur.pos, ePt); d < closestD {
+			closest, closestD = cur, d
+		}
 		closed[cur.ref] = true
 		if expansions++; expansions > 400000 {
-			return V3{}, V3{}, nil, ErrNoPath
+			break
 		}
 		for _, l := range m.links(cur.ref, f) {
 			if closed[l.to] {
@@ -364,7 +387,12 @@ func (m *Mesh) corridor(from, to V3, f Filter) (V3, V3, []*node, error) {
 		}
 	}
 	if goal == nil {
-		return V3{}, V3{}, nil, ErrNoPath
+		// Unreachable destination (an island, a lake shore): like the server, end at the closest
+		// explored point when it is near the destination.
+		if !f.Partial || closest == start || closestD > partialReach {
+			return V3{}, V3{}, nil, ErrNoPath
+		}
+		goal, ePt = closest, closest.pos
 	}
 	var chain []*node
 	for n := goal; n != nil; n = n.parent {

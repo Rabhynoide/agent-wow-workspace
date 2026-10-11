@@ -620,7 +620,13 @@ func (r *run) hunt(entry uint32, name string, count, itemEntry, itemCount uint32
 	for i := 0; i < len(sp) && i < 5; i++ {
 		if i > 0 || sp[0].Dist > 30 {
 			if err := r.walk(sp[i].X, sp[i].Y, sp[i].Z, 10); err != nil {
-				return err
+				// A spawn point off the navmesh (water, cliff) or unreachable: try the next one.
+				r.step("cannot reach a %s spawn point (%v), trying another", name, err)
+				err2 = err
+				if r.ctx.Err() != nil {
+					return r.ctx.Err()
+				}
+				continue
 			}
 		}
 		req := &combatpb.KillRequest{Entry: entry, Count: count, ItemEntry: itemEntry, ItemCount: itemCount, Radius: 60, MaxS: 240, WaitS: 20}

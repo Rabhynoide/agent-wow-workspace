@@ -55,6 +55,11 @@ Légende : [ ] à faire, [~] partiel, [x] fait.
 - [ ] Idées mod-playerbots (src/Ai, mouvements) : suivre une cible (distance/angle), vérifier qu'une destination est atteignable avant d'y aller, se débloquer.
 - [ ] Évitement des monstres hostiles dans l'A* (coût autour des monstres). Opus.
 
+## Nage, eau et quêtes d'eau (question utilisateur, 2026-10-11)
+- [ ] `move` ne sait PAS nager : le navmesh est filtré sur le sol (GroundOnly), pas de drapeau de nage (MOVEMENTFLAG_SWIMMING 0x200000), pas de vitesse de nage, pas de gestion du souffle (SMSG_START_MIRROR_TIMER type 1, noyade après ~60 s sous l'eau, fatigue). Une destination dans l'eau est refusée (« not on the navmesh ») ; `nav.GroundPartial` (opt-in) mène au point marchable le plus proche mais n'est utilisé nulle part. A faire pour nager : (1) polygones NAV_WATER (flag 0x08) et niveau d'eau (liquide des `.map` et des vmaps) ; (2) paquets de mouvement de nage avec tangage ; (3) écouter le minuteur de souffle et remonter à la surface ; (4) ne nager que si un chemin marchable n'existe pas. Opus.
+- [ ] Les quêtes de murlocs du lac (112 Collecting Kelp, 114 The Escape) : les monstres sont sur la rive, en groupes de 5-6 (niveau 6-7) ; Claudio y est mort 2 fois (niveau 8, 193 PV) sans nager : combat contre le groupe. A faire : évitement/aggro de groupe (voir « Sécurité ») avant de refaire ces quêtes.
+- [x] `hunt` essaie le point d'apparition suivant quand l'un est hors navmesh ; chemin partiel désactivé par défaut (seul `GroundPartial` l'active).
+
 ## Test du guerrier Claudio (2026-10-10) : ouvert
 - [x] « Fight timeout » et mort : analysée (personnage laissé sans job parmi des loups après l'arrêt de `auto.grind` ; coups refusés par le serveur) ; corrigé : garde d'`auto` (`combat.defend`), `auto.grind` tolérant, refus de mêlée écoutés (portée/orientation), abandon d'une cible sans dégâts après 25 s. Validé 15 min sans mort.
 - [x] Parry : en fait utile (permet de parer), pas un défaut. (Si un sort doit être exclu un jour : `training.skip` du fichier de classe.)

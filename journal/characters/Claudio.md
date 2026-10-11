@@ -37,3 +37,8 @@ Corrigés (commit 4b36bc8) :
 ## Validation (même soir)
 - Chasse `auto.grind` relancée : 15 min sans mort ni arrêt, 2 ventes (124 + 200 pc), réparations, Thunder Clap et Victory Rush appris ; niveau 6 → 3163/3600 XP, 640 pc.
 - Reste : Victory Rush tenté hors fenêtre (67, bénin) ; Charge refusée pour ligne de vue (47) alors que notre `move.los` disait « visible » (cible derrière un relief ou un doodad).
+
+## Reprise du 2026-10-11 (niveau 6 → 8)
+- Chasse `auto.grind` : 25 min sans mort, niveau 7 (ventes 324 pc, réparations). Puis auto.run [86, 84] : fait (Rockhide Boars niveau 7-8 acceptables à partir du niveau 7), niveau 8, Heroic Strike 2 et Hamstring appris.
+- Quête 112 (Collecting Kelp, murlocs du lac) : points d'apparition dans l'eau → `hunt` abandonnait ; essai d'un chemin partiel vers la rive → 2 morts contre les Murloc Streamrunners (5 à moins de 10 yards de la rive). Chemin partiel rendu opt-in. Niveau 8, XP 4157/5400.
+- Etat : mort (fantôme) près du lac (-9447,-261), session ouverte, rien ne tourne.
