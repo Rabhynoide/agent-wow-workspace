@@ -28,6 +28,7 @@ const (
 	fUnitLevel   = 54
 	fUnitFaction = 55
 	fUnitFlags   = 59
+	fAuraState   = 61 // UNIT_FIELD_AURASTATE
 	fUnitDyn     = 79
 	fUnitNpc     = 82
 	fQuestLog    = 158
@@ -76,6 +77,7 @@ type Obj struct {
 	X, Y, Z, O float32
 	HasPos     bool
 	Speeds     [9]float32
+	Auras      map[uint8]*aura // by aura slot
 }
 
 func (o *Obj) u(i uint16) uint32 { return o.F[i] }
@@ -128,6 +130,8 @@ func (s *Store) Handle(op uint32, payload []byte) {
 			return
 		}
 		s.update(wire.NewReader(raw))
+	case opAuraUpdate, opAuraUpdateAll:
+		s.auraUpdate(r, op == opAuraUpdateAll)
 	case opDestroyObject:
 		delete(s.objs, r.U64())
 	case opLoginVerifyWorld, opNewWorld:

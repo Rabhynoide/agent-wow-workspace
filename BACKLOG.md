@@ -17,11 +17,11 @@ Légende : [ ] à faire, [~] partiel, [x] fait.
 - [x] Consigner ces remarques : ce fichier.
 
 ## Problèmes connus (moi)
-- [~] Éviter de mourir : garde d'`auto` contre les attaques entre deux jobs (fait) ; reste : fuir, utiliser les consommables.
+- [~] Éviter de mourir : garde d'`auto` entre deux jobs, riposte pendant les marches, nourriture, cibles trop entourées évitées, résurrection au point sûr (faits) ; reste : fuir, potions, pull qu'on est susceptible de gagner.
 - [ ] `session.logout` est refusé en combat (reason 1) : attendre la fin du combat.
 - [x] Coffre « Milly's Harvest » : verrou « Open Kneeling » => sort 22810 lancé par `quest.use`.
 - [x] Vente de camelote : règles `sellrule` + distance 5 yards + PNJ « [DND] » ignorés (voir « Revente »).
-- [~] Hostilité (factions) non résolue : `combat` ne chasse que des entrées explicites ; les agresseurs doivent être en combat (UNIT_FLAG_IN_COMBAT).
+- [x] Hostilité (factions) : `state.nearby` donne la réaction (FactionTemplate.dbc) et filtre `hostile_only`.
 - [~] Durée de démarrage : `char play --module-timeout 8m` nécessaire (9 images Docker) ; `scripts/start.sh` attend à notre place.
 - [x] `go vet` signalait des copies de messages protobuf (move/combat/auto) : package `jobs` + `proto.Clone`.
 - [x] Compteurs d'objectifs de quête : 4 x uint16 sur 2 champs (était lu comme 4 octets d'un seul champ) ; indexés par emplacement RequiredNpcOrGo.
@@ -64,7 +64,7 @@ Légende : [ ] à faire, [~] partiel, [x] fait.
 ## Test du guerrier Claudio (2026-10-10) : ouvert
 - [x] « Fight timeout » et mort : analysée (personnage laissé sans job parmi des loups après l'arrêt de `auto.grind` ; coups refusés par le serveur) ; corrigé : garde d'`auto` (`combat.defend`), `auto.grind` tolérant, refus de mêlée écoutés (portée/orientation), abandon d'une cible sans dégâts après 25 s. Validé 15 min sans mort.
 - [x] Parry : en fait utile (permet de parer), pas un défaut. (Si un sort doit être exclu un jour : `training.skip` du fichier de classe.)
-- [~] Overpower seulement après une esquive (journal de combat) et recharge de Charge suivie entre combats : fait. Reste : Victory Rush tenté hors fenêtre (code 67) — suivre l'aura « Victorious » ; Charge refusée pour ligne de vue (47) malgré `move.los` (doodads M2 ou relief).
+- [~] Overpower après une esquive ou Taste for Blood, Victory Rush selon l'aura state (fait, 2026-10-11) ; recharge de Charge suivie entre combats. Reste : Charge refusée pour ligne de vue (47) malgré `move.los` (doodads M2 ou relief).
 - [~] Soins du guerrier : nourriture achetée et mangée (fait) ; reste Premiers soins (compétence + bandages).
 - [ ] Portée visible : le serveur n'envoie que les monstres proches (~100 yards), donc les chasses « rayon 150 » sur des créatures éloignées échouent vite ; `auto.grind` saute, mais `world.spawns` pourrait guider `hunt` vers les points d'apparition éloignés (déjà fait dans `hunt` ; à vérifier pour `grind`).
 - [x] Danger par classe, rotation (Battle Shout/Charge/Heroic Strike), boucle de `grind.sh` (voir `journal/characters/Claudio.md`).
@@ -128,7 +128,7 @@ Sources :
 - WeakAuras Afenar WotLK Guerrier (Tsttn04EF) et Prêtre (9W5YhSqB_).
 
 Ordre proposé :
-1. [ ] Aura state (UNIT_FIELD_AURASTATE) et auras (SMSG_AURA_UPDATE / _ALL : buffs, procs, DoT avec durée restante, « les miens »), pour le personnage et la cible. Conditions des sorts lues dans Spell.dbc : CasterAuraState (champ 20 ; Victory Rush = 10), TargetAuraState (champ 21 ; Execute = 2 « moins de 20 % »), Revenge = 1. Règle l'erreur 67 de Victory Rush (aura « Victorious » 32216).
+1. [x] (fait et testé le 2026-10-11 ; utilisé par les rotations guerrier et prêtre) Aura state (UNIT_FIELD_AURASTATE) et auras (SMSG_AURA_UPDATE / _ALL : buffs, procs, DoT avec durée restante, « les miens »), pour le personnage et la cible. Conditions des sorts lues dans Spell.dbc : CasterAuraState (champ 20 ; Victory Rush = 10), TargetAuraState (champ 21 ; Execute = 2 « moins de 20 % »), Revenge = 1. Règle l'erreur 67 de Victory Rush (aura « Victorious » 32216).
 2. [ ] « Peut lancer » générique : sort connu, recharge, ressource, aura state, procs (comme `usable=1` d'Ovale et CAN_CAST de playerbots).
 3. [ ] Rotation en TABLE DE PRIORITÉS par classe (modèle Ovale : la première ligne dont les conditions passent et dont le sort est lançable gagne), dans `journal/classes/<classe>.yaml`. Conditions utiles d'Ovale :
    - BuffExpires/Present(n s, stacks), TargetDebuffExpires(mine) ;
@@ -189,8 +189,9 @@ Icy Veins bloque ma lecture (403) : à chaque palier ci-dessous, prévenir l'uti
 - [ ] Dès qu'on change de zone (Elwynn Forest, puis Westfall...) : parcours de quêtes par niveau recommandé par le guide.
 - [ ] Autre classe ou autre spécialisation : demander le guide de leveling complet correspondant.
 
-## Prochaines étapes suggérées (2026-10-10)
-- Reprendre le test guerrier (Claudio, niveau 6 → 10) : d'abord le « fight timeout » et la mort inexpliquée (BACKLOG « Test du guerrier »), puis vérifier les talents automatiques au niveau 10.
-- Gros test visuel du déplacement : escaliers, ponts, intérieurs, virages serrés, et le recul vers la ligne de vue en combat près des bâtiments.
-- Claudia : niveaux 6 → 10 (quêtes du plan sans la mine, chasse), puis vérifier les talents automatiques au niveau 10.
-- Évitement des monstres hostiles dans l'A* (Opus), puis quêtes de soin / buff sur PNJ.
+## Prochaines étapes suggérées (2026-10-11)
+- FAIT : suivi des auras et aura state (« Rotation et combat » étape 1). SUITE : « peut lancer » générique, moteur de priorités, rotations Guerrier/Prêtre en tables ; tester le prêtre (Claudia) en jeu.
+- Pull où l'on est susceptible de gagner (voir « Points à réfléchir ») et capacité qui apprend des combats.
+- Continuer Claudio avec `level.sh` (11 → 20) : quête 87, quête de classe 1638 (posture défensive), Westfall à partir de 13-14 (voyage à pied).
+- Gros test visuel du déplacement (escaliers, ponts, intérieurs).
+- Claudia (prêtre 6 → 10) avec `level.sh` une fois la rotation prêtre refaite.

@@ -5,6 +5,9 @@ package priest
 const ClassID = 5
 
 // Spell ranks, highest first.
+// WeakenedSoul is the debuff Power Word: Shield leaves (no new shield while it lasts).
+const WeakenedSoul = 6788
+
 var (
 	Smite       = []uint32{48123, 48122, 25364, 25363, 10934, 10933, 6060, 1004, 984, 598, 591, 585}
 	LesserHeal  = []uint32{2053, 2052, 2050}

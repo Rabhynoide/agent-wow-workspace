@@ -31,8 +31,16 @@ EmptyProtoPZ.google.golang.org/protobuf/types/known/emptypbø¢GPBªGoogle.P
 SendPacket%.agentwow.module.v1.SendPacketRequest.google.protobuf.EmptyE
 GetClock.google.protobuf.Empty!.agentwow.module.v1.ClockResponsea
 InvokeModule'.agentwow.module.v1.InvokeModuleRequest(.agentwow.module.v1.InvokeModuleResponseB5Z3github.com/agent-wow/agent-wow/pkg/modules/v1;modv1bproto3
-º
-state.protowowagent.state.v1api/module/v1/session.protogoogle/protobuf/empty.proto"ˆ
+ 
+state.protowowagent.state.v1api/module/v1/session.protogoogle/protobuf/empty.proto"¨
+Aura
+slot (Rslot
+spell (Rspell
+stacks (Rstacks
+left_ms (RleftMs
+max_ms (RmaxMs
+mine (Rmine
+positive (Rpositive"Ö
 SelfInfo
 guid (Rguid
 map (Rmap
@@ -59,7 +67,10 @@ unit_flags (R	unitFlags
 ghost (Rghost
 class_id (RclassId
 race (Rrace#
-talent_points (RtalentPoints"¥
+talent_points (RtalentPoints
+
+aura_state (R	auraState-
+auras (2.wowagent.state.v1.AuraRauras"¥
 Item
 slot (Rslot
 entry (Rentry
@@ -86,7 +97,7 @@ free_slots (R	freeSlots%
 quests (2.wowagent.state.v1.QuestRquests
 
 free_slots (R	freeSlots%
-durability_pct (RdurabilityPct"Â
+durability_pct (RdurabilityPct"á
 NearbyRequest
 kind (	Rkind
 entry (Rentry
@@ -95,7 +106,9 @@ free_slots (R	freeSlots%
 
 alive_only (R	aliveOnly
 	npc_flags (RnpcFlags!
-hostile_only (RhostileOnly"å
+hostile_only (RhostileOnly
+
+with_auras (R	withAuras"³
 Obj
 guid (Rguid
 entry (Rentry
@@ -114,7 +127,10 @@ unit_flags (R	unitFlags
 	npc_flags (RnpcFlags
 	dyn_flags (RdynFlags
 target (Rtarget
-reaction (	Rreaction"R
+reaction (	Rreaction
+
+aura_state (R	auraState-
+auras (2.wowagent.state.v1.AuraRauras"R
 NearbyResponse*
 objs (2.wowagent.state.v1.ObjRobjs
 total (Rtotal"Y

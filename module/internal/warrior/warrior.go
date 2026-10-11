@@ -5,6 +5,14 @@ package warrior
 const ClassID = 1
 
 // Spell ranks, highest first.
+// Proc auras (buffs on the warrior) and aura states (Spell.dbc CasterAuraState/TargetAuraState).
+const (
+	TasteForBlood      = 60503 // Overpower usable (talent proc)
+	SuddenDeath        = 52437 // Execute usable at any health (talent proc)
+	StateVictoryRush   = 10    // on us: Victory Rush usable
+	StateHealthBelow20 = 2     // on the target: Execute usable
+)
+
 var (
 	BattleShout    = []uint32{47436, 2048, 25289, 11551, 11550, 11549, 6192, 5242, 6673}
 	Charge         = []uint32{11578, 6178, 100}

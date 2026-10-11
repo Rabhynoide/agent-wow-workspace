@@ -54,10 +54,9 @@ type Service struct {
 	// failures by cast count (our CMSG_CAST_SPELL counter): SMSG_CAST_FAILED of other casts
 	// (server-side or item spells, count 0) must not be taken for ours.
 	failures   map[uint8]castFailure
-	lastShield time.Time // Weakened Soul: no new shield for 15 s
+	lastShield time.Time // last shield cast (the Weakened Soul aura takes a moment to show up)
 	lastRenew  time.Time
-	lastBuff   time.Time // Fortitude / Inner Fire (30 min); Battle Shout (2 min)
-	lastKill   time.Time // Victory Rush is usable for 20 s after a killing blow
+	lastBuff   time.Time // last out-of-combat buff attempt
 	lastCharge time.Time // Charge has a 15 s cooldown across fights
 	melee      *meleeLog
 	abandoned  map[uint64]time.Time // targets given up (no damage dealt): not picked again for a while
@@ -476,22 +475,20 @@ func (s *Service) buff(ctx context.Context, me *statepb.SelfInfo) {
 		s.warriorBuff(ctx, me)
 		return
 	}
-	if s.since(&s.lastBuff) < 25*time.Minute || pct(me.Power, me.MaxPower) < 40 {
+	if s.since(&s.lastBuff) < 10*time.Second || pct(me.Power, me.MaxPower) < 40 {
 		return
 	}
 	known, err := s.api.Spells(ctx)
 	if err != nil {
 		return
 	}
-	ok := true
+	// Renew a buff that is missing or has less than a minute left (from its aura).
 	for _, ranks := range [][]uint32{priest.Fortitude, priest.InnerFire} {
-		if id := best(known, ranks); id != 0 {
-			ok = s.tryCast(ctx, id, me.Guid) && ok
+		if id := best(known, ranks); id != 0 && needsRefresh(me.Auras, ranks, 60000) {
+			s.tryCast(ctx, id, me.Guid)
+			s.mark(&s.lastBuff)
 			sleep(ctx, 1200*time.Millisecond) // global cooldown
 		}
-	}
-	if ok { // a failed buff is retried before the next pull
-		s.mark(&s.lastBuff)
 	}
 }
 
@@ -500,11 +497,7 @@ func (s *Service) buff(ctx context.Context, me *statepb.SelfInfo) {
 // out of mana: wand (Shoot) if one is equipped, else melee.
 func (s *Service) fight(ctx context.Context, j *job, guid uint64) (bool, string) {
 	if b, err := s.api.Brief(ctx); err == nil && b.Self != nil && b.Self.ClassId == warrior.ClassID {
-		dead, why := s.fightWarrior(ctx, j, guid)
-		if dead {
-			s.mark(&s.lastKill)
-		}
-		return dead, why
+		return s.fightWarrior(ctx, j, guid)
 	}
 	var busyUntil, lastSwing, lastShoot, lastBlast, painAt, losAt, lastFace time.Time
 	progress, lastHP := time.Now(), uint32(0)
@@ -615,14 +608,16 @@ func (s *Service) fight(ctx context.Context, j *job, guid uint64) (bool, string)
 			switch {
 			case heal != 0 && hp < 40 && mana >= 12:
 				spell, target, busy = heal, me.Guid, 3100*time.Millisecond
-			case shield != 0 && hp < 80 && mana >= 15 && s.since(&s.lastShield) > 15*time.Second:
+			// Auras from the server; the short timers only cover the time the aura takes to show up.
+			case shield != 0 && hp < 80 && mana >= 15 && !hasAura(me.Auras, append([]uint32{priest.WeakenedSoul}, priest.Shield...)...) &&
+				s.since(&s.lastShield) > 3*time.Second:
 				spell, target = shield, me.Guid
 				s.mark(&s.lastShield)
-			case renew != 0 && hp < 65 && mana >= 15 && s.since(&s.lastRenew) > 15*time.Second:
+			case renew != 0 && hp < 65 && mana >= 15 && needsRefresh(me.Auras, priest.Renew, 1000) && s.since(&s.lastRenew) > 3*time.Second:
 				spell, target = renew, me.Guid
 				s.mark(&s.lastRenew)
 			case outOfMana:
-			case pain != 0 && mana >= 20 && pct(t.Hp, t.MaxHp) > 30 && time.Since(painAt) > 18*time.Second:
+			case pain != 0 && mana >= 20 && pct(t.Hp, t.MaxHp) > 30 && needsRefresh(t.Auras, priest.Pain, 1000) && time.Since(painAt) > 3*time.Second:
 				spell, target, painAt = pain, guid, time.Now()
 			case blast != 0 && mana >= 30 && time.Since(lastBlast) > 8*time.Second:
 				spell, target, lastBlast = blast, guid, time.Now()
@@ -721,15 +716,15 @@ func (s *Service) visible(ctx context.Context, t *statepb.Obj) bool {
 // ---- warrior --------------------------------------------------------------
 
 const (
-	battleShoutTime = 110 * time.Second // the shout lasts 2 minutes
-	inCombatFlag    = 0x00080000        // UNIT_FLAG_IN_COMBAT on ourselves
-	chargeMin       = 8                 // Charge range: 8 to 25 yards
-	chargeMax       = 24
+	inCombatFlag = 0x00080000 // UNIT_FLAG_IN_COMBAT on ourselves
+	chargeMin    = 8          // Charge range: 8 to 25 yards
+	chargeMax    = 24
 )
 
 // warriorBuff keeps Battle Shout up between fights; Bloodrage gives the 10 rage it costs.
 func (s *Service) warriorBuff(ctx context.Context, me *statepb.SelfInfo) {
-	if s.since(&s.lastBuff) < battleShoutTime {
+	// Out of combat, renew the shout before a pull when it has less than 30 s left (its aura says so).
+	if !needsRefresh(me.Auras, warrior.BattleShout, 30000) {
 		return
 	}
 	known, err := s.api.Spells(ctx)
@@ -747,9 +742,7 @@ func (s *Service) warriorBuff(ctx context.Context, me *statepb.SelfInfo) {
 		}
 		sleep(ctx, 1500*time.Millisecond)
 	}
-	if s.tryCast(ctx, shout, me.Guid) {
-		s.mark(&s.lastBuff)
-	}
+	_ = s.tryCast(ctx, shout, me.Guid)
 }
 
 // fightWarrior follows journal/classes/warrior.yaml (rotation_solo): Charge to open, auto-attack,
@@ -854,16 +847,19 @@ func (s *Service) fightWarrior(ctx context.Context, j *job, guid uint64) (bool, 
 			var mark *time.Time
 			reactive := false // only usable after an event (dodge, kill): failures are expected
 			switch {
-			case shout != 0 && rage >= 10 && s.since(&s.lastBuff) > battleShoutTime:
+			// Auras and aura states come from the server (SMSG_AURA_UPDATE, UNIT_FIELD_AURASTATE):
+			// no guessed timers.
+			case shout != 0 && rage >= 10 && needsRefresh(me.Auras, warrior.BattleShout, 3000):
 				spell = shout
-				s.mark(&s.lastBuff)
-			case vr != 0 && s.since(&s.lastKill) < 18*time.Second && now.Sub(vrTry) > 2*time.Second:
+			case vr != 0 && auraState(me.AuraState, warrior.StateVictoryRush) && now.Sub(vrTry) > time.Second:
 				spell, mark, reactive = vr, &vrTry, true
-			case exe != 0 && targetPct < 20 && rage >= 15:
+			case exe != 0 && rage >= 15 && (auraState(t.AuraState, warrior.StateHealthBelow20) || targetPct < 20 ||
+				hasAura(me.Auras, warrior.SuddenDeath)):
 				spell = exe
-			case op != 0 && rage >= 5 && s.melee.dodged(guid, 4*time.Second) && now.Sub(opTry) > time.Second:
-				spell, mark, reactive = op, &opTry, true // only after a dodge (combat log)
-			case rend != 0 && rage >= 10 && targetPct > 50 && now.Sub(rendAt) > 15*time.Second:
+			case op != 0 && rage >= 5 && (s.melee.dodged(guid, 4*time.Second) || hasAura(me.Auras, warrior.TasteForBlood)) &&
+				now.Sub(opTry) > time.Second:
+				spell, mark, reactive = op, &opTry, true
+			case rend != 0 && rage >= 10 && targetPct > 50 && needsRefresh(t.Auras, warrior.Rend, 2000) && now.Sub(rendAt) > 2*time.Second:
 				spell, mark = rend, &rendAt
 			case ms != 0 && rage >= 30 && now.Sub(msAt) > 6*time.Second:
 				spell, mark = ms, &msAt
@@ -878,11 +874,7 @@ func (s *Service) fightWarrior(ctx context.Context, j *job, guid uint64) (bool, 
 				}
 				if s.tryCast(ctx, spell, guid) {
 					gcdUntil = time.Now().Add(1100 * time.Millisecond) // 1.5 s global cooldown minus the check
-					if reactive && spell == vr {
-						s.mu.Lock()
-						s.lastKill = time.Time{} // used
-						s.mu.Unlock()
-					}
+
 				} else if !reactive && mark != nil {
 					*mark = time.Time{}
 				}

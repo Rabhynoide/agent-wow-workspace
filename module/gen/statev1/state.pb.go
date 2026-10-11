@@ -23,6 +23,102 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// One aura (buff or debuff) on a unit, from SMSG_AURA_UPDATE(_ALL).
+type Aura struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Slot  uint32                 `protobuf:"varint,1,opt,name=slot,proto3" json:"slot,omitempty"`
+	Spell uint32                 `protobuf:"varint,2,opt,name=spell,proto3" json:"spell,omitempty"`
+	// Stack count, or charges for auras without stacks.
+	Stacks uint32 `protobuf:"varint,3,opt,name=stacks,proto3" json:"stacks,omitempty"`
+	// Remaining and full duration in milliseconds (0 = no duration sent).
+	LeftMs uint32 `protobuf:"varint,4,opt,name=left_ms,json=leftMs,proto3" json:"left_ms,omitempty"`
+	MaxMs  uint32 `protobuf:"varint,5,opt,name=max_ms,json=maxMs,proto3" json:"max_ms,omitempty"`
+	// Cast by us.
+	Mine          bool `protobuf:"varint,6,opt,name=mine,proto3" json:"mine,omitempty"`
+	Positive      bool `protobuf:"varint,7,opt,name=positive,proto3" json:"positive,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Aura) Reset() {
+	*x = Aura{}
+	mi := &file_state_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Aura) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Aura) ProtoMessage() {}
+
+func (x *Aura) ProtoReflect() protoreflect.Message {
+	mi := &file_state_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Aura.ProtoReflect.Descriptor instead.
+func (*Aura) Descriptor() ([]byte, []int) {
+	return file_state_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *Aura) GetSlot() uint32 {
+	if x != nil {
+		return x.Slot
+	}
+	return 0
+}
+
+func (x *Aura) GetSpell() uint32 {
+	if x != nil {
+		return x.Spell
+	}
+	return 0
+}
+
+func (x *Aura) GetStacks() uint32 {
+	if x != nil {
+		return x.Stacks
+	}
+	return 0
+}
+
+func (x *Aura) GetLeftMs() uint32 {
+	if x != nil {
+		return x.LeftMs
+	}
+	return 0
+}
+
+func (x *Aura) GetMaxMs() uint32 {
+	if x != nil {
+		return x.MaxMs
+	}
+	return 0
+}
+
+func (x *Aura) GetMine() bool {
+	if x != nil {
+		return x.Mine
+	}
+	return false
+}
+
+func (x *Aura) GetPositive() bool {
+	if x != nil {
+		return x.Positive
+	}
+	return false
+}
+
 type SelfInfo struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	Guid      uint64                 `protobuf:"varint,1,opt,name=guid,proto3" json:"guid,omitempty"`
@@ -48,14 +144,18 @@ type SelfInfo struct {
 	ClassId   uint32                 `protobuf:"varint,21,opt,name=class_id,json=classId,proto3" json:"class_id,omitempty"`
 	Race      uint32                 `protobuf:"varint,22,opt,name=race,proto3" json:"race,omitempty"`
 	// Unspent talent points.
-	TalentPoints  uint32 `protobuf:"varint,23,opt,name=talent_points,json=talentPoints,proto3" json:"talent_points,omitempty"`
+	TalentPoints uint32 `protobuf:"varint,23,opt,name=talent_points,json=talentPoints,proto3" json:"talent_points,omitempty"`
+	// UNIT_FIELD_AURASTATE: bit (state-1) set when a spell condition holds (Spell.dbc CasterAuraState:
+	// 10 = Victory Rush usable, 1 = Revenge/defense, ...).
+	AuraState     uint32  `protobuf:"varint,24,opt,name=aura_state,json=auraState,proto3" json:"aura_state,omitempty"`
+	Auras         []*Aura `protobuf:"bytes,25,rep,name=auras,proto3" json:"auras,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SelfInfo) Reset() {
 	*x = SelfInfo{}
-	mi := &file_state_proto_msgTypes[0]
+	mi := &file_state_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -67,7 +167,7 @@ func (x *SelfInfo) String() string {
 func (*SelfInfo) ProtoMessage() {}
 
 func (x *SelfInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_state_proto_msgTypes[0]
+	mi := &file_state_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -80,7 +180,7 @@ func (x *SelfInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SelfInfo.ProtoReflect.Descriptor instead.
 func (*SelfInfo) Descriptor() ([]byte, []int) {
-	return file_state_proto_rawDescGZIP(), []int{0}
+	return file_state_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *SelfInfo) GetGuid() uint64 {
@@ -244,6 +344,20 @@ func (x *SelfInfo) GetTalentPoints() uint32 {
 	return 0
 }
 
+func (x *SelfInfo) GetAuraState() uint32 {
+	if x != nil {
+		return x.AuraState
+	}
+	return 0
+}
+
+func (x *SelfInfo) GetAuras() []*Aura {
+	if x != nil {
+		return x.Auras
+	}
+	return nil
+}
+
 type Item struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	Slot      int32                  `protobuf:"varint,1,opt,name=slot,proto3" json:"slot,omitempty"`
@@ -261,7 +375,7 @@ type Item struct {
 
 func (x *Item) Reset() {
 	*x = Item{}
-	mi := &file_state_proto_msgTypes[1]
+	mi := &file_state_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -273,7 +387,7 @@ func (x *Item) String() string {
 func (*Item) ProtoMessage() {}
 
 func (x *Item) ProtoReflect() protoreflect.Message {
-	mi := &file_state_proto_msgTypes[1]
+	mi := &file_state_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -286,7 +400,7 @@ func (x *Item) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Item.ProtoReflect.Descriptor instead.
 func (*Item) Descriptor() ([]byte, []int) {
-	return file_state_proto_rawDescGZIP(), []int{1}
+	return file_state_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *Item) GetSlot() int32 {
@@ -349,7 +463,7 @@ type Quest struct {
 
 func (x *Quest) Reset() {
 	*x = Quest{}
-	mi := &file_state_proto_msgTypes[2]
+	mi := &file_state_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -361,7 +475,7 @@ func (x *Quest) String() string {
 func (*Quest) ProtoMessage() {}
 
 func (x *Quest) ProtoReflect() protoreflect.Message {
-	mi := &file_state_proto_msgTypes[2]
+	mi := &file_state_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -374,7 +488,7 @@ func (x *Quest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Quest.ProtoReflect.Descriptor instead.
 func (*Quest) Descriptor() ([]byte, []int) {
-	return file_state_proto_rawDescGZIP(), []int{2}
+	return file_state_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *Quest) GetId() uint32 {
@@ -415,7 +529,7 @@ type SnapshotResponse struct {
 
 func (x *SnapshotResponse) Reset() {
 	*x = SnapshotResponse{}
-	mi := &file_state_proto_msgTypes[3]
+	mi := &file_state_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -427,7 +541,7 @@ func (x *SnapshotResponse) String() string {
 func (*SnapshotResponse) ProtoMessage() {}
 
 func (x *SnapshotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_state_proto_msgTypes[3]
+	mi := &file_state_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -440,7 +554,7 @@ func (x *SnapshotResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SnapshotResponse.ProtoReflect.Descriptor instead.
 func (*SnapshotResponse) Descriptor() ([]byte, []int) {
-	return file_state_proto_rawDescGZIP(), []int{3}
+	return file_state_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *SnapshotResponse) GetSelf() *SelfInfo {
@@ -505,7 +619,7 @@ type BriefResponse struct {
 
 func (x *BriefResponse) Reset() {
 	*x = BriefResponse{}
-	mi := &file_state_proto_msgTypes[4]
+	mi := &file_state_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -517,7 +631,7 @@ func (x *BriefResponse) String() string {
 func (*BriefResponse) ProtoMessage() {}
 
 func (x *BriefResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_state_proto_msgTypes[4]
+	mi := &file_state_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -530,7 +644,7 @@ func (x *BriefResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BriefResponse.ProtoReflect.Descriptor instead.
 func (*BriefResponse) Descriptor() ([]byte, []int) {
-	return file_state_proto_rawDescGZIP(), []int{4}
+	return file_state_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *BriefResponse) GetSelf() *SelfInfo {
@@ -573,14 +687,16 @@ type NearbyRequest struct {
 	// Keep only units whose npc_flags intersect this mask.
 	NpcFlags uint32 `protobuf:"varint,6,opt,name=npc_flags,json=npcFlags,proto3" json:"npc_flags,omitempty"`
 	// Keep only units hostile to us (they attack on sight), from FactionTemplate.dbc.
-	HostileOnly   bool `protobuf:"varint,7,opt,name=hostile_only,json=hostileOnly,proto3" json:"hostile_only,omitempty"`
+	HostileOnly bool `protobuf:"varint,7,opt,name=hostile_only,json=hostileOnly,proto3" json:"hostile_only,omitempty"`
+	// Include each unit's auras (debuffs on a target: Rend, Shadow Word: Pain...).
+	WithAuras     bool `protobuf:"varint,8,opt,name=with_auras,json=withAuras,proto3" json:"with_auras,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *NearbyRequest) Reset() {
 	*x = NearbyRequest{}
-	mi := &file_state_proto_msgTypes[5]
+	mi := &file_state_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -592,7 +708,7 @@ func (x *NearbyRequest) String() string {
 func (*NearbyRequest) ProtoMessage() {}
 
 func (x *NearbyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_state_proto_msgTypes[5]
+	mi := &file_state_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -605,7 +721,7 @@ func (x *NearbyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NearbyRequest.ProtoReflect.Descriptor instead.
 func (*NearbyRequest) Descriptor() ([]byte, []int) {
-	return file_state_proto_rawDescGZIP(), []int{5}
+	return file_state_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *NearbyRequest) GetKind() string {
@@ -657,6 +773,13 @@ func (x *NearbyRequest) GetHostileOnly() bool {
 	return false
 }
 
+func (x *NearbyRequest) GetWithAuras() bool {
+	if x != nil {
+		return x.WithAuras
+	}
+	return false
+}
+
 type Obj struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	Guid      uint64                 `protobuf:"varint,1,opt,name=guid,proto3" json:"guid,omitempty"`
@@ -675,14 +798,18 @@ type Obj struct {
 	DynFlags  uint32                 `protobuf:"varint,14,opt,name=dyn_flags,json=dynFlags,proto3" json:"dyn_flags,omitempty"`
 	Target    uint64                 `protobuf:"varint,15,opt,name=target,proto3" json:"target,omitempty"`
 	// Reaction to us: "hostile" (attacks on sight), "neutral" (attackable), "friendly"; "" if unknown.
-	Reaction      string `protobuf:"bytes,16,opt,name=reaction,proto3" json:"reaction,omitempty"`
+	Reaction string `protobuf:"bytes,16,opt,name=reaction,proto3" json:"reaction,omitempty"`
+	// UNIT_FIELD_AURASTATE (2 = health below 20 %: Execute usable).
+	AuraState uint32 `protobuf:"varint,17,opt,name=aura_state,json=auraState,proto3" json:"aura_state,omitempty"`
+	// Only with NearbyRequest.with_auras.
+	Auras         []*Aura `protobuf:"bytes,18,rep,name=auras,proto3" json:"auras,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Obj) Reset() {
 	*x = Obj{}
-	mi := &file_state_proto_msgTypes[6]
+	mi := &file_state_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -694,7 +821,7 @@ func (x *Obj) String() string {
 func (*Obj) ProtoMessage() {}
 
 func (x *Obj) ProtoReflect() protoreflect.Message {
-	mi := &file_state_proto_msgTypes[6]
+	mi := &file_state_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -707,7 +834,7 @@ func (x *Obj) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Obj.ProtoReflect.Descriptor instead.
 func (*Obj) Descriptor() ([]byte, []int) {
-	return file_state_proto_rawDescGZIP(), []int{6}
+	return file_state_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *Obj) GetGuid() uint64 {
@@ -822,6 +949,20 @@ func (x *Obj) GetReaction() string {
 	return ""
 }
 
+func (x *Obj) GetAuraState() uint32 {
+	if x != nil {
+		return x.AuraState
+	}
+	return 0
+}
+
+func (x *Obj) GetAuras() []*Aura {
+	if x != nil {
+		return x.Auras
+	}
+	return nil
+}
+
 type NearbyResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Objs          []*Obj                 `protobuf:"bytes,1,rep,name=objs,proto3" json:"objs,omitempty"`
@@ -832,7 +973,7 @@ type NearbyResponse struct {
 
 func (x *NearbyResponse) Reset() {
 	*x = NearbyResponse{}
-	mi := &file_state_proto_msgTypes[7]
+	mi := &file_state_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -844,7 +985,7 @@ func (x *NearbyResponse) String() string {
 func (*NearbyResponse) ProtoMessage() {}
 
 func (x *NearbyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_state_proto_msgTypes[7]
+	mi := &file_state_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -857,7 +998,7 @@ func (x *NearbyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NearbyResponse.ProtoReflect.Descriptor instead.
 func (*NearbyResponse) Descriptor() ([]byte, []int) {
-	return file_state_proto_rawDescGZIP(), []int{7}
+	return file_state_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *NearbyResponse) GetObjs() []*Obj {
@@ -888,7 +1029,7 @@ type SetPosRequest struct {
 
 func (x *SetPosRequest) Reset() {
 	*x = SetPosRequest{}
-	mi := &file_state_proto_msgTypes[8]
+	mi := &file_state_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -900,7 +1041,7 @@ func (x *SetPosRequest) String() string {
 func (*SetPosRequest) ProtoMessage() {}
 
 func (x *SetPosRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_state_proto_msgTypes[8]
+	mi := &file_state_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -913,7 +1054,7 @@ func (x *SetPosRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetPosRequest.ProtoReflect.Descriptor instead.
 func (*SetPosRequest) Descriptor() ([]byte, []int) {
-	return file_state_proto_rawDescGZIP(), []int{8}
+	return file_state_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *SetPosRequest) GetX() float32 {
@@ -960,7 +1101,7 @@ type SpellsResponse struct {
 
 func (x *SpellsResponse) Reset() {
 	*x = SpellsResponse{}
-	mi := &file_state_proto_msgTypes[9]
+	mi := &file_state_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -972,7 +1113,7 @@ func (x *SpellsResponse) String() string {
 func (*SpellsResponse) ProtoMessage() {}
 
 func (x *SpellsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_state_proto_msgTypes[9]
+	mi := &file_state_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -985,7 +1126,7 @@ func (x *SpellsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpellsResponse.ProtoReflect.Descriptor instead.
 func (*SpellsResponse) Descriptor() ([]byte, []int) {
-	return file_state_proto_rawDescGZIP(), []int{9}
+	return file_state_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *SpellsResponse) GetSpells() []uint32 {
@@ -1004,7 +1145,7 @@ type GetObjRequest struct {
 
 func (x *GetObjRequest) Reset() {
 	*x = GetObjRequest{}
-	mi := &file_state_proto_msgTypes[10]
+	mi := &file_state_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1016,7 +1157,7 @@ func (x *GetObjRequest) String() string {
 func (*GetObjRequest) ProtoMessage() {}
 
 func (x *GetObjRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_state_proto_msgTypes[10]
+	mi := &file_state_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1029,7 +1170,7 @@ func (x *GetObjRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetObjRequest.ProtoReflect.Descriptor instead.
 func (*GetObjRequest) Descriptor() ([]byte, []int) {
-	return file_state_proto_rawDescGZIP(), []int{10}
+	return file_state_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GetObjRequest) GetGuid() uint64 {
@@ -1043,7 +1184,15 @@ var File_state_proto protoreflect.FileDescriptor
 
 const file_state_proto_rawDesc = "" +
 	"\n" +
-	"\vstate.proto\x12\x11wowagent.state.v1\x1a\x1bapi/module/v1/session.proto\x1a\x1bgoogle/protobuf/empty.proto\"\x88\x04\n" +
+	"\vstate.proto\x12\x11wowagent.state.v1\x1a\x1bapi/module/v1/session.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xa8\x01\n" +
+	"\x04Aura\x12\x12\n" +
+	"\x04slot\x18\x01 \x01(\rR\x04slot\x12\x14\n" +
+	"\x05spell\x18\x02 \x01(\rR\x05spell\x12\x16\n" +
+	"\x06stacks\x18\x03 \x01(\rR\x06stacks\x12\x17\n" +
+	"\aleft_ms\x18\x04 \x01(\rR\x06leftMs\x12\x15\n" +
+	"\x06max_ms\x18\x05 \x01(\rR\x05maxMs\x12\x12\n" +
+	"\x04mine\x18\x06 \x01(\bR\x04mine\x12\x1a\n" +
+	"\bpositive\x18\a \x01(\bR\bpositive\"\xd6\x04\n" +
 	"\bSelfInfo\x12\x12\n" +
 	"\x04guid\x18\x01 \x01(\x04R\x04guid\x12\x10\n" +
 	"\x03map\x18\x02 \x01(\rR\x03map\x12\f\n" +
@@ -1070,7 +1219,10 @@ const file_state_proto_rawDesc = "" +
 	"\x05ghost\x18\x14 \x01(\bR\x05ghost\x12\x19\n" +
 	"\bclass_id\x18\x15 \x01(\rR\aclassId\x12\x12\n" +
 	"\x04race\x18\x16 \x01(\rR\x04race\x12#\n" +
-	"\rtalent_points\x18\x17 \x01(\rR\ftalentPoints\"\xa5\x01\n" +
+	"\rtalent_points\x18\x17 \x01(\rR\ftalentPoints\x12\x1d\n" +
+	"\n" +
+	"aura_state\x18\x18 \x01(\rR\tauraState\x12-\n" +
+	"\x05auras\x18\x19 \x03(\v2\x17.wowagent.state.v1.AuraR\x05auras\"\xa5\x01\n" +
 	"\x04Item\x12\x12\n" +
 	"\x04slot\x18\x01 \x01(\x05R\x04slot\x12\x14\n" +
 	"\x05entry\x18\x02 \x01(\rR\x05entry\x12\x14\n" +
@@ -1097,7 +1249,7 @@ const file_state_proto_rawDesc = "" +
 	"\x06quests\x18\x02 \x03(\v2\x18.wowagent.state.v1.QuestR\x06quests\x12\x1d\n" +
 	"\n" +
 	"free_slots\x18\x03 \x01(\rR\tfreeSlots\x12%\n" +
-	"\x0edurability_pct\x18\x04 \x01(\rR\rdurabilityPct\"\xc2\x01\n" +
+	"\x0edurability_pct\x18\x04 \x01(\rR\rdurabilityPct\"\xe1\x01\n" +
 	"\rNearbyRequest\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x14\n" +
 	"\x05entry\x18\x02 \x01(\rR\x05entry\x12\x16\n" +
@@ -1106,7 +1258,9 @@ const file_state_proto_rawDesc = "" +
 	"\n" +
 	"alive_only\x18\x05 \x01(\bR\taliveOnly\x12\x1b\n" +
 	"\tnpc_flags\x18\x06 \x01(\rR\bnpcFlags\x12!\n" +
-	"\fhostile_only\x18\a \x01(\bR\vhostileOnly\"\xe5\x02\n" +
+	"\fhostile_only\x18\a \x01(\bR\vhostileOnly\x12\x1d\n" +
+	"\n" +
+	"with_auras\x18\b \x01(\bR\twithAuras\"\xb3\x03\n" +
 	"\x03Obj\x12\x12\n" +
 	"\x04guid\x18\x01 \x01(\x04R\x04guid\x12\x14\n" +
 	"\x05entry\x18\x02 \x01(\rR\x05entry\x12\x12\n" +
@@ -1125,7 +1279,10 @@ const file_state_proto_rawDesc = "" +
 	"\tnpc_flags\x18\r \x01(\rR\bnpcFlags\x12\x1b\n" +
 	"\tdyn_flags\x18\x0e \x01(\rR\bdynFlags\x12\x16\n" +
 	"\x06target\x18\x0f \x01(\x04R\x06target\x12\x1a\n" +
-	"\breaction\x18\x10 \x01(\tR\breaction\"R\n" +
+	"\breaction\x18\x10 \x01(\tR\breaction\x12\x1d\n" +
+	"\n" +
+	"aura_state\x18\x11 \x01(\rR\tauraState\x12-\n" +
+	"\x05auras\x18\x12 \x03(\v2\x17.wowagent.state.v1.AuraR\x05auras\"R\n" +
 	"\x0eNearbyResponse\x12*\n" +
 	"\x04objs\x18\x01 \x03(\v2\x16.wowagent.state.v1.ObjR\x04objs\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\rR\x05total\"Y\n" +
@@ -1161,50 +1318,53 @@ func file_state_proto_rawDescGZIP() []byte {
 	return file_state_proto_rawDescData
 }
 
-var file_state_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_state_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_state_proto_goTypes = []any{
-	(*SelfInfo)(nil),         // 0: wowagent.state.v1.SelfInfo
-	(*Item)(nil),             // 1: wowagent.state.v1.Item
-	(*Quest)(nil),            // 2: wowagent.state.v1.Quest
-	(*SnapshotResponse)(nil), // 3: wowagent.state.v1.SnapshotResponse
-	(*BriefResponse)(nil),    // 4: wowagent.state.v1.BriefResponse
-	(*NearbyRequest)(nil),    // 5: wowagent.state.v1.NearbyRequest
-	(*Obj)(nil),              // 6: wowagent.state.v1.Obj
-	(*NearbyResponse)(nil),   // 7: wowagent.state.v1.NearbyResponse
-	(*SetPosRequest)(nil),    // 8: wowagent.state.v1.SetPosRequest
-	(*SpellsResponse)(nil),   // 9: wowagent.state.v1.SpellsResponse
-	(*GetObjRequest)(nil),    // 10: wowagent.state.v1.GetObjRequest
-	(*emptypb.Empty)(nil),    // 11: google.protobuf.Empty
-	(*v1.WorldPacket)(nil),   // 12: agentwow.module.v1.WorldPacket
+	(*Aura)(nil),             // 0: wowagent.state.v1.Aura
+	(*SelfInfo)(nil),         // 1: wowagent.state.v1.SelfInfo
+	(*Item)(nil),             // 2: wowagent.state.v1.Item
+	(*Quest)(nil),            // 3: wowagent.state.v1.Quest
+	(*SnapshotResponse)(nil), // 4: wowagent.state.v1.SnapshotResponse
+	(*BriefResponse)(nil),    // 5: wowagent.state.v1.BriefResponse
+	(*NearbyRequest)(nil),    // 6: wowagent.state.v1.NearbyRequest
+	(*Obj)(nil),              // 7: wowagent.state.v1.Obj
+	(*NearbyResponse)(nil),   // 8: wowagent.state.v1.NearbyResponse
+	(*SetPosRequest)(nil),    // 9: wowagent.state.v1.SetPosRequest
+	(*SpellsResponse)(nil),   // 10: wowagent.state.v1.SpellsResponse
+	(*GetObjRequest)(nil),    // 11: wowagent.state.v1.GetObjRequest
+	(*emptypb.Empty)(nil),    // 12: google.protobuf.Empty
+	(*v1.WorldPacket)(nil),   // 13: agentwow.module.v1.WorldPacket
 }
 var file_state_proto_depIdxs = []int32{
-	0,  // 0: wowagent.state.v1.SnapshotResponse.self:type_name -> wowagent.state.v1.SelfInfo
-	1,  // 1: wowagent.state.v1.SnapshotResponse.items:type_name -> wowagent.state.v1.Item
-	2,  // 2: wowagent.state.v1.SnapshotResponse.quests:type_name -> wowagent.state.v1.Quest
-	0,  // 3: wowagent.state.v1.BriefResponse.self:type_name -> wowagent.state.v1.SelfInfo
-	2,  // 4: wowagent.state.v1.BriefResponse.quests:type_name -> wowagent.state.v1.Quest
-	6,  // 5: wowagent.state.v1.NearbyResponse.objs:type_name -> wowagent.state.v1.Obj
-	11, // 6: wowagent.state.v1.State.Snapshot:input_type -> google.protobuf.Empty
-	11, // 7: wowagent.state.v1.State.Brief:input_type -> google.protobuf.Empty
-	5,  // 8: wowagent.state.v1.State.Nearby:input_type -> wowagent.state.v1.NearbyRequest
-	10, // 9: wowagent.state.v1.State.GetObj:input_type -> wowagent.state.v1.GetObjRequest
-	8,  // 10: wowagent.state.v1.State.SetPos:input_type -> wowagent.state.v1.SetPosRequest
-	11, // 11: wowagent.state.v1.State.Spells:input_type -> google.protobuf.Empty
-	12, // 12: wowagent.state.v1.State.OnPacket:input_type -> agentwow.module.v1.WorldPacket
-	11, // 13: wowagent.state.v1.State.BeforeLogout:input_type -> google.protobuf.Empty
-	3,  // 14: wowagent.state.v1.State.Snapshot:output_type -> wowagent.state.v1.SnapshotResponse
-	4,  // 15: wowagent.state.v1.State.Brief:output_type -> wowagent.state.v1.BriefResponse
-	7,  // 16: wowagent.state.v1.State.Nearby:output_type -> wowagent.state.v1.NearbyResponse
-	6,  // 17: wowagent.state.v1.State.GetObj:output_type -> wowagent.state.v1.Obj
-	11, // 18: wowagent.state.v1.State.SetPos:output_type -> google.protobuf.Empty
-	9,  // 19: wowagent.state.v1.State.Spells:output_type -> wowagent.state.v1.SpellsResponse
-	11, // 20: wowagent.state.v1.State.OnPacket:output_type -> google.protobuf.Empty
-	11, // 21: wowagent.state.v1.State.BeforeLogout:output_type -> google.protobuf.Empty
-	14, // [14:22] is the sub-list for method output_type
-	6,  // [6:14] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	0,  // 0: wowagent.state.v1.SelfInfo.auras:type_name -> wowagent.state.v1.Aura
+	1,  // 1: wowagent.state.v1.SnapshotResponse.self:type_name -> wowagent.state.v1.SelfInfo
+	2,  // 2: wowagent.state.v1.SnapshotResponse.items:type_name -> wowagent.state.v1.Item
+	3,  // 3: wowagent.state.v1.SnapshotResponse.quests:type_name -> wowagent.state.v1.Quest
+	1,  // 4: wowagent.state.v1.BriefResponse.self:type_name -> wowagent.state.v1.SelfInfo
+	3,  // 5: wowagent.state.v1.BriefResponse.quests:type_name -> wowagent.state.v1.Quest
+	0,  // 6: wowagent.state.v1.Obj.auras:type_name -> wowagent.state.v1.Aura
+	7,  // 7: wowagent.state.v1.NearbyResponse.objs:type_name -> wowagent.state.v1.Obj
+	12, // 8: wowagent.state.v1.State.Snapshot:input_type -> google.protobuf.Empty
+	12, // 9: wowagent.state.v1.State.Brief:input_type -> google.protobuf.Empty
+	6,  // 10: wowagent.state.v1.State.Nearby:input_type -> wowagent.state.v1.NearbyRequest
+	11, // 11: wowagent.state.v1.State.GetObj:input_type -> wowagent.state.v1.GetObjRequest
+	9,  // 12: wowagent.state.v1.State.SetPos:input_type -> wowagent.state.v1.SetPosRequest
+	12, // 13: wowagent.state.v1.State.Spells:input_type -> google.protobuf.Empty
+	13, // 14: wowagent.state.v1.State.OnPacket:input_type -> agentwow.module.v1.WorldPacket
+	12, // 15: wowagent.state.v1.State.BeforeLogout:input_type -> google.protobuf.Empty
+	4,  // 16: wowagent.state.v1.State.Snapshot:output_type -> wowagent.state.v1.SnapshotResponse
+	5,  // 17: wowagent.state.v1.State.Brief:output_type -> wowagent.state.v1.BriefResponse
+	8,  // 18: wowagent.state.v1.State.Nearby:output_type -> wowagent.state.v1.NearbyResponse
+	7,  // 19: wowagent.state.v1.State.GetObj:output_type -> wowagent.state.v1.Obj
+	12, // 20: wowagent.state.v1.State.SetPos:output_type -> google.protobuf.Empty
+	10, // 21: wowagent.state.v1.State.Spells:output_type -> wowagent.state.v1.SpellsResponse
+	12, // 22: wowagent.state.v1.State.OnPacket:output_type -> google.protobuf.Empty
+	12, // 23: wowagent.state.v1.State.BeforeLogout:output_type -> google.protobuf.Empty
+	16, // [16:24] is the sub-list for method output_type
+	8,  // [8:16] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_state_proto_init() }
@@ -1218,7 +1378,7 @@ func file_state_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_state_proto_rawDesc), len(file_state_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

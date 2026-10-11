@@ -6,6 +6,20 @@ option go_package = "wowagent/gen/statev1;statev1";
 import "api/module/v1/session.proto";
 import "google/protobuf/empty.proto";
 
+// One aura (buff or debuff) on a unit, from SMSG_AURA_UPDATE(_ALL).
+message Aura {
+  uint32 slot = 1;
+  uint32 spell = 2;
+  // Stack count, or charges for auras without stacks.
+  uint32 stacks = 3;
+  // Remaining and full duration in milliseconds (0 = no duration sent).
+  uint32 left_ms = 4;
+  uint32 max_ms = 5;
+  // Cast by us.
+  bool mine = 6;
+  bool positive = 7;
+}
+
 message SelfInfo {
   uint64 guid = 1;
   uint32 map = 2;
@@ -31,6 +45,10 @@ message SelfInfo {
   uint32 race = 22;
   // Unspent talent points.
   uint32 talent_points = 23;
+  // UNIT_FIELD_AURASTATE: bit (state-1) set when a spell condition holds (Spell.dbc CasterAuraState:
+  // 10 = Victory Rush usable, 1 = Revenge/defense, ...).
+  uint32 aura_state = 24;
+  repeated Aura auras = 25;
 }
 
 message Item {
@@ -83,6 +101,8 @@ message NearbyRequest {
   uint32 npc_flags = 6;
   // Keep only units hostile to us (they attack on sight), from FactionTemplate.dbc.
   bool hostile_only = 7;
+  // Include each unit's auras (debuffs on a target: Rend, Shadow Word: Pain...).
+  bool with_auras = 8;
 }
 
 message Obj {
@@ -103,6 +123,10 @@ message Obj {
   uint64 target = 15;
   // Reaction to us: "hostile" (attacks on sight), "neutral" (attackable), "friendly"; "" if unknown.
   string reaction = 16;
+  // UNIT_FIELD_AURASTATE (2 = health below 20 %: Execute usable).
+  uint32 aura_state = 17;
+  // Only with NearbyRequest.with_auras.
+  repeated Aura auras = 18;
 }
 
 message NearbyResponse {

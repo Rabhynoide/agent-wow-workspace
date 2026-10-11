@@ -13,4 +13,6 @@ const (
 	opLearnedSpell     = uint32(opcode.SMSGLearnedSpell)
 	opSupercededSpell  = uint32(opcode.SMSGSupercededSpell)
 	opRemovedSpell     = uint32(opcode.SMSGRemovedSpell)
+	opAuraUpdate       = uint32(opcode.SMSGAuraUpdate)
+	opAuraUpdateAll    = uint32(opcode.SMSGAuraUpdateAll)
 )

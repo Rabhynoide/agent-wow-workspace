@@ -24,6 +24,8 @@ packets:
   SMSG_LEARNED_SPELL: /wowagent.state.v1.State/OnPacket
   SMSG_SUPERCEDED_SPELL: /wowagent.state.v1.State/OnPacket
   SMSG_REMOVED_SPELL: /wowagent.state.v1.State/OnPacket
+  SMSG_AURA_UPDATE: /wowagent.state.v1.State/OnPacket
+  SMSG_AURA_UPDATE_ALL: /wowagent.state.v1.State/OnPacket
   MSG_MOVE_TELEPORT_ACK: /wowagent.state.v1.State/OnPacket
   SMSG_FORCE_MOVE_ROOT: /wowagent.state.v1.State/OnPacket
   SMSG_FORCE_MOVE_UNROOT: /wowagent.state.v1.State/OnPacket

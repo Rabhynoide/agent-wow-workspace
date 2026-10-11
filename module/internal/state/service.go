@@ -135,6 +135,7 @@ func (st *Store) selfInfo(me *Obj) *pb.SelfInfo {
 		Target: me.guid(fUnitTarget), Ghost: me.u(fPlayerFlags)&0x10 != 0,
 		Dead:     (me.u(fUnitHealth) == 0 && me.u(fUnitMaxHP) > 0) || me.u(fPlayerFlags)&0x10 != 0,
 		RunSpeed: me.Speeds[1], UnitFlags: me.u(fUnitFlags),
+		AuraState: me.u(fAuraState), Auras: aurasPB(me, me.Guid),
 	}
 }
 
@@ -247,6 +248,12 @@ func (s *Service) Nearby(_ context.Context, r *pb.NearbyRequest) (*pb.NearbyResp
 		if r.HostileOnly && p.Reaction != "hostile" {
 			continue
 		}
+		if o.Type == TypeUnit || o.Type == TypePlayer {
+			p.AuraState = o.u(fAuraState)
+			if r.WithAuras {
+				p.Auras = aurasPB(o, st.self)
+			}
+		}
 		if r.Radius > 0 && p.Dist > r.Radius {
 			continue
 		}
@@ -276,7 +283,14 @@ func (s *Service) GetObj(_ context.Context, r *pb.GetObjRequest) (*pb.Obj, error
 	if me := st.objs[st.self]; me != nil {
 		cx, cy, cz = me.X, me.Y, me.Z
 	}
-	return o.toPB(cx, cy, cz), nil
+	p := o.toPB(cx, cy, cz)
+	if o.Type == TypeUnit || o.Type == TypePlayer {
+		p.AuraState, p.Auras = o.u(fAuraState), aurasPB(o, st.self)
+		if me := st.objs[st.self]; me != nil {
+			p.Reaction = s.factions.Reaction(o.u(fUnitFaction), me.u(fUnitFaction))
+		}
+	}
+	return p, nil
 }
 
 func (s *Service) Spells(context.Context, *emptypb.Empty) (*pb.SpellsResponse, error) {
