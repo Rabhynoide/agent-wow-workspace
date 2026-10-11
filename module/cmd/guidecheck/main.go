@@ -96,10 +96,29 @@ func main() {
 	class := flag.String("class", "", "with -plan: class of the character (e.g. Priest)")
 	level := flag.Int("level", 1, "with -plan: character level")
 	next := flag.Int("n", 10, "with -plan: number of quests to list")
+	playMode := flag.Bool("play", false, "continue leveling the logged-in character -char along the Zygor route until -until (auto.run, auto.grind)")
+	until := flag.Int("until", 10, "with -play: target level")
+	routes := flag.String("routes", "../assets/routes", "with -play: directory of the converted Zygor routes (files picked by race)")
+	dbcDir := flag.String("dbc", "../assets/dbc", "with -play: client DBC directory (FactionTemplate.dbc)")
+	maxMin := flag.Int("max_min", 180, "with -play: stop after this many minutes")
 	above := flag.Int("maxabove", 2, "with -plan: skip quests more than this many levels above the character (danger)")
 	flag.Parse()
 	// Files given as arguments are checked in that order (one race's chain); else the whole directory.
 	files := flag.Args()
+	port := env("AGENT_WOW_WORLDRPC_PORT", "8086")
+	worldRPC := rpc{url: "http://127.0.0.1:" + port + "/rpc"}
+	if *playMode && len(files) == 0 {
+		var b brief
+		if err := worldRPC.call("state.brief", map[string]any{}, &b); err != nil {
+			fmt.Println("no session:", err)
+			os.Exit(1)
+		}
+		var err error
+		if files, err = routeFiles(*routes, b.Self.Race); err != nil || len(files) == 0 {
+			fmt.Println("route files:", err, *routes)
+			os.Exit(1)
+		}
+	}
 	if len(files) == 0 {
 		files, _ = filepath.Glob(filepath.Join(*dir, "*.json"))
 		sort.Strings(files)
@@ -139,6 +158,13 @@ func main() {
 	if *manualList {
 		c.printManual(raceIDs[strings.ToLower(*race)], classIDs[strings.ToLower(*class)], *class)
 		return
+	}
+	if *playMode {
+		if *char == "" {
+			fmt.Println("-play needs -char")
+			os.Exit(1)
+		}
+		os.Exit(c.play(worldRPC, *char, uint32(*until), *dbcDir, *maxMin))
 	}
 	if *plan {
 		c.printPlan(*char, *race, *class, uint32(*level), *next, *above)

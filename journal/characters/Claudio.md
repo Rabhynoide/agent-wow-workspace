@@ -47,3 +47,8 @@ Corrigés (commit 4b36bc8) :
 - Quêtes 62 (The Fargodeep Mine) et 76 (The Jasperlode Mine) faites par `auto.run` avec le nouvel objectif « explore ». Une mort à la mine de Jasperlode.
 - Bug trouvé : après cette mort, le serveur gardait Claudio au point de la téléportation non confirmée (aucun PNJ visible, rendu de 76 impossible). Corrigé (`state` répond aux téléportations) ; vérifié avec la pierre de foyer puis rendu de 76 à Goldshire.
 - Etat : niveau 8, XP ~4900/5400, Goldshire, vivant. Quête 112 dans le journal (non faite, voir BACKLOG « Nage »).
+
+## Niveau 10 (2026-10-11, `scripts/level.sh Claudio 10`)
+- 1er essai : quête 60 non rendue (sacs pleins, récompense en objet) ; puis bloqué sur un îlot de navmesh près de la mine de Fargodeep (-9837,188) : 47, 88, 87, 40, 112 sautées en « no walkable path ». Corrigé : place dans les sacs avant le rendu, déblocage dans `move`.
+- 2e essai : 60 faite ; mort dans la mine (47, kobolds) ; grind choisi sur des monstres d'événement (invasion du Fléau, absents) : corrigé (exclusion `game_event_creature`) ; mort comptée deux fois : corrigé.
+- 3e essai : 47 et 61 faites, 88 sautée (Princess à 1200 yards, rayon 800 : corrigé à 2000), NIVEAU 10 en 17 min.

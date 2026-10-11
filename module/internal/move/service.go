@@ -3,6 +3,7 @@ package move
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math"
@@ -217,26 +218,74 @@ func (s *Service) plan(mapID uint32, from [3]float32, x, y, z float32) ([][3]flo
 	if err != nil {
 		return nil, 0, err
 	}
-	src, dst := nav.ToRecast(from[0], from[1], from[2]), nav.ToRecast(x, y, z)
-	tm := s.terrainFor(mapID)
-	var dense [][3]float32
-	// Points every 2 yards that slide along the walkable polygons (the server's own smoothing), heights
-	// from the polygon reached; the old funnel + interpolation is the fallback.
-	if pts, err := m.SmoothPath(src, dst, nav.GroundOnly, nav.SmoothStep, nav.SmoothSlop); err == nil {
-		dense = onGround(pts, tm, s.vmapFor(mapID))
-	} else {
-		slog.Info("smooth path failed, using the funnel path", "err", err)
-		pts, corridor, err := m.PathCorridor(src, dst, nav.GroundOnly)
-		if err != nil {
-			return nil, 0, err
+	tm, vm := s.terrainFor(mapID), s.vmapFor(mapID)
+	to := [3]float32{x, y, z}
+	dense, err := navPlan(m, tm, vm, from, to)
+	if errors.Is(err, nav.ErrNoPath) || errors.Is(err, nav.ErrNoStartPoly) {
+		// Pushed onto a scrap of navmesh cut from the rest (ledge, rock) or off it: walk a short
+		// straight line on the ground to a point that has a path, then follow it.
+		if out, ok := escape(m, tm, vm, from, to); ok {
+			slog.Info("unstuck: straight walk to the navmesh", "from", from, "via", out[0])
+			dense, err = out[1:], nil
 		}
-		dense = densify(m, tm, pts, corridor)
+	}
+	if err != nil {
+		return nil, 0, err
 	}
 	var l float32
 	for i := 1; i < len(dense); i++ {
 		l += dist(dense[i-1], dense[i])
 	}
 	return dense, l, nil
+}
+
+func navPlan(m *nav.Mesh, tm *terrain.Maps, vm *vmap.Tree, from, to [3]float32) ([][3]float32, error) {
+	src, dst := nav.ToRecast(from[0], from[1], from[2]), nav.ToRecast(to[0], to[1], to[2])
+	// Points every 2 yards that slide along the walkable polygons (the server's own smoothing), heights
+	// from the polygon reached; the old funnel + interpolation is the fallback.
+	if pts, err := m.SmoothPath(src, dst, nav.GroundOnly, nav.SmoothStep, nav.SmoothSlop); err == nil {
+		return onGround(pts, tm, vm), nil
+	} else {
+		slog.Info("smooth path failed, using the funnel path", "err", err)
+	}
+	pts, corridor, err := m.PathCorridor(src, dst, nav.GroundOnly)
+	if err != nil {
+		return nil, err
+	}
+	return densify(m, tm, pts, corridor), nil
+}
+
+// escape looks for a point 4 to 24 yards away, towards the destination first, then in other
+// directions, reachable in a straight line on the ground (no step over 1.5 yards, nothing in the
+// way) and from which the navmesh has a path to the destination. It returns that point followed by
+// the straight walk and the path (the first element is the escape point, for the log).
+func escape(m *nav.Mesh, tm *terrain.Maps, vm *vmap.Tree, from, to [3]float32) ([][3]float32, bool) {
+	base := math.Atan2(float64(to[1]-from[1]), float64(to[0]-from[0]))
+	for _, turn := range []float64{0, 0.5, -0.5, 1, -1, 1.6, -1.6, 2.2, -2.2, math.Pi} {
+		a := base + turn
+		dx, dy := float32(math.Cos(a)), float32(math.Sin(a))
+		line := [][3]float32{from}
+		for d := float32(1); d <= 24; d++ {
+			p := [3]float32{from[0] + dx*d, from[1] + dy*d, line[len(line)-1][2]}
+			h, ok := floor(p[0], p[1], p[2]+1.5, tm, vm)
+			if !ok || math.Abs(float64(h-line[len(line)-1][2])) > 1.5 {
+				break // cliff or wall
+			}
+			p[2] = h
+			if vm != nil && !vm.LineOfSight([3]float32{line[len(line)-1][0], line[len(line)-1][1], line[len(line)-1][2] + 1},
+				[3]float32{p[0], p[1], p[2] + 1}) {
+				break
+			}
+			line = append(line, p)
+			if d < 4 || int(d)%4 != 0 {
+				continue
+			}
+			if rest, err := navPlan(m, tm, vm, p, to); err == nil && len(rest) > 0 {
+				return append([][3]float32{p}, append(line, rest...)...), true
+			}
+		}
+	}
+	return nil, false
 }
 
 // onGround converts navmesh points to WoW space and puts them on the real floor the way the server

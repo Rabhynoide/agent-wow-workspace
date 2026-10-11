@@ -95,6 +95,13 @@ Légende : [ ] à faire, [~] partiel, [x] fait.
   - [x] Objet de quête à utiliser sur une cible (45 des 48) : fait (`use_item`, `quest.use_item`). CMSG_USE_ITEM validé avec la pierre de foyer ; sur une cible, pas encore testé (première quête : niveau 14+). Restent 3 sans objet ni cible connus (ex. 2118 Plagued Lands : capturer un ours par script). Limite : les quêtes où il faut d'abord affaiblir/tuer la cible puis utiliser l'objet ne sont pas gérées.
   - [x] Groupe, élite, donjon, JcJ : abandon (décision utilisateur).
 
+## Leveling automatique `level.sh` (2026-10-11)
+- [x] « Continue le leveling » : `scripts/level.sh` (route Zygor dans l'ordre + grind d'un niveau quand la quête suivante est trop haute). Testé : Claudio 9 → 10.
+- [ ] Les reports (« too dangerous », mort) et les SKIP ne sont gardés que pendant une exécution : relancer retente tout de suite (ex. 47 dans la mine juste après une mort). Les garder dans `logs/level_<Nom>.state` si ça gêne.
+- [ ] Quêtes de classe (1638 au niveau 10, 1718 au niveau 30) : pas dans la route Zygor convertie ; à ajouter au plan selon `journal/classes/<classe>.yaml`.
+- [ ] Mine de Fargodeep (47, 60) : mort en y marchant (groupes de kobolds) ; dépend du pull d'un seul monstre / évitement.
+- [ ] Voyages (bateau, tram, vols, autre continent) : `level.sh` ne sait pas encore changer de zone autrement qu'à pied.
+
 ## Points à réfléchir (utilisateur, 2026-10-11, redemandés le même jour)
 - [ ] Implémenter la nage (voir « Nage, eau et quêtes d'eau »).
 - [ ] Pull d'un seul monstre : tirer (body pull : s'approcher juste à portée d'aggro, ou attaque à distance — tir/lancer pour le guerrier) puis reculer pour combattre loin du groupe, au lieu de courir sur la cible et d'aggro tout le camp. Demande : rayon d'aggro (niveau, ~20 yards), position des voisins, point de repli dégagé. Lié à l'évitement des monstres dans l'A*.

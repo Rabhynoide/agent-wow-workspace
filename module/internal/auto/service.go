@@ -529,6 +529,13 @@ func (r *run) doQuest(id uint32, reward uint32, chosen bool) error {
 	if q := inLog(snap, id); q != nil && q.State != 1 {
 		return fmt.Errorf("objectives still incomplete (counts %v)", q.Counts)
 	}
+	// Item rewards need bag space, or the turn-in is refused.
+	if err := r.ensureSpace(); err != nil {
+		r.step("could not make bag space: %v", err)
+	}
+	if snap, err = r.snapshot(); err != nil {
+		return err
+	}
 	me = snap.Self
 	en := nearestNpc(info.Enders, me.Map, me.X, me.Y)
 	if en == nil {
@@ -640,7 +647,7 @@ func (r *run) huntAny(entries []uint32, name string, count uint32) error {
 	var best *worldpb.Spawn
 	var risky []string
 	for _, e := range entries {
-		sp, err := r.s.api.Spawns(r.ctx, e, me.Map, me.X, me.Y, 800, "creature")
+		sp, err := r.s.api.Spawns(r.ctx, e, me.Map, me.X, me.Y, 2000, "creature")
 		if err != nil || len(sp) == 0 {
 			continue
 		}
@@ -729,7 +736,7 @@ func (r *run) hunt(entry uint32, name string, count, itemEntry, itemCount uint32
 		return err
 	}
 	me := snap.Self
-	sp, err := r.s.api.Spawns(r.ctx, entry, me.Map, me.X, me.Y, 800, "creature")
+	sp, err := r.s.api.Spawns(r.ctx, entry, me.Map, me.X, me.Y, 2000, "creature")
 	if err != nil || len(sp) == 0 {
 		return fmt.Errorf("no spawn found for %s (%d)", name, entry)
 	}
@@ -923,7 +930,7 @@ func (r *run) useObject(entry uint32, name string, loot bool) error {
 		o := vis.Objs[0]
 		tx, ty, tz = o.X, o.Y, o.Z
 	} else {
-		sp, err := r.s.api.Spawns(r.ctx, entry, me.Map, me.X, me.Y, 800, "gameobject")
+		sp, err := r.s.api.Spawns(r.ctx, entry, me.Map, me.X, me.Y, 2000, "gameobject")
 		if err != nil || len(sp) == 0 {
 			return fmt.Errorf("no spawn found for object %s (%d)", name, entry)
 		}
