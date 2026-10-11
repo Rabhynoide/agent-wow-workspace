@@ -4,7 +4,7 @@
 EmptyB}
 com.google.protobufB
 EmptyProtoPZ.google.golang.org/protobuf/types/known/emptypbø¢GPBªGoogle.Protobuf.WellKnownTypesbproto3
-Ñ$
+ø&
 world.protowowagent.world.v1google/protobuf/empty.proto"Î
 FindNpcRequest
 name (	Rname
@@ -42,16 +42,28 @@ map_filter (R	mapFilter
 map (Rmap
 x (Rx
 y (Ry
-z (Rz"~
+z (Rz"â
 QuestObjective
 kind (	Rkind
 entry (Rentry
 name (	Rname
 count (Rcount
-counter (Rcounter"4
+counter (Rcounter
+credit_from (R
+creditFrom
+map (Rmap
+x (Rx
+y	 (Ry
+z
+ (Rz
+radius (Rradius
+use_item (RuseItem
+	use_spell (RuseSpell
+use_on (RuseOn
+use_on_kind (	R	useOnKind"4
 ItemStat
 type (Rtype
-value (Rvalue"Š
+value (Rvalue"¯
 	QuestInfo
 id (Rid
 title (	Rtitle
@@ -73,7 +85,8 @@ objectives7
 starters (2.wowagent.world.v1.QuestNpcRstarters3
 enders (2.wowagent.world.v1.QuestNpcRenders'
 objectives_text (	RobjectivesText%
-reward_choices (RrewardChoices"I
+reward_choices (RrewardChoices#
+special_flags (RspecialFlags"I
 QuestInfoResponse4
 quests (2.wowagent.world.v1.QuestInfoRquests"+
 QuestsForNpcRequest
@@ -98,7 +111,7 @@ objectives7
 spawns (2.wowagent.world.v1.SpawnRspawns";
 ItemInfoRequest
 entry (Rentry
-name (	Rname"³
+name (	Rname"Ð
 ItemInfo
 entry (Rentry
 name (	Rname
@@ -120,7 +133,8 @@ sell_price	 (R	sellPrice
 allowable_class (RallowableClass%
 allowable_race (RallowableRace%
 spell_category (RspellCategory
-bonding (Rbonding"E
+bonding (Rbonding
+	use_spell (RuseSpell"E
 ItemInfoResponse1
 items (2.wowagent.world.v1.ItemInfoRitems"+
 CreatureInfoRequest

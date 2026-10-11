@@ -185,6 +185,18 @@ func (c C) UseObject(ctx context.Context, entry uint32, loot bool) (*questpb.Que
 	return &r, err
 }
 
+func (c C) Explore(ctx context.Context, trigger uint32) (*questpb.QuestResult, error) {
+	var r questpb.QuestResult
+	err := invoke.Call(ctx, c.S, "quest", "explore", &questpb.ExploreRequest{Trigger: trigger}, &r)
+	return &r, err
+}
+
+func (c C) UseItem(ctx context.Context, item, spell, target uint32, kind string) (*questpb.QuestResult, error) {
+	var r questpb.QuestResult
+	err := invoke.Call(ctx, c.S, "quest", "use_item", &questpb.UseItemRequest{ItemEntry: item, Spell: spell, TargetEntry: target, TargetKind: kind}, &r)
+	return &r, err
+}
+
 func (c C) CombatKill(ctx context.Context, req *combatpb.KillRequest) (*combatpb.CombatStatus, error) {
 	var r combatpb.CombatStatus
 	err := invoke.Call(ctx, c.S, "combat", "kill", req, &r)

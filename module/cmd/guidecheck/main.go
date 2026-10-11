@@ -307,10 +307,10 @@ var manualTypes = map[int]string{1: "elite / group quest", 41: "PvP quest", 62: 
 // classify records why the automation cannot complete a quest.
 func (c *checker) classify(q *quest) {
 	switch {
-	case q.Special&0x2 != 0:
-		c.manual[q.ID] = "exploration or event"
-	case q.Special&0x20 != 0:
-		c.manual[q.ID] = "needs a spell cast on a target"
+	case q.Special&0x2 != 0 && !c.has("SELECT 1 FROM areatrigger_involvedrelation WHERE quest=? LIMIT 1", q.ID):
+		c.manual[q.ID] = "event (escort, script, duel)"
+	case q.Special&0x20 != 0 && !c.castDoable(q):
+		c.manual[q.ID] = "spell cast on a target (no quest item or target known)"
 	case q.Group > 0:
 		c.manual[q.ID] = fmt.Sprintf("group of %d recommended", q.Group)
 	case manualTypes[q.Type] != "":
@@ -325,6 +325,48 @@ func (c *checker) classify(q *quest) {
 // objectiveProblem finds objectives auto cannot reach: a creature or object that is never spawned
 // (kill credit given by a script or an event), an item nothing drops (given by a script, bought,
 // crafted). The quest's own start item counts as owned.
+// has tells whether a query returns a row.
+func (c *checker) has(query string, args ...any) bool {
+	var one int
+	return c.db.QueryRow(query, args...).Scan(&one) == nil
+}
+
+// castDoable mirrors world.quest_info for spell-credited quests: a quest item with an on-use spell,
+// and for each objective a spawned target (the credited entry, or one named by the spell's target
+// conditions).
+func (c *checker) castDoable(q *quest) bool {
+	var npc [4]int64
+	var given [5]uint32
+	if c.db.QueryRow(`SELECT RequiredNpcOrGo1, RequiredNpcOrGo2, RequiredNpcOrGo3, RequiredNpcOrGo4,
+		StartItem, ItemDrop1, ItemDrop2, ItemDrop3, ItemDrop4 FROM quest_template WHERE ID=?`, q.ID).Scan(
+		&npc[0], &npc[1], &npc[2], &npc[3], &given[0], &given[1], &given[2], &given[3], &given[4]) != nil {
+		return false
+	}
+	var spell uint32
+	for _, it := range given {
+		if it != 0 && c.db.QueryRow("SELECT spellid_1 FROM item_template WHERE entry=? AND spellid_1>0 AND spelltrigger_1=0", it).Scan(&spell) == nil {
+			break
+		}
+		spell = 0
+	}
+	if spell == 0 {
+		return false
+	}
+	for _, n := range npc {
+		switch {
+		case n == 0:
+		case n > 0 && c.has("SELECT 1 FROM creature WHERE id=? LIMIT 1", n):
+		case n < 0 && c.has("SELECT 1 FROM gameobject WHERE id=? LIMIT 1", -n):
+		case c.has(`SELECT 1 FROM conditions k WHERE k.SourceTypeOrReferenceId IN (13,17) AND k.SourceEntry=?
+			AND k.ConditionTypeOrReference=31 AND ((k.ConditionValue1=3 AND EXISTS (SELECT 1 FROM creature x WHERE x.id=k.ConditionValue2))
+			OR (k.ConditionValue1=5 AND EXISTS (SELECT 1 FROM gameobject x WHERE x.id=k.ConditionValue2))) LIMIT 1`, spell):
+		default:
+			return false
+		}
+	}
+	return true
+}
+
 func (c *checker) objectiveProblem(q *quest) string {
 	var npc [4]int64
 	var item [6]uint32
@@ -335,13 +377,15 @@ func (c *checker) objectiveProblem(q *quest) string {
 	if err != nil {
 		return ""
 	}
-	exists := func(query string, arg any) bool {
-		var one int
-		return c.db.QueryRow(query, arg).Scan(&one) == nil
+	exists := c.has
+	if q.Special&0x20 != 0 {
+		npc = [4]int64{} // targets checked by castDoable
 	}
 	for _, n := range npc {
 		switch {
-		case n > 0 && !exists("SELECT 1 FROM creature WHERE id=? LIMIT 1", n):
+		case n > 0 && !exists("SELECT 1 FROM creature WHERE id=? LIMIT 1", n) &&
+			!exists(`SELECT 1 FROM creature_template t JOIN creature c ON c.id=t.entry
+				WHERE t.KillCredit1=? OR t.KillCredit2=? LIMIT 1`, n, n):
 			return fmt.Sprintf("kill credit for creature %d that is never spawned (script or event)", n)
 		case n < 0 && !exists("SELECT 1 FROM gameobject WHERE id=? LIMIT 1", -n):
 			return fmt.Sprintf("object %d that is never spawned (script or event)", -n)

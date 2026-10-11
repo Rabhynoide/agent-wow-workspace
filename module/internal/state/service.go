@@ -19,15 +19,19 @@ import (
 // Service exposes the store over gRPC.
 type Service struct {
 	pb.UnimplementedStateServer
-	st *Store
+	st   *Store
+	sess modv1.SessionClient
 }
 
-func Register(s grpc.ServiceRegistrar, _ modv1.SessionClient) {
+func Register(s grpc.ServiceRegistrar, sess modv1.SessionClient) {
 	guid, _ := strconv.ParseUint(os.Getenv("AGENT_WOW_CHARACTER_GUID"), 10, 64)
-	pb.RegisterStateServer(s, &Service{st: NewStore(guid)})
+	pb.RegisterStateServer(s, &Service{st: NewStore(guid), sess: sess})
 }
 
-func (s *Service) OnPacket(_ context.Context, p *modv1.WorldPacket) (*emptypb.Empty, error) {
+func (s *Service) OnPacket(ctx context.Context, p *modv1.WorldPacket) (*emptypb.Empty, error) {
+	if s.ack(ctx, p.GetOpcode(), p.GetPayload()) {
+		return &emptypb.Empty{}, nil
+	}
 	s.st.Handle(p.GetOpcode(), p.GetPayload())
 	return &emptypb.Empty{}, nil
 }

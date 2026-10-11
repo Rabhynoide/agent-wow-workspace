@@ -250,6 +250,123 @@ func (x *UseRequest) GetLoot() bool {
 	return false
 }
 
+type ExploreRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Area trigger id (world.quest_info objective "explore"); the character must stand inside it.
+	Trigger       uint32 `protobuf:"varint,1,opt,name=trigger,proto3" json:"trigger,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExploreRequest) Reset() {
+	*x = ExploreRequest{}
+	mi := &file_quest_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExploreRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExploreRequest) ProtoMessage() {}
+
+func (x *ExploreRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_quest_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExploreRequest.ProtoReflect.Descriptor instead.
+func (*ExploreRequest) Descriptor() ([]byte, []int) {
+	return file_quest_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ExploreRequest) GetTrigger() uint32 {
+	if x != nil {
+		return x.Trigger
+	}
+	return 0
+}
+
+type UseItemRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Bag item to use (its on-use spell).
+	ItemEntry uint32 `protobuf:"varint,1,opt,name=item_entry,json=itemEntry,proto3" json:"item_entry,omitempty"`
+	// Target: nearest visible creature or gameobject (target_kind "unit" or "gameobject") with this
+	// entry within 40 yards; 0 = no target (spell on self or around).
+	TargetEntry uint32 `protobuf:"varint,2,opt,name=target_entry,json=targetEntry,proto3" json:"target_entry,omitempty"`
+	TargetKind  string `protobuf:"bytes,3,opt,name=target_kind,json=targetKind,proto3" json:"target_kind,omitempty"`
+	// The item's on-use spell (the server checks it); 0 = looked up with world.item_info.
+	Spell         uint32 `protobuf:"varint,4,opt,name=spell,proto3" json:"spell,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UseItemRequest) Reset() {
+	*x = UseItemRequest{}
+	mi := &file_quest_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UseItemRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UseItemRequest) ProtoMessage() {}
+
+func (x *UseItemRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_quest_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UseItemRequest.ProtoReflect.Descriptor instead.
+func (*UseItemRequest) Descriptor() ([]byte, []int) {
+	return file_quest_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *UseItemRequest) GetItemEntry() uint32 {
+	if x != nil {
+		return x.ItemEntry
+	}
+	return 0
+}
+
+func (x *UseItemRequest) GetTargetEntry() uint32 {
+	if x != nil {
+		return x.TargetEntry
+	}
+	return 0
+}
+
+func (x *UseItemRequest) GetTargetKind() string {
+	if x != nil {
+		return x.TargetKind
+	}
+	return ""
+}
+
+func (x *UseItemRequest) GetSpell() uint32 {
+	if x != nil {
+		return x.Spell
+	}
+	return 0
+}
+
 var File_quest_proto protoreflect.FileDescriptor
 
 const file_quest_proto_rawDesc = "" +
@@ -269,11 +386,22 @@ const file_quest_proto_rawDesc = "" +
 	"\n" +
 	"UseRequest\x12\x14\n" +
 	"\x05entry\x18\x01 \x01(\rR\x05entry\x12\x12\n" +
-	"\x04loot\x18\x02 \x01(\bR\x04loot2\xea\x02\n" +
+	"\x04loot\x18\x02 \x01(\bR\x04loot\"*\n" +
+	"\x0eExploreRequest\x12\x18\n" +
+	"\atrigger\x18\x01 \x01(\rR\atrigger\"\x89\x01\n" +
+	"\x0eUseItemRequest\x12\x1d\n" +
+	"\n" +
+	"item_entry\x18\x01 \x01(\rR\titemEntry\x12!\n" +
+	"\ftarget_entry\x18\x02 \x01(\rR\vtargetEntry\x12\x1f\n" +
+	"\vtarget_kind\x18\x03 \x01(\tR\n" +
+	"targetKind\x12\x14\n" +
+	"\x05spell\x18\x04 \x01(\rR\x05spell2\x86\x04\n" +
 	"\x05Quest\x12J\n" +
 	"\x06Accept\x12 .wowagent.quest.v1.AcceptRequest\x1a\x1e.wowagent.quest.v1.QuestResult\x12J\n" +
 	"\x06TurnIn\x12 .wowagent.quest.v1.TurnInRequest\x1a\x1e.wowagent.quest.v1.QuestResult\x12D\n" +
-	"\x03Use\x12\x1d.wowagent.quest.v1.UseRequest\x1a\x1e.wowagent.quest.v1.QuestResult\x12C\n" +
+	"\x03Use\x12\x1d.wowagent.quest.v1.UseRequest\x1a\x1e.wowagent.quest.v1.QuestResult\x12L\n" +
+	"\aExplore\x12!.wowagent.quest.v1.ExploreRequest\x1a\x1e.wowagent.quest.v1.QuestResult\x12L\n" +
+	"\aUseItem\x12!.wowagent.quest.v1.UseItemRequest\x1a\x1e.wowagent.quest.v1.QuestResult\x12C\n" +
 	"\bOnPacket\x12\x1f.agentwow.module.v1.WorldPacket\x1a\x16.google.protobuf.Empty\x12>\n" +
 	"\fBeforeLogout\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.EmptyB\x1eZ\x1cwowagent/gen/questv1;questv1b\x06proto3"
 
@@ -289,28 +417,34 @@ func file_quest_proto_rawDescGZIP() []byte {
 	return file_quest_proto_rawDescData
 }
 
-var file_quest_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_quest_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_quest_proto_goTypes = []any{
 	(*QuestResult)(nil),    // 0: wowagent.quest.v1.QuestResult
 	(*AcceptRequest)(nil),  // 1: wowagent.quest.v1.AcceptRequest
 	(*TurnInRequest)(nil),  // 2: wowagent.quest.v1.TurnInRequest
 	(*UseRequest)(nil),     // 3: wowagent.quest.v1.UseRequest
-	(*v1.WorldPacket)(nil), // 4: agentwow.module.v1.WorldPacket
-	(*emptypb.Empty)(nil),  // 5: google.protobuf.Empty
+	(*ExploreRequest)(nil), // 4: wowagent.quest.v1.ExploreRequest
+	(*UseItemRequest)(nil), // 5: wowagent.quest.v1.UseItemRequest
+	(*v1.WorldPacket)(nil), // 6: agentwow.module.v1.WorldPacket
+	(*emptypb.Empty)(nil),  // 7: google.protobuf.Empty
 }
 var file_quest_proto_depIdxs = []int32{
 	1, // 0: wowagent.quest.v1.Quest.Accept:input_type -> wowagent.quest.v1.AcceptRequest
 	2, // 1: wowagent.quest.v1.Quest.TurnIn:input_type -> wowagent.quest.v1.TurnInRequest
 	3, // 2: wowagent.quest.v1.Quest.Use:input_type -> wowagent.quest.v1.UseRequest
-	4, // 3: wowagent.quest.v1.Quest.OnPacket:input_type -> agentwow.module.v1.WorldPacket
-	5, // 4: wowagent.quest.v1.Quest.BeforeLogout:input_type -> google.protobuf.Empty
-	0, // 5: wowagent.quest.v1.Quest.Accept:output_type -> wowagent.quest.v1.QuestResult
-	0, // 6: wowagent.quest.v1.Quest.TurnIn:output_type -> wowagent.quest.v1.QuestResult
-	0, // 7: wowagent.quest.v1.Quest.Use:output_type -> wowagent.quest.v1.QuestResult
-	5, // 8: wowagent.quest.v1.Quest.OnPacket:output_type -> google.protobuf.Empty
-	5, // 9: wowagent.quest.v1.Quest.BeforeLogout:output_type -> google.protobuf.Empty
-	5, // [5:10] is the sub-list for method output_type
-	0, // [0:5] is the sub-list for method input_type
+	4, // 3: wowagent.quest.v1.Quest.Explore:input_type -> wowagent.quest.v1.ExploreRequest
+	5, // 4: wowagent.quest.v1.Quest.UseItem:input_type -> wowagent.quest.v1.UseItemRequest
+	6, // 5: wowagent.quest.v1.Quest.OnPacket:input_type -> agentwow.module.v1.WorldPacket
+	7, // 6: wowagent.quest.v1.Quest.BeforeLogout:input_type -> google.protobuf.Empty
+	0, // 7: wowagent.quest.v1.Quest.Accept:output_type -> wowagent.quest.v1.QuestResult
+	0, // 8: wowagent.quest.v1.Quest.TurnIn:output_type -> wowagent.quest.v1.QuestResult
+	0, // 9: wowagent.quest.v1.Quest.Use:output_type -> wowagent.quest.v1.QuestResult
+	0, // 10: wowagent.quest.v1.Quest.Explore:output_type -> wowagent.quest.v1.QuestResult
+	0, // 11: wowagent.quest.v1.Quest.UseItem:output_type -> wowagent.quest.v1.QuestResult
+	7, // 12: wowagent.quest.v1.Quest.OnPacket:output_type -> google.protobuf.Empty
+	7, // 13: wowagent.quest.v1.Quest.BeforeLogout:output_type -> google.protobuf.Empty
+	7, // [7:14] is the sub-list for method output_type
+	0, // [0:7] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -327,7 +461,7 @@ func file_quest_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_quest_proto_rawDesc), len(file_quest_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

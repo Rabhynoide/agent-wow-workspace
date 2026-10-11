@@ -449,13 +449,29 @@ func (x *QuestNpc) GetZ() float32 {
 
 type QuestObjective struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// "kill" or "item" or "gameobject".
+	// "kill", "item", "gameobject" or "explore".
 	Kind  string `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
 	Entry uint32 `protobuf:"varint,2,opt,name=entry,proto3" json:"entry,omitempty"`
 	Name  string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	Count uint32 `protobuf:"varint,4,opt,name=count,proto3" json:"count,omitempty"`
 	// kill/gameobject: index of the quest log counter (RequiredNpcOrGo slot, 0-based).
-	Counter       uint32 `protobuf:"varint,5,opt,name=counter,proto3" json:"counter,omitempty"`
+	Counter uint32 `protobuf:"varint,5,opt,name=counter,proto3" json:"counter,omitempty"`
+	// kill: spawned creatures whose kill also gives this credit (creature_template KillCredit1/2),
+	// filled when the entry itself is never spawned.
+	CreditFrom []uint32 `protobuf:"varint,6,rep,packed,name=credit_from,json=creditFrom,proto3" json:"credit_from,omitempty"`
+	// explore (entry = area trigger id): trigger position and radius. Any trigger of the quest
+	// completes it; the client must send CMSG_AREATRIGGER inside it (quest.explore).
+	Map    uint32  `protobuf:"varint,7,opt,name=map,proto3" json:"map,omitempty"`
+	X      float32 `protobuf:"fixed32,8,opt,name=x,proto3" json:"x,omitempty"`
+	Y      float32 `protobuf:"fixed32,9,opt,name=y,proto3" json:"y,omitempty"`
+	Z      float32 `protobuf:"fixed32,10,opt,name=z,proto3" json:"z,omitempty"`
+	Radius float32 `protobuf:"fixed32,11,opt,name=radius,proto3" json:"radius,omitempty"`
+	// kill/gameobject credited by a spell (quest special flag 0x20): the quest item to use, its
+	// spell, and what the spell must hit (use_on_kind "creature" or "gameobject").
+	UseItem       uint32   `protobuf:"varint,12,opt,name=use_item,json=useItem,proto3" json:"use_item,omitempty"`
+	UseSpell      uint32   `protobuf:"varint,13,opt,name=use_spell,json=useSpell,proto3" json:"use_spell,omitempty"`
+	UseOn         []uint32 `protobuf:"varint,14,rep,packed,name=use_on,json=useOn,proto3" json:"use_on,omitempty"`
+	UseOnKind     string   `protobuf:"bytes,15,opt,name=use_on_kind,json=useOnKind,proto3" json:"use_on_kind,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -523,6 +539,76 @@ func (x *QuestObjective) GetCounter() uint32 {
 		return x.Counter
 	}
 	return 0
+}
+
+func (x *QuestObjective) GetCreditFrom() []uint32 {
+	if x != nil {
+		return x.CreditFrom
+	}
+	return nil
+}
+
+func (x *QuestObjective) GetMap() uint32 {
+	if x != nil {
+		return x.Map
+	}
+	return 0
+}
+
+func (x *QuestObjective) GetX() float32 {
+	if x != nil {
+		return x.X
+	}
+	return 0
+}
+
+func (x *QuestObjective) GetY() float32 {
+	if x != nil {
+		return x.Y
+	}
+	return 0
+}
+
+func (x *QuestObjective) GetZ() float32 {
+	if x != nil {
+		return x.Z
+	}
+	return 0
+}
+
+func (x *QuestObjective) GetRadius() float32 {
+	if x != nil {
+		return x.Radius
+	}
+	return 0
+}
+
+func (x *QuestObjective) GetUseItem() uint32 {
+	if x != nil {
+		return x.UseItem
+	}
+	return 0
+}
+
+func (x *QuestObjective) GetUseSpell() uint32 {
+	if x != nil {
+		return x.UseSpell
+	}
+	return 0
+}
+
+func (x *QuestObjective) GetUseOn() []uint32 {
+	if x != nil {
+		return x.UseOn
+	}
+	return nil
+}
+
+func (x *QuestObjective) GetUseOnKind() string {
+	if x != nil {
+		return x.UseOnKind
+	}
+	return ""
 }
 
 type ItemStat struct {
@@ -594,6 +680,8 @@ type QuestInfo struct {
 	ObjectivesText string                 `protobuf:"bytes,13,opt,name=objectives_text,json=objectivesText,proto3" json:"objectives_text,omitempty"`
 	// Items offered as a choice at turn-in (index = reward argument of quest.turnin).
 	RewardChoices []uint32 `protobuf:"varint,14,rep,packed,name=reward_choices,json=rewardChoices,proto3" json:"reward_choices,omitempty"`
+	// quest_template_addon.SpecialFlags (0x2 exploration or event, 0x20 spell cast on a target).
+	SpecialFlags  uint32 `protobuf:"varint,15,opt,name=special_flags,json=specialFlags,proto3" json:"special_flags,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -724,6 +812,13 @@ func (x *QuestInfo) GetRewardChoices() []uint32 {
 		return x.RewardChoices
 	}
 	return nil
+}
+
+func (x *QuestInfo) GetSpecialFlags() uint32 {
+	if x != nil {
+		return x.SpecialFlags
+	}
+	return 0
 }
 
 type QuestInfoResponse struct {
@@ -1147,7 +1242,9 @@ type ItemInfo struct {
 	// First spell category: 11 = food, 59 = drink.
 	SpellCategory uint32 `protobuf:"varint,17,opt,name=spell_category,json=spellCategory,proto3" json:"spell_category,omitempty"`
 	// 0 none, 1 bind on pickup, 2 bind on equip, 3 bind on use, 4+ quest.
-	Bonding       uint32 `protobuf:"varint,18,opt,name=bonding,proto3" json:"bonding,omitempty"`
+	Bonding uint32 `protobuf:"varint,18,opt,name=bonding,proto3" json:"bonding,omitempty"`
+	// On-use spell (spellid_1 when spelltrigger_1 = 0), sent with CMSG_USE_ITEM.
+	UseSpell      uint32 `protobuf:"varint,19,opt,name=use_spell,json=useSpell,proto3" json:"use_spell,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1304,6 +1401,13 @@ func (x *ItemInfo) GetSpellCategory() uint32 {
 func (x *ItemInfo) GetBonding() uint32 {
 	if x != nil {
 		return x.Bonding
+	}
+	return 0
+}
+
+func (x *ItemInfo) GetUseSpell() uint32 {
+	if x != nil {
+		return x.UseSpell
 	}
 	return 0
 }
@@ -2023,16 +2127,28 @@ const file_world_proto_rawDesc = "" +
 	"\x03map\x18\x03 \x01(\rR\x03map\x12\f\n" +
 	"\x01x\x18\x04 \x01(\x02R\x01x\x12\f\n" +
 	"\x01y\x18\x05 \x01(\x02R\x01y\x12\f\n" +
-	"\x01z\x18\x06 \x01(\x02R\x01z\"~\n" +
+	"\x01z\x18\x06 \x01(\x02R\x01z\"\xe2\x02\n" +
 	"\x0eQuestObjective\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x14\n" +
 	"\x05entry\x18\x02 \x01(\rR\x05entry\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x14\n" +
 	"\x05count\x18\x04 \x01(\rR\x05count\x12\x18\n" +
-	"\acounter\x18\x05 \x01(\rR\acounter\"4\n" +
+	"\acounter\x18\x05 \x01(\rR\acounter\x12\x1f\n" +
+	"\vcredit_from\x18\x06 \x03(\rR\n" +
+	"creditFrom\x12\x10\n" +
+	"\x03map\x18\a \x01(\rR\x03map\x12\f\n" +
+	"\x01x\x18\b \x01(\x02R\x01x\x12\f\n" +
+	"\x01y\x18\t \x01(\x02R\x01y\x12\f\n" +
+	"\x01z\x18\n" +
+	" \x01(\x02R\x01z\x12\x16\n" +
+	"\x06radius\x18\v \x01(\x02R\x06radius\x12\x19\n" +
+	"\buse_item\x18\f \x01(\rR\auseItem\x12\x1b\n" +
+	"\tuse_spell\x18\r \x01(\rR\buseSpell\x12\x15\n" +
+	"\x06use_on\x18\x0e \x03(\rR\x05useOn\x12\x1e\n" +
+	"\vuse_on_kind\x18\x0f \x01(\tR\tuseOnKind\"4\n" +
 	"\bItemStat\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\rR\x04type\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x05R\x05value\"\x8a\x04\n" +
+	"\x05value\x18\x02 \x01(\x05R\x05value\"\xaf\x04\n" +
 	"\tQuestInfo\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\rR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x14\n" +
@@ -2054,7 +2170,8 @@ const file_world_proto_rawDesc = "" +
 	"\bstarters\x18\v \x03(\v2\x1b.wowagent.world.v1.QuestNpcR\bstarters\x123\n" +
 	"\x06enders\x18\f \x03(\v2\x1b.wowagent.world.v1.QuestNpcR\x06enders\x12'\n" +
 	"\x0fobjectives_text\x18\r \x01(\tR\x0eobjectivesText\x12%\n" +
-	"\x0ereward_choices\x18\x0e \x03(\rR\rrewardChoices\"I\n" +
+	"\x0ereward_choices\x18\x0e \x03(\rR\rrewardChoices\x12#\n" +
+	"\rspecial_flags\x18\x0f \x01(\rR\fspecialFlags\"I\n" +
 	"\x11QuestInfoResponse\x124\n" +
 	"\x06quests\x18\x01 \x03(\v2\x1c.wowagent.world.v1.QuestInfoR\x06quests\"+\n" +
 	"\x13QuestsForNpcRequest\x12\x14\n" +
@@ -2079,7 +2196,7 @@ const file_world_proto_rawDesc = "" +
 	"\x06spawns\x18\x01 \x03(\v2\x18.wowagent.world.v1.SpawnR\x06spawns\";\n" +
 	"\x0fItemInfoRequest\x12\x14\n" +
 	"\x05entry\x18\x01 \x01(\rR\x05entry\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\"\xb3\x04\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"\xd0\x04\n" +
 	"\bItemInfo\x12\x14\n" +
 	"\x05entry\x18\x01 \x01(\rR\x05entry\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
@@ -2101,7 +2218,8 @@ const file_world_proto_rawDesc = "" +
 	"\x0fallowable_class\x18\x0f \x01(\x05R\x0eallowableClass\x12%\n" +
 	"\x0eallowable_race\x18\x10 \x01(\x05R\rallowableRace\x12%\n" +
 	"\x0espell_category\x18\x11 \x01(\rR\rspellCategory\x12\x18\n" +
-	"\abonding\x18\x12 \x01(\rR\abonding\"E\n" +
+	"\abonding\x18\x12 \x01(\rR\abonding\x12\x1b\n" +
+	"\tuse_spell\x18\x13 \x01(\rR\buseSpell\"E\n" +
 	"\x10ItemInfoResponse\x121\n" +
 	"\x05items\x18\x01 \x03(\v2\x1b.wowagent.world.v1.ItemInfoR\x05items\"+\n" +
 	"\x13CreatureInfoRequest\x12\x14\n" +

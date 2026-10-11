@@ -24,5 +24,15 @@ packets:
   SMSG_LEARNED_SPELL: /wowagent.state.v1.State/OnPacket
   SMSG_SUPERCEDED_SPELL: /wowagent.state.v1.State/OnPacket
   SMSG_REMOVED_SPELL: /wowagent.state.v1.State/OnPacket
+  MSG_MOVE_TELEPORT_ACK: /wowagent.state.v1.State/OnPacket
+  SMSG_FORCE_MOVE_ROOT: /wowagent.state.v1.State/OnPacket
+  SMSG_FORCE_MOVE_UNROOT: /wowagent.state.v1.State/OnPacket
+  SMSG_FORCE_WALK_SPEED_CHANGE: /wowagent.state.v1.State/OnPacket
+  SMSG_FORCE_RUN_SPEED_CHANGE: /wowagent.state.v1.State/OnPacket
+  SMSG_FORCE_RUN_BACK_SPEED_CHANGE: /wowagent.state.v1.State/OnPacket
+  SMSG_FORCE_SWIM_SPEED_CHANGE: /wowagent.state.v1.State/OnPacket
+  SMSG_FORCE_SWIM_BACK_SPEED_CHANGE: /wowagent.state.v1.State/OnPacket
+  SMSG_FORCE_FLIGHT_SPEED_CHANGE: /wowagent.state.v1.State/OnPacket
+  SMSG_FORCE_FLIGHT_BACK_SPEED_CHANGE: /wowagent.state.v1.State/OnPacket
 lifecycle:
   before_logout: /wowagent.state.v1.State/BeforeLogout

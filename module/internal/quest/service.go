@@ -4,6 +4,7 @@ package quest
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	modv1 "github.com/agent-wow/agent-wow/pkg/modules/v1"
@@ -26,15 +27,34 @@ type Service struct {
 	s    modv1.SessionClient
 	api  api.C
 	loot *loot.Tracker
+
+	mu        sync.Mutex
+	castCount uint8
+	failed    chan castFailed // SMSG_CAST_FAILED of our item uses
+}
+
+type castFailed struct {
+	count  uint8
+	spell  uint32
+	result uint8
 }
 
 func Register(g grpc.ServiceRegistrar, s modv1.SessionClient) {
-	pb.RegisterQuestServer(g, &Service{s: s, api: api.C{S: s}, loot: loot.NewTracker()})
+	pb.RegisterQuestServer(g, &Service{s: s, api: api.C{S: s}, loot: loot.NewTracker(), failed: make(chan castFailed, 8)})
 }
 
 func (s *Service) OnPacket(_ context.Context, p *modv1.WorldPacket) (*emptypb.Empty, error) {
-	if p.GetOpcode() == uint32(opcode.SMSGLootResponse) {
+	switch p.GetOpcode() {
+	case uint32(opcode.SMSGLootResponse):
 		s.loot.OnPacket(p.GetPayload())
+	case uint32(opcode.SMSGCastFailed):
+		if b := p.GetPayload(); len(b) >= 6 {
+			f := castFailed{count: b[0], spell: uint32(b[1]) | uint32(b[2])<<8 | uint32(b[3])<<16 | uint32(b[4])<<24, result: b[5]}
+			select {
+			case s.failed <- f:
+			default:
+			}
+		}
 	}
 	return &emptypb.Empty{}, nil
 }
@@ -159,4 +179,120 @@ func (s *Service) Use(ctx context.Context, r *pb.UseRequest) (*pb.QuestResult, e
 		}
 	}
 	return &pb.QuestResult{Ok: true, Items: res.Items}, nil
+}
+
+// Explore tells the server the character stands inside an area trigger (the client normally sends
+// it on entering the zone); the server checks the distance and credits exploration quests.
+func (s *Service) Explore(ctx context.Context, r *pb.ExploreRequest) (*pb.QuestResult, error) {
+	w := &wire.Writer{}
+	w.U32(r.Trigger)
+	if err := moveio.Packet(ctx, s.s, uint32(opcode.CMSGAreatrigger), w.B); err != nil {
+		return fail("send: %v", err)
+	}
+	return &pb.QuestResult{Ok: true}, nil
+}
+
+// Target flags of SpellCastTargets.
+const (
+	targetUnit       = 0x2
+	targetDest       = 0x40
+	targetGameObject = 0x800
+)
+
+// useRange is how close the target must be: quest item spells reach 5 to 30 yards or more.
+const useRange = 30.0
+
+// UseItem uses a bag item (CMSG_USE_ITEM) on the nearest visible target with the given entry, also
+// giving its position for spells aimed at a place. It waits briefly for a cast failure.
+func (s *Service) UseItem(ctx context.Context, r *pb.UseItemRequest) (*pb.QuestResult, error) {
+	snap, err := s.api.Snapshot(ctx)
+	if err != nil {
+		return fail("%v", err)
+	}
+	var item *statepb.Item
+	for _, it := range snap.Items {
+		if it.Entry == r.ItemEntry && it.Bag != 0 {
+			item = it
+			break
+		}
+	}
+	if item == nil {
+		return fail("item %d not in the bags", r.ItemEntry)
+	}
+	spell := r.Spell
+	if spell == 0 {
+		info, err := s.api.ItemInfo(ctx, r.ItemEntry)
+		if err != nil {
+			return fail("%v", err)
+		}
+		if spell = info.UseSpell; spell == 0 {
+			return fail("item %d has no on-use spell", r.ItemEntry)
+		}
+	}
+	var target *statepb.Obj
+	if r.TargetEntry != 0 {
+		kind := r.TargetKind
+		if kind == "" || kind == "creature" {
+			kind = "unit"
+		}
+		vis, err := s.api.Nearby(ctx, &statepb.NearbyRequest{Kind: kind, Entry: r.TargetEntry, Radius: 40, Max: 1})
+		if err != nil {
+			return fail("%v", err)
+		}
+		if len(vis.Objs) == 0 {
+			return fail("%s %d not visible within 40 yards", kind, r.TargetEntry)
+		}
+		if target = vis.Objs[0]; target.Dist > useRange {
+			return fail("%s %d is %.1f yards away (need <= %.0f)", kind, r.TargetEntry, target.Dist, useRange)
+		}
+	}
+	s.mu.Lock()
+	if s.castCount++; s.castCount == 0 {
+		s.castCount = 1
+	}
+	cnt := s.castCount
+	s.mu.Unlock()
+	for len(s.failed) > 0 {
+		<-s.failed
+	}
+	w := &wire.Writer{}
+	w.U8(uint8(item.Bag))
+	w.U8(uint8(item.BagSlot))
+	w.U8(cnt)
+	w.U32(spell)
+	w.U64(item.Guid)
+	w.U32(0) // glyph index
+	w.U8(0)  // cast flags
+	switch {
+	case target == nil:
+		w.U32(0)
+	default:
+		flag := uint32(targetUnit)
+		if target.Kind == "gameobject" {
+			flag = targetGameObject
+		}
+		w.U32(flag | targetDest)
+		w.PackedGUID(target.Guid)
+		w.PackedGUID(0) // destination transport
+		w.F32(target.X)
+		w.F32(target.Y)
+		w.F32(target.Z)
+	}
+	if err := moveio.Packet(ctx, s.s, uint32(opcode.CMSGUseItem), w.B); err != nil {
+		return fail("send: %v", err)
+	}
+	timer := time.NewTimer(1500 * time.Millisecond)
+	defer timer.Stop()
+	for {
+		select {
+		case f := <-s.failed:
+			if f.count == cnt {
+				return fail("cast of spell %d failed (SpellCastResult %d)", f.spell, f.result)
+			}
+		case <-timer.C:
+			return &pb.QuestResult{Ok: true}, nil
+		case <-ctx.Done():
+			return fail("%v", ctx.Err())
+		}
+	}
 }

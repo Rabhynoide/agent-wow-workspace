@@ -31,10 +31,28 @@ message UseRequest {
   bool loot = 2;
 }
 
+message ExploreRequest {
+  // Area trigger id (world.quest_info objective "explore"); the character must stand inside it.
+  uint32 trigger = 1;
+}
+
+message UseItemRequest {
+  // Bag item to use (its on-use spell).
+  uint32 item_entry = 1;
+  // Target: nearest visible creature or gameobject (target_kind "unit" or "gameobject") with this
+  // entry within 40 yards; 0 = no target (spell on self or around).
+  uint32 target_entry = 2;
+  string target_kind = 3;
+  // The item's on-use spell (the server checks it); 0 = looked up with world.item_info.
+  uint32 spell = 4;
+}
+
 service Quest {
   rpc Accept(AcceptRequest) returns (QuestResult);
   rpc TurnIn(TurnInRequest) returns (QuestResult);
   rpc Use(UseRequest) returns (QuestResult);
+  rpc Explore(ExploreRequest) returns (QuestResult);
+  rpc UseItem(UseItemRequest) returns (QuestResult);
   rpc OnPacket(agentwow.module.v1.WorldPacket) returns (google.protobuf.Empty);
   rpc BeforeLogout(google.protobuf.Empty) returns (google.protobuf.Empty);
 }

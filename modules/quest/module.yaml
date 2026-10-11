@@ -3,6 +3,7 @@ enabled: true
 description: Quest accept/turn-in and object interaction
 requires:
   - state
+  - world
 compose:
   file: compose.yaml
   service: module
@@ -12,7 +13,10 @@ rpc:
   accept: /wowagent.quest.v1.Quest/Accept
   turnin: /wowagent.quest.v1.Quest/TurnIn
   use: /wowagent.quest.v1.Quest/Use
+  explore: /wowagent.quest.v1.Quest/Explore
+  use_item: /wowagent.quest.v1.Quest/UseItem
 packets:
   SMSG_LOOT_RESPONSE: /wowagent.quest.v1.Quest/OnPacket
+  SMSG_CAST_FAILED: /wowagent.quest.v1.Quest/OnPacket
 lifecycle:
   before_logout: /wowagent.quest.v1.Quest/BeforeLogout

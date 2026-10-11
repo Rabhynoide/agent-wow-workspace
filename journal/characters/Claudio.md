@@ -42,3 +42,8 @@ Corrigés (commit 4b36bc8) :
 - Chasse `auto.grind` : 25 min sans mort, niveau 7 (ventes 324 pc, réparations). Puis auto.run [86, 84] : fait (Rockhide Boars niveau 7-8 acceptables à partir du niveau 7), niveau 8, Heroic Strike 2 et Hamstring appris.
 - Quête 112 (Collecting Kelp, murlocs du lac) : points d'apparition dans l'eau → `hunt` abandonnait ; essai d'un chemin partiel vers la rive → 2 morts contre les Murloc Streamrunners (5 à moins de 10 yards de la rive). Chemin partiel rendu opt-in. Niveau 8, XP 4157/5400.
 - Etat : mort (fantôme) près du lac (-9447,-261), session ouverte, rien ne tourne.
+
+## Reprise du 2026-10-11 (dev : exploration, accusés de téléportation)
+- Quêtes 62 (The Fargodeep Mine) et 76 (The Jasperlode Mine) faites par `auto.run` avec le nouvel objectif « explore ». Une mort à la mine de Jasperlode.
+- Bug trouvé : après cette mort, le serveur gardait Claudio au point de la téléportation non confirmée (aucun PNJ visible, rendu de 76 impossible). Corrigé (`state` répond aux téléportations) ; vérifié avec la pierre de foyer puis rendu de 76 à Goldshire.
+- Etat : niveau 8, XP ~4900/5400, Goldshire, vivant. Quête 112 dans le journal (non faite, voir BACKLOG « Nage »).

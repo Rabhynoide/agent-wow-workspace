@@ -200,7 +200,7 @@ func (s *Service) nameOf(ctx context.Context, q string, id int64) string {
 }
 
 func (s *Service) QuestInfo(ctx context.Context, r *pb.QuestInfoRequest) (*pb.QuestInfoResponse, error) {
-	cols := "q.ID, q.LogTitle, q.QuestLevel, q.MinLevel, q.QuestSortID, COALESCE(a.PrevQuestID,0), q.RewardNextQuest, q.RewardXPDifficulty, q.RewardMoney, q.LogDescription"
+	cols := "q.ID, q.LogTitle, q.QuestLevel, q.MinLevel, q.QuestSortID, COALESCE(a.PrevQuestID,0), q.RewardNextQuest, q.RewardXPDifficulty, q.RewardMoney, q.LogDescription, COALESCE(a.SpecialFlags,0), q.StartItem, q.ItemDrop1, q.ItemDrop2, q.ItemDrop3, q.ItemDrop4"
 	for i := 1; i <= 4; i++ {
 		cols += fmt.Sprintf(", q.RequiredNpcOrGo%d, q.RequiredNpcOrGoCount%d", i, i)
 	}
@@ -228,6 +228,7 @@ func (s *Service) QuestInfo(ctx context.Context, r *pb.QuestInfoRequest) (*pb.Qu
 	}
 	defer rows.Close()
 	out := &pb.QuestInfoResponse{}
+	givenItems := map[uint32][5]uint32{}
 	for rows.Next() {
 		qi := &pb.QuestInfo{}
 		var npc [4]int64
@@ -235,7 +236,11 @@ func (s *Service) QuestInfo(ctx context.Context, r *pb.QuestInfoRequest) (*pb.Qu
 		var item [6]uint32
 		var itemN [6]uint32
 		var choice [6]uint32
-		dest := []any{&qi.Id, &qi.Title, &qi.Level, &qi.MinLevel, &qi.ZoneOrSort, &qi.PrevQuest, &qi.NextQuest, &qi.RewardXpId, &qi.RewardMoney, &qi.ObjectivesText}
+		var given [5]uint32 // StartItem, ItemDrop1-4: items handed out with the quest
+		dest := []any{&qi.Id, &qi.Title, &qi.Level, &qi.MinLevel, &qi.ZoneOrSort, &qi.PrevQuest, &qi.NextQuest, &qi.RewardXpId, &qi.RewardMoney, &qi.ObjectivesText, &qi.SpecialFlags}
+		for i := range given {
+			dest = append(dest, &given[i])
+		}
 		for i := 0; i < 4; i++ {
 			dest = append(dest, &npc[i], &npcN[i])
 		}
@@ -249,6 +254,7 @@ func (s *Service) QuestInfo(ctx context.Context, r *pb.QuestInfoRequest) (*pb.Qu
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 		out.Quests = append(out.Quests, qi)
+		givenItems[qi.Id] = given
 		for _, c := range choice {
 			if c != 0 {
 				qi.RewardChoices = append(qi.RewardChoices, c)
@@ -283,10 +289,103 @@ func (s *Service) QuestInfo(ctx context.Context, r *pb.QuestInfoRequest) (*pb.Qu
 				o.Name = s.nameOf(ctx, "SELECT name FROM item_template WHERE entry=?", int64(o.Entry))
 			}
 		}
+		s.specialObjectives(ctx, qi, givenItems[qi.Id])
 		qi.Starters = append(s.giverSpawns(ctx, "creature", "queststarter", qi.Id), s.giverSpawns(ctx, "gameobject", "queststarter", qi.Id)...)
 		qi.Enders = append(s.giverSpawns(ctx, "creature", "questender", qi.Id), s.giverSpawns(ctx, "gameobject", "questender", qi.Id)...)
 	}
 	return out, nil
+}
+
+// Quest special flags (quest_template_addon.SpecialFlags).
+const (
+	questExploration = 0x2
+	questCast        = 0x20
+)
+
+// specialObjectives fills what auto needs beyond kill/item counts: area triggers to explore, other
+// creatures giving a kill credit, and the item to use on the targets of a spell-credited quest.
+func (s *Service) specialObjectives(ctx context.Context, qi *pb.QuestInfo, given [5]uint32) {
+	if qi.SpecialFlags&questExploration != 0 {
+		rows, err := s.query(ctx, `SELECT t.entry, t.map, t.x, t.y, t.z, t.radius, t.length, t.width
+			FROM areatrigger_involvedrelation r JOIN areatrigger t ON t.entry=r.id WHERE r.quest=?`, qi.Id)
+		if err == nil {
+			for rows.Next() {
+				o := &pb.QuestObjective{Kind: "explore", Count: 1}
+				var length, width float32
+				if rows.Scan(&o.Entry, &o.Map, &o.X, &o.Y, &o.Z, &o.Radius, &length, &width) != nil {
+					continue
+				}
+				if o.Radius <= 0 { // box trigger
+					o.Radius = min(length, width) / 2
+				}
+				o.Name = fmt.Sprintf("area trigger %d", o.Entry)
+				qi.Objectives = append(qi.Objectives, o)
+			}
+			rows.Close()
+		}
+	}
+	var useItem, useSpell uint32
+	if qi.SpecialFlags&questCast != 0 {
+		for _, it := range given {
+			if it == 0 {
+				continue
+			}
+			if sp := s.ids(ctx, "SELECT spellid_1 FROM item_template WHERE entry=? AND spellid_1>0 AND spelltrigger_1=0", it); len(sp) > 0 {
+				useItem, useSpell = it, sp[0]
+				break
+			}
+		}
+	}
+	for _, o := range qi.Objectives {
+		if o.Kind != "kill" && o.Kind != "gameobject" {
+			continue
+		}
+		table := map[string]string{"kill": "creature", "gameobject": "gameobject"}[o.Kind]
+		spawned := len(s.ids(ctx, "SELECT id FROM "+table+" WHERE id=? LIMIT 1", o.Entry)) > 0
+		if useItem != 0 {
+			o.UseItem, o.UseSpell, o.UseOnKind = useItem, useSpell, table
+			if spawned {
+				o.UseOn = []uint32{o.Entry}
+				continue
+			}
+			// The credited entry is often a hidden marker: the spell's own target conditions
+			// (CONDITION_OBJECT_ENTRY_GUID, 3 = creature, 5 = gameobject) name what to hit.
+			for _, kind := range []struct {
+				typ   int
+				table string
+			}{{3, "creature"}, {5, "gameobject"}} {
+				o.UseOn = s.ids(ctx, `SELECT DISTINCT c.ConditionValue2 FROM conditions c
+					WHERE c.SourceTypeOrReferenceId IN (13,17) AND c.SourceEntry=? AND c.ConditionTypeOrReference=31
+					AND c.ConditionValue1=? AND EXISTS (SELECT 1 FROM `+kind.table+` x WHERE x.id=c.ConditionValue2)`, useSpell, kind.typ)
+				if len(o.UseOn) > 0 {
+					o.UseOnKind = kind.table
+					break
+				}
+			}
+			continue
+		}
+		if o.Kind == "kill" && !spawned {
+			o.CreditFrom = s.ids(ctx, `SELECT t.entry FROM creature_template t WHERE (t.KillCredit1=? OR t.KillCredit2=?)
+				AND EXISTS (SELECT 1 FROM creature c WHERE c.id=t.entry)`, o.Entry, o.Entry)
+		}
+	}
+}
+
+// ids runs a query returning one unsigned column.
+func (s *Service) ids(ctx context.Context, q string, args ...any) []uint32 {
+	rows, err := s.query(ctx, q, args...)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	var out []uint32
+	for rows.Next() {
+		var v uint32
+		if rows.Scan(&v) == nil {
+			out = append(out, v)
+		}
+	}
+	return out
 }
 
 func (s *Service) QuestsForNpc(ctx context.Context, r *pb.QuestsForNpcRequest) (*pb.QuestsForNpcResponse, error) {
@@ -317,7 +416,7 @@ var statCols = func() string {
 
 func (s *Service) ItemInfo(ctx context.Context, r *pb.ItemInfoRequest) (*pb.ItemInfoResponse, error) {
 	q := "SELECT entry, name, Quality, ItemLevel, RequiredLevel, class, subclass, InventoryType, SellPrice, BuyPrice, stackable, " +
-		"armor, dmg_min1, dmg_max1, delay, AllowableClass, AllowableRace, spellcategory_1, bonding" + statCols + " FROM item_template WHERE "
+		"armor, dmg_min1, dmg_max1, delay, AllowableClass, AllowableRace, spellcategory_1, bonding, IF(spelltrigger_1=0, spellid_1, 0)" + statCols + " FROM item_template WHERE "
 	var arg any
 	if r.Entry != 0 {
 		q += "entry=?"
@@ -340,7 +439,7 @@ func (s *Service) ItemInfo(ctx context.Context, r *pb.ItemInfoRequest) (*pb.Item
 		var delay uint32
 		var st [20]int32
 		dest := []any{&it.Entry, &it.Name, &it.Quality, &it.ItemLevel, &it.RequiredLevel, &it.Class, &it.Subclass, &it.InventoryType, &it.SellPrice, &it.BuyPrice, &it.Stackable,
-			&it.Armor, &dmin, &dmax, &delay, &it.AllowableClass, &it.AllowableRace, &it.SpellCategory, &it.Bonding}
+			&it.Armor, &dmin, &dmax, &delay, &it.AllowableClass, &it.AllowableRace, &it.SpellCategory, &it.Bonding, &it.UseSpell}
 		for i := range st {
 			dest = append(dest, &st[i])
 		}

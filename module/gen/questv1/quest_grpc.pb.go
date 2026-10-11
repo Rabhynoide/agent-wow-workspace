@@ -24,6 +24,8 @@ const (
 	Quest_Accept_FullMethodName       = "/wowagent.quest.v1.Quest/Accept"
 	Quest_TurnIn_FullMethodName       = "/wowagent.quest.v1.Quest/TurnIn"
 	Quest_Use_FullMethodName          = "/wowagent.quest.v1.Quest/Use"
+	Quest_Explore_FullMethodName      = "/wowagent.quest.v1.Quest/Explore"
+	Quest_UseItem_FullMethodName      = "/wowagent.quest.v1.Quest/UseItem"
 	Quest_OnPacket_FullMethodName     = "/wowagent.quest.v1.Quest/OnPacket"
 	Quest_BeforeLogout_FullMethodName = "/wowagent.quest.v1.Quest/BeforeLogout"
 )
@@ -35,6 +37,8 @@ type QuestClient interface {
 	Accept(ctx context.Context, in *AcceptRequest, opts ...grpc.CallOption) (*QuestResult, error)
 	TurnIn(ctx context.Context, in *TurnInRequest, opts ...grpc.CallOption) (*QuestResult, error)
 	Use(ctx context.Context, in *UseRequest, opts ...grpc.CallOption) (*QuestResult, error)
+	Explore(ctx context.Context, in *ExploreRequest, opts ...grpc.CallOption) (*QuestResult, error)
+	UseItem(ctx context.Context, in *UseItemRequest, opts ...grpc.CallOption) (*QuestResult, error)
 	OnPacket(ctx context.Context, in *v1.WorldPacket, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	BeforeLogout(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
@@ -77,6 +81,26 @@ func (c *questClient) Use(ctx context.Context, in *UseRequest, opts ...grpc.Call
 	return out, nil
 }
 
+func (c *questClient) Explore(ctx context.Context, in *ExploreRequest, opts ...grpc.CallOption) (*QuestResult, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(QuestResult)
+	err := c.cc.Invoke(ctx, Quest_Explore_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *questClient) UseItem(ctx context.Context, in *UseItemRequest, opts ...grpc.CallOption) (*QuestResult, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(QuestResult)
+	err := c.cc.Invoke(ctx, Quest_UseItem_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *questClient) OnPacket(ctx context.Context, in *v1.WorldPacket, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -104,6 +128,8 @@ type QuestServer interface {
 	Accept(context.Context, *AcceptRequest) (*QuestResult, error)
 	TurnIn(context.Context, *TurnInRequest) (*QuestResult, error)
 	Use(context.Context, *UseRequest) (*QuestResult, error)
+	Explore(context.Context, *ExploreRequest) (*QuestResult, error)
+	UseItem(context.Context, *UseItemRequest) (*QuestResult, error)
 	OnPacket(context.Context, *v1.WorldPacket) (*emptypb.Empty, error)
 	BeforeLogout(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	mustEmbedUnimplementedQuestServer()
@@ -124,6 +150,12 @@ func (UnimplementedQuestServer) TurnIn(context.Context, *TurnInRequest) (*QuestR
 }
 func (UnimplementedQuestServer) Use(context.Context, *UseRequest) (*QuestResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Use not implemented")
+}
+func (UnimplementedQuestServer) Explore(context.Context, *ExploreRequest) (*QuestResult, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Explore not implemented")
+}
+func (UnimplementedQuestServer) UseItem(context.Context, *UseItemRequest) (*QuestResult, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UseItem not implemented")
 }
 func (UnimplementedQuestServer) OnPacket(context.Context, *v1.WorldPacket) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method OnPacket not implemented")
@@ -206,6 +238,42 @@ func _Quest_Use_Handler(srv interface{}, ctx context.Context, dec func(interface
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Quest_Explore_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ExploreRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QuestServer).Explore(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Quest_Explore_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QuestServer).Explore(ctx, req.(*ExploreRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Quest_UseItem_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UseItemRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QuestServer).UseItem(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Quest_UseItem_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QuestServer).UseItem(ctx, req.(*UseItemRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Quest_OnPacket_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(v1.WorldPacket)
 	if err := dec(in); err != nil {
@@ -260,6 +328,14 @@ var Quest_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Use",
 			Handler:    _Quest_Use_Handler,
+		},
+		{
+			MethodName: "Explore",
+			Handler:    _Quest_Explore_Handler,
+		},
+		{
+			MethodName: "UseItem",
+			Handler:    _Quest_UseItem_Handler,
 		},
 		{
 			MethodName: "OnPacket",

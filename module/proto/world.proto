@@ -56,13 +56,29 @@ message QuestNpc {
 }
 
 message QuestObjective {
-  // "kill" or "item" or "gameobject".
+  // "kill", "item", "gameobject" or "explore".
   string kind = 1;
   uint32 entry = 2;
   string name = 3;
   uint32 count = 4;
   // kill/gameobject: index of the quest log counter (RequiredNpcOrGo slot, 0-based).
   uint32 counter = 5;
+  // kill: spawned creatures whose kill also gives this credit (creature_template KillCredit1/2),
+  // filled when the entry itself is never spawned.
+  repeated uint32 credit_from = 6;
+  // explore (entry = area trigger id): trigger position and radius. Any trigger of the quest
+  // completes it; the client must send CMSG_AREATRIGGER inside it (quest.explore).
+  uint32 map = 7;
+  float x = 8;
+  float y = 9;
+  float z = 10;
+  float radius = 11;
+  // kill/gameobject credited by a spell (quest special flag 0x20): the quest item to use, its
+  // spell, and what the spell must hit (use_on_kind "creature" or "gameobject").
+  uint32 use_item = 12;
+  uint32 use_spell = 13;
+  repeated uint32 use_on = 14;
+  string use_on_kind = 15;
 }
 
 message ItemStat {
@@ -86,6 +102,8 @@ message QuestInfo {
   string objectives_text = 13;
   // Items offered as a choice at turn-in (index = reward argument of quest.turnin).
   repeated uint32 reward_choices = 14;
+  // quest_template_addon.SpecialFlags (0x2 exploration or event, 0x20 spell cast on a target).
+  uint32 special_flags = 15;
 }
 
 message QuestInfoResponse {
@@ -152,6 +170,8 @@ message ItemInfo {
   uint32 spell_category = 17;
   // 0 none, 1 bind on pickup, 2 bind on equip, 3 bind on use, 4+ quest.
   uint32 bonding = 18;
+  // On-use spell (spellid_1 when spelltrigger_1 = 0), sent with CMSG_USE_ITEM.
+  uint32 use_spell = 19;
 }
 
 message ItemInfoResponse {

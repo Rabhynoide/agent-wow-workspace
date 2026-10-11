@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"math"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -562,7 +563,12 @@ func (r *run) objectives(info *worldpb.QuestInfo, q *statepb.Quest) error {
 			if have >= o.Count {
 				continue
 			}
-			if o.Kind == "kill" {
+			switch {
+			case o.UseItem != 0:
+				return r.useItemOn(o, q)
+			case o.Kind == "kill" && len(o.CreditFrom) > 0:
+				return r.huntAny(o.CreditFrom, o.Name, o.Count-have)
+			case o.Kind == "kill":
 				return r.hunt(o.Entry, o.Name, o.Count-have, 0, 0)
 			}
 			return r.useObject(o.Entry, o.Name, false)
@@ -581,7 +587,124 @@ func (r *run) objectives(info *worldpb.QuestInfo, q *statepb.Quest) error {
 			return r.collect(o)
 		}
 	}
+	// Counted objectives are done but the quest is not complete: an area remains to explore.
+	return r.explore(info)
+}
+
+// explore walks into the nearest area trigger of the quest on this map and reports it to the server.
+func (r *run) explore(info *worldpb.QuestInfo) error {
+	snap, err := r.snapshot()
+	if err != nil {
+		return err
+	}
+	me := snap.Self
+	var best *worldpb.QuestObjective
+	var bestD float32
+	for _, o := range info.Objectives {
+		if o.Kind != "explore" || o.Map != me.Map {
+			continue
+		}
+		if d := dist2(me.X, me.Y, o.X, o.Y); best == nil || d < bestD {
+			best, bestD = o, d
+		}
+	}
+	if best == nil {
+		if info.SpecialFlags&0x2 != 0 {
+			return fmt.Errorf("quest needs an event auto cannot trigger (escort, script)")
+		}
+		return nil
+	}
+	r.step("explore %s (%.0f,%.0f)", best.Name, best.X, best.Y)
+	// Go well inside: the server checks the distance to the trigger center against its radius.
+	if err := r.walk(best.X, best.Y, best.Z, min(best.Radius/2, 5)); err != nil {
+		return err
+	}
+	if res, err := r.s.api.Explore(r.ctx, best.Entry); err != nil || !res.Ok {
+		return fmt.Errorf("explore: %v %s", err, res.GetReason())
+	}
+	jobs.Sleep(r.ctx, 1500*time.Millisecond)
 	return nil
+}
+
+func dist2(ax, ay, bx, by float32) float32 {
+	return float32(math.Hypot(float64(ax-bx), float64(ay-by)))
+}
+
+// huntAny hunts the nearest safe creature among entries (creatures giving the same kill credit).
+func (r *run) huntAny(entries []uint32, name string, count uint32) error {
+	snap, err := r.snapshot()
+	if err != nil {
+		return err
+	}
+	me := snap.Self
+	var best *worldpb.Spawn
+	var risky []string
+	for _, e := range entries {
+		sp, err := r.s.api.Spawns(r.ctx, e, me.Map, me.X, me.Y, 800, "creature")
+		if err != nil || len(sp) == 0 {
+			continue
+		}
+		if why := tooDangerous(sp[0], me.Level, me.ClassId); why != "" {
+			risky = append(risky, why)
+			continue
+		}
+		if best == nil || sp[0].Dist < best.Dist {
+			best = sp[0]
+		}
+	}
+	switch {
+	case best == nil && len(risky) > 0:
+		return fmt.Errorf("too dangerous for now: %s", strings.Join(risky, "; "))
+	case best == nil:
+		return fmt.Errorf("no creature giving the credit for %s spawns near here", name)
+	}
+	r.note("%s credited by killing %s (%d)", name, best.Name, best.Entry)
+	return r.hunt(best.Entry, best.Name, count, 0, 0)
+}
+
+// useItemOn uses the quest item on the nearest target of a spell-credited objective, then waits for
+// the quest counter to move.
+func (r *run) useItemOn(o *worldpb.QuestObjective, q *statepb.Quest) error {
+	if len(o.UseOn) == 0 {
+		return fmt.Errorf("use item %d for %s: no known target (scripted)", o.UseItem, o.Name)
+	}
+	snap, err := r.snapshot()
+	if err != nil {
+		return err
+	}
+	me := snap.Self
+	var best *worldpb.Spawn
+	for _, e := range o.UseOn {
+		sp, err := r.s.api.Spawns(r.ctx, e, me.Map, me.X, me.Y, 2000, o.UseOnKind)
+		if err == nil && len(sp) > 0 && (best == nil || sp[0].Dist < best.Dist) {
+			best = sp[0]
+		}
+	}
+	if best == nil {
+		return fmt.Errorf("use item %d for %s: no target spawned on this map", o.UseItem, o.Name)
+	}
+	r.step("use item %d on %s", o.UseItem, best.Name)
+	if err := r.walk(best.X, best.Y, best.Z, 4); err != nil {
+		return err
+	}
+	var before uint32
+	if int(o.Counter) < len(q.Counts) {
+		before = q.Counts[o.Counter]
+	}
+	if res, err := r.s.api.UseItem(r.ctx, o.UseItem, o.UseSpell, best.Entry, o.UseOnKind); err != nil || !res.Ok {
+		return fmt.Errorf("use item %d on %s: %v %s", o.UseItem, best.Name, err, res.GetReason())
+	}
+	for i := 0; i < 20; i++ { // cast time and credit, up to 10 s
+		jobs.Sleep(r.ctx, 500*time.Millisecond)
+		snap, err := r.snapshot()
+		if err != nil {
+			return err
+		}
+		if cur := inLog(snap, q.Id); cur == nil || cur.State == 1 || (int(o.Counter) < len(cur.Counts) && cur.Counts[o.Counter] > before) {
+			return nil
+		}
+	}
+	return fmt.Errorf("used item %d on %s but got no credit", o.UseItem, best.Name)
 }
 
 // tooDangerous explains why a creature should not be hunted at this level ("" when it is fine).

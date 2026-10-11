@@ -11,10 +11,10 @@ Les sections « Etat du personnage » et « Pièges » parlent de Claudia (prêt
 7. Classes sans fichier dans `journal/classes/` : pas de talents automatiques ; combat de prêtre (sorts absents) = attaque automatique seulement.
 
 ## Etat du personnage : Claudio (guerrier humain, GUID 3, test du 2026-10-10)
-- Créé de zéro pour tester le leveling jusqu'au niveau 10 (objectif de l'utilisateur), arrêté au niveau 6, XP 852/3600, 197 pc. MORT (fantôme au cimetière d'Elwynn) : `auto.recover` au démarrage. Session fermée.
-- Fait : toute la vallée de Northshire (12 quêtes sur 12 disponibles), 54, 2158, 106, 111, 107. Quête 86 refusée (sources de viande trop fortes). Détails, chronologie et défauts : `journal/characters/Claudio.md`.
-- A l'arrêt : un « fight timeout » (0 kill en 120 s) et la mort ne sont pas expliqués : regarder `logs/combat.log` et `logs/move.log` à la reprise (BACKLOG « Test du guerrier »).
-- Continuer : `scripts/start.sh Claudio`, `scripts/job.sh auto.recover`, puis `guidecheck -plan -char Claudio -race Human -class Warrior -level 6` ou `scripts/grind.sh 8 113 30 525 94`.
+- Test de leveling jusqu'au niveau 10 (objectif de l'utilisateur). Niveau 8 (2026-10-11), vivant à Goldshire, session fermée. Pierre de foyer liée à l'abbaye de Northshire.
+- Fait : toute la vallée de Northshire, 54, 2158, 106, 111, 107, 86, 84, 62, 76. Quête 112 (Collecting Kelp) abandonnée pour l'instant : murlocs en groupes de 5 sur la rive (BACKLOG « Nage »). Détails : `journal/characters/Claudio.md`.
+- Ordre Zygor à respecter (décision utilisateur) : si la quête suivante est trop haute, grinder (`scripts/grind.sh`) jusqu'au niveau voulu. Quêtes que `auto` ne sait pas faire : `journal/quests_manual_human_warrior.md` (à sauter).
+- Continuer : `scripts/start.sh Claudio`, `scripts/job.sh auto.recover`, puis `guidecheck -plan -char Claudio -race Human -class Warrior -level 8` (étape 4 ci-dessus) ou `scripts/grind.sh` (loin du lac).
 
 ## Etat du personnage : Claudia (fin de session 2026-10-10)
 - Humain prêtre (guid 1), niveau 6, XP 1818/3600, 29 cuivres, 171 PV max, équipement réparé à 100 %. Sorts : Châtiment 2, Soins inférieurs 2, Bouclier, Mot de l'ombre : Douleur, Robustesse. Position : Elwynn, sud-ouest de Goldshire (~-9540,67), map 0. Session fermée.
@@ -60,6 +60,7 @@ Icy Veins bloque ma lecture (403). Aux paliers de niveau listés dans BACKLOG (9
 - Git : remote `origin` = fork Rabhynoide/agent-wow-workspace, `upstream` = agent-wow/agent-wow-workspace. Branche de travail `claudia-modules`. Token GitHub dans `.env` (GITHUB_TOKEN, ignoré par git) : pousser avec un GIT_ASKPASS temporaire qui lit .env, sans jamais l'écrire dans la config git.
 
 ## Pièges rencontrés
+- (corrigé le 2026-10-11) Après une mort, le serveur téléporte le fantôme au cimetière et attend MSG_MOVE_TELEPORT_ACK ; sans réponse, il ignorait tous nos mouvements : le corps se réclamait (le serveur nous croyait encore là) mais ensuite le personnage « marchait » seul de notre côté, ne voyait plus aucun PNJ (« not visible within 40 yards »), et à la reconnexion revenait au cimetière. `state` répond maintenant. Symptôme si ça revient : `state.nearby` vide dans une zone peuplée, ou vitesse 10,5 (fantôme) après résurrection : grep « teleported » dans logs/state.log.
 - Après une résurrection le personnage a 50 % de PV : ne JAMAIS rester immobile près d'un camp ; `auto.recover` ressuscite chez l'esprit guérisseur du cimetière (CMSG_SPIRIT_HEALER_ACTIVATE, flag PNJ 0x4000) s'il est à moins de 150 yards, UNIQUEMENT aux niveaux 1-10 ; à partir du niveau 11 (`Death.SicknessLevel = 11` du serveur) l'esprit guérisseur applique le malus de résurrection (stats très réduites pendant niveau-10 minutes, 10 min dès le niveau 20) : il court alors au corps (la récupération du corps n'applique jamais le malus). Le guérisseur coûte aussi 25 % de durabilité. Le corps est souvent dans le groupe qui nous a tués.
 - Un `move.goto` s'arrête maintenant si le personnage meurt (avant, le corps « marchait » dans le modèle de position).
 - Le délai de récupération du corps grandit avec les morts rapprochées (jusqu'à ~2 min) : `recover` insiste 4 minutes.

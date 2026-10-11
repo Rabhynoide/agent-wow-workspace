@@ -69,6 +69,7 @@ Légende : [ ] à faire, [~] partiel, [x] fait.
 - [x] Danger par classe, rotation (Battle Shout/Charge/Heroic Strike), boucle de `grind.sh` (voir `journal/characters/Claudio.md`).
 
 ## Sécurité du personnage (morts répétées constatées le 2026-10-10)
+- [x] Téléportations jamais confirmées (MSG_MOVE_TELEPORT_ACK / WORLDPORT_ACK) : après chaque mort le serveur ignorait nos mouvements. Corrigé dans `state` le 2026-10-11 (aussi vitesses forcées et enracinement). Cause probable des « attacked while idle: defending » répétés toutes les 4 min pendant des heures à la lac : à revoir si ça réapparaît.
 - [ ] Pathfinding qui évite les monstres hostiles (idée utilisateur) : voir « Déplacement ». Cause des 3 morts dans la mine de Fargodeep.
 - [~] `auto.collect` / `auto.hunt` : monstres élites ou de plus de 2 niveaux au-dessus refusés (fait) ; reste le danger des groupes (quêtes 60, 47, 87 de la mine).
 - [x] Mort pendant une marche : `move` s'arrête désormais (« character died »).
@@ -79,15 +80,22 @@ Légende : [ ] à faire, [~] partiel, [x] fait.
 
 ## Quêtes spéciales à gérer dans `auto`
 - [ ] Quêtes de soin / de buff sur des PNJ (beaucoup de quêtes de prêtre : ex. 5624 « Garments of the Light » : soigner Guard Roberts avec Soins inférieurs rang 2, puis Robustesse, etc.). Aujourd'hui `auto` les traite comme un objectif « kill » et risquerait d'attaquer le PNJ allié : elles sont sautées à la main. A faire : détecter les objectifs dont le PNJ est allié (faction non hostile / pas de statut « attaquable »), ne jamais appeler `combat.kill` dessus, et ajouter une action `quest.cast {spell, npc_entry}` (lancer un sort sur un PNJ, avec la liste des sorts demandés lue dans le texte de la quête ou saisie à la main). Niveau requis : Opus (protocole + logique de ciblage).
-- [ ] Quêtes « explorer une zone » (ex. 62 The Fargodeep Mine) : non gérées par `auto` (déclencheur de zone).
+- [x] Quêtes « explorer une zone » : objectif `explore` (déclencheurs `areatrigger_involvedrelation`), testé en jeu sur 62 et 76 (2026-10-11).
 
 ## Sélection des quêtes de la route (décisions utilisateur, 2026-10-11)
 - [x] Quêtes déjà faites : sautées.
 - [x] Quêtes interdites à la race/classe : sautées.
 - [ ] L'ORDRE DES ÉTAPES ZYGOR EST À RESPECTER : quand la prochaine quête demande un niveau plus haut (niveau minimum, ou monstres hors de la marge de danger), `auto` doit grinder près de là jusqu'au niveau voulu au lieu de passer à la suite. A changer dans `guidecheck -plan` / le futur plan intégré d'`auto`.
-- [ ] Quêtes qu'`auto` ne sait pas faire (liste complète : `journal/quests_manual_human_warrior.md`, 356 sur 1925, généré par `guidecheck -manual`) : l'utilisateur décide au cas par cas entre nouveau module et abandon. Catégories : crédit de kill d'une créature jamais présente (126, dont 10 obtenables en tuant les créatures dont KillCredit1/2 pointe dessus) ; exploration ou événement (112, dont 24 zones-déclencheurs `areatrigger_involvedrelation`, le reste escortes/scripts/duels) ; objet non lâché (53 : acheté, fabriqué, donné par script ou utilisé sur une cible) ; sort lancé sur une cible (48) ; groupe (8), élite (4), donjon (3), JcJ (1), objet de jeu (1).
+- [~] Quêtes qu'`auto` ne sait pas faire : liste `journal/quests_manual_human_warrior.md` (`guidecheck -manual`), 281 sur 1925 après le travail du 2026-10-11 (356 avant). Décisions de l'utilisateur par catégorie :
+  - [x] Crédit de kill par d'autres créatures (KillCredit1/2) : fait (`credit_from`, `auto` chasse la plus proche). Non testé en jeu (quêtes 58+). Attention : certaines de ces créatures sont alliées (prisonniers à libérer, villageois à sauver : 11255, 12237) : ce sont alors des événements, pas des kills ; à traiter quand on y sera.
+  - [ ] Crédit de kill par script (118 restantes) : À FAIRE AU CAS PAR CAS quand le personnage arrive à la quête en jeu.
+  - [x] Zones à explorer (24) : fait et testé.
+  - [ ] Escortes, scripts, duels (88, ex. 1640 Beat Bartleby, 945 Therylune's Escape) : À FAIRE quand on en aura besoin en jeu (module escorte : suivre le PNJ, défendre, ne pas le dépasser).
+  - [ ] Objets qu'aucun monstre ne lâche (53 : achetés, fabriqués, donnés par un script, ou objet à utiliser sur une cible) : backlog, cas par cas.
+  - [x] Objet de quête à utiliser sur une cible (45 des 48) : fait (`use_item`, `quest.use_item`). CMSG_USE_ITEM validé avec la pierre de foyer ; sur une cible, pas encore testé (première quête : niveau 14+). Restent 3 sans objet ni cible connus (ex. 2118 Plagued Lands : capturer un ours par script). Limite : les quêtes où il faut d'abord affaiblir/tuer la cible puis utiliser l'objet ne sont pas gérées.
+  - [x] Groupe, élite, donjon, JcJ : abandon (décision utilisateur).
 
-## Points à réfléchir (utilisateur, 2026-10-11)
+## Points à réfléchir (utilisateur, 2026-10-11, redemandés le même jour)
 - [ ] Implémenter la nage (voir « Nage, eau et quêtes d'eau »).
 - [ ] Pull d'un seul monstre : tirer (body pull : s'approcher juste à portée d'aggro, ou attaque à distance — tir/lancer pour le guerrier) puis reculer pour combattre loin du groupe, au lieu de courir sur la cible et d'aggro tout le camp. Demande : rayon d'aggro (niveau, ~20 yards), position des voisins, point de repli dégagé. Lié à l'évitement des monstres dans l'A*.
 
