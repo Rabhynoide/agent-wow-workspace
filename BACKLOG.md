@@ -102,6 +102,47 @@ Légende : [ ] à faire, [~] partiel, [x] fait.
 - [ ] Mine de Fargodeep (47, 60) : mort en y marchant (groupes de kobolds) ; dépend du pull d'un seul monstre / évitement.
 - [ ] Voyages (bateau, tram, vols, autre continent) : `level.sh` ne sait pas encore changer de zone autrement qu'à pied.
 
+## Rotation et combat : sources étudiées le 2026-10-11 (à faire, Opus)
+Sources :
+- Ovale Spell Priority r261 (addon 3.3, Interface 30300, zip fourni par l'utilisateur, gardé en local dans `assets/sources/ovale/`) ;
+- Toutes les classes et spécialisations sont résumées dans `journal/rotations/` (une fiche par classe + `auto/` régénéré par `scripts/rotation_sources.py` depuis `assets/sources/`) ;
+- mod-playerbots (src/Ai/Class/Warrior) ;
+- WeakAuras Mirash « Warrior combat priority » (wago X0AepQIWE) ;
+- WeakAuras Afenar WotLK Guerrier (Tsttn04EF) et Prêtre (9W5YhSqB_).
+
+Ordre proposé :
+1. [ ] Aura state (UNIT_FIELD_AURASTATE) et auras (SMSG_AURA_UPDATE / _ALL : buffs, procs, DoT avec durée restante, « les miens »), pour le personnage et la cible. Conditions des sorts lues dans Spell.dbc : CasterAuraState (champ 20 ; Victory Rush = 10), TargetAuraState (champ 21 ; Execute = 2 « moins de 20 % »), Revenge = 1. Règle l'erreur 67 de Victory Rush (aura « Victorious » 32216).
+2. [ ] « Peut lancer » générique : sort connu, recharge, ressource, aura state, procs (comme `usable=1` d'Ovale et CAN_CAST de playerbots).
+3. [ ] Rotation en TABLE DE PRIORITÉS par classe (modèle Ovale : la première ligne dont les conditions passent et dont le sort est lançable gagne), dans `journal/classes/<classe>.yaml`. Conditions utiles d'Ovale :
+   - BuffExpires/Present(n s, stacks), TargetDebuffExpires(mine) ;
+   - TargetLifePercent, Mana/rage, Stance, TalentPoints ;
+   - « 1s before Spell(X) » (sort presque prêt) ;
+   - TargetDeadIn (temps avant la mort de la cible, estimé par la baisse de ses PV : pas de DoT/Rend sur une cible qui meurt dans moins de 6-8 s, mieux que notre « Rend si cible > 50 % »).
+4. [ ] Guerrier Arms (Ovale, posture de combat), dans l'ordre :
+   - Overpower si Taste for Blood expire dans moins de 1,5 s et que Rend manque ;
+   - Rend s'il manque et que la cible vit encore plus de 8 s ;
+   - Overpower sur esquive, ou si Taste for Blood expire dans moins de 4,5 s ;
+   - Mortal Strike si la cible a plus de 20 % de PV ;
+   - Execute sur Sudden Death ou si la cible a moins de 20 % de PV ;
+   - Overpower, puis Victory Rush ;
+   - Slam si Improved Slam.
+   Hors recharge globale : Heroic Strike au-delà de 94 rage en posture de combat (66 dans les autres) ; Cleave au-delà de 50 rage si plusieurs cibles. Cris rafraîchis à moins de 3 s ; Commanding Shout si un Battle Shout ou une Bénédiction de puissance est déjà là. Seuils du WeakAura Mirash : Slam si Mortal Strike n'est pas prêt avant 1,6 s et rage ≥ 45 ; plusieurs cibles = 4 ennemis ou plus à 8 yards (Sweeping Strikes, Bladestorm, Thunder Clap).
+5. [ ] Prêtre Ombre (Ovale), dans l'ordre :
+   - hors combat : Forme d'ombre, Feu intérieur (si moins de 400 s), Étreinte vampirique ;
+   - en combat :
+     - Attaque mentale si Focalisation intérieure est active ;
+     - Mot de l'ombre : Douleur si Shadow Weaving a 5 charges, qu'il manque et que la cible vit plus de 6 s ;
+     - Toucher vampirique s'il expire dans moins de 1 s (temps d'incantation compris) et que la cible vit plus de 8 s ;
+     - Attaque mentale ;
+     - Peste dévorante si elle manque et que la cible vit plus de 8 s ;
+     - Fouet mental en remplissage (canalisation interruptible).
+   - Mana : Ombrefiel sous 4000 de mana, puis Dispersion.
+   Afenar (leveling) : DoT rafraîchis à moins de 3 s (aujourd'hui Mot de l'ombre : Douleur toutes les 18 s à l'aveugle) ; Spirit Tap / Improved Spirit Tap après un kill = sauter le repos ; Âme affaiblie lue au lieu de supposer 15 s.
+6. [ ] Défensifs, seuils de playerbots : PV critiques 25 %, bas 45 %, moyens 65 %, presque pleins 85 %.
+   - Guerrier : Intimidating Shout à PV critiques, Enraged Regeneration à PV moyens, Retaliation, Berserker Rage contre la peur, Bloodrage si PV ≥ 65 % et rage < 20.
+   - Prêtre : Psychic Scream face à plusieurs attaquants, Desperate Prayer, Fade.
+7. [ ] Pull à distance (lien avec « Pull d'un seul monstre ») : tir ou lancer selon l'arme à distance équipée (playerbots), Heroic Throw au niveau 80.
+
 ## Points à réfléchir (utilisateur, 2026-10-11, redemandés le même jour)
 - [ ] Implémenter la nage (voir « Nage, eau et quêtes d'eau »).
 - [ ] Pull d'un seul monstre : tirer (body pull : s'approcher juste à portée d'aggro, ou attaque à distance — tir/lancer pour le guerrier) puis reculer pour combattre loin du groupe, au lieu de courir sur la cible et d'aggro tout le camp. Demande : rayon d'aggro (niveau, ~20 yards), position des voisins, point de repli dégagé. Lié à l'évitement des monstres dans l'A*.

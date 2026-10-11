@@ -1,0 +1,152 @@
+# warrior — résumé automatique des sources (scripts/rotation_sources.py)
+
+## Afenar WotLK (WeakAuras) : ce qui est suivi, et quand ça brille
+- **Unholy_Frenzy_Warrior** (Warrior_Dynamic): aura 49016 on player
+- **Power_Infusion_Warrior** (Warrior_Dynamic): aura 10060 on player
+- **Tricks_Warrior** (Warrior_Dynamic): aura 57934 on player
+- **Sunder Armor** (Warrior_Dynamic): aura 7386 on target
+- **Sudden Death** (Warrior_Dynamic): aura 52437 on player
+- **Enrage** (Warrior_Dynamic): aura 12880 on player
+- **Wrecking Crew** (Warrior_Dynamic): aura 57522 on player
+- **Juggernaut** (Warrior_Dynamic): aura 65156 on player
+- **Blood Craze** (Warrior_Dynamic): aura 16488 on player
+- **Second Wind** (Warrior_Dynamic): aura 29841,29842 on player
+- **Blood Drinker** (Warrior_Dynamic): aura 70855 on player
+- **Spirits of the Lost** (Warrior_Dynamic): aura 61571 on player
+- **Heightened Reflexes** (Warrior_Dynamic): aura 64937 on player
+- **Demoralizing_Shout** (Warrior_Dynamic): aura 1160 on target
+- **Shield Block - Arms & Fury** (Warrior_Dynamic): aura 2565 on player; spell Shield Block (Cooldown Progress (Spell))
+- **Heroic_Strike** (Warrior_Dynamic): spell Heroic Throw (Queued Action)
+- **Cleave** (Warrior_Dynamic): spell Heroic Throw (Queued Action)
+- **Execute - Protection** (Warrior_Dynamic): spell Execute (Action Usable)
+- **Victory_Rush** (Warrior_Dynamic): aura 32216 on player
+- **Battle Shout** (Warrior_Dynamic): aura 6673,19740,25782 on player (missing); aura 469 on player (missing)
+- **Commanding Shout** (Warrior_Dynamic): aura 469,6307 on player (missing); aura 6673 on player (missing)
+- **Rage** (Warrior_Afenar[WotLK]): spell 184367 (Cooldown Progress (Spell)); spell Rampage (Spell Known); spell Rampage (Spell Known)
+- **Shield_Block** (Warrior_Core): aura 2565 on player; spell Shield Block (Cooldown Progress (Spell)) — expirationTime < 1 -> glow; onCooldown == 1 -> grey
+- **Intervene** (Warrior_Core): spell Intervene (Cooldown Progress (Spell)) — expirationTime < 1 -> glow
+- **Execute_Fury&Arms** (Warrior_Core): spell Execute (Cooldown Progress (Spell)) — spellUsable < 1 -> glow
+- **Rend** (Warrior_Core): aura 772 on target — expirationTime < 2 -> glow
+- **Slam** (Warrior_Core): aura 46916 on player; spell Slam (Cooldown Progress (Spell))
+- **Overpower** (Warrior_Core): aura 60503 on player; spell Overpower (Cooldown Progress (Spell))
+- **Mortal_Strike** (Warrior_Core): spell Mortal Strike (Cooldown Progress (Spell)); aura 7384 on player — expirationTime < 1 -> glow
+- **Bloodthirst** (Warrior_Core): spell Bloodthirst (Cooldown Progress (Spell)) — expirationTime < 1 -> glow
+- **Revenge - Improved Overpower** (Warrior_Core): spell Revenge (Action Usable); aura 60503 on player; spell Revenge (Cooldown Progress (Spell))
+- **Revenge** (Warrior_Core): spell Revenge (Cooldown Progress (Spell))
+- **Shield_Slam** (Warrior_Core): spell Shield Slam (Cooldown Progress (Spell)); aura 46953 on player — expirationTime < 1 -> glow; show < 1 -> glow
+- **Thunder_Clap** (Warrior_Core): spell Thunder Clap (Cooldown Progress (Spell)) — expirationTime < 1 -> glow
+- **Whirlwind** (Warrior_Core): spell Whirlwind (Cooldown Progress (Spell)) — expirationTime < 1 -> glow
+- **Bloodrage_Fury** (Warrior_Core): aura 2687 on player; spell Bloodrage (Cooldown Progress (Spell)) — expirationTime < 1 -> glow
+- **Shockwave** (Warrior_Core): spell Shockwave (Cooldown Progress (Spell))
+- **Sweeping_Strike** (Warrior_Utility): aura 12328 on player; spell Sweeping Strikes (Cooldown Progress (Spell)) — expirationTime < 1 -> glow
+- **Bladestorm** (Warrior_Utility): aura 46924 on player; spell Bladestorm (Cooldown Progress (Spell)) — expirationTime < 1 -> glow
+- **Death_Wish** (Warrior_Utility): aura 12292 on player; spell Death Wish (Cooldown Progress (Spell)) — expirationTime < 1 -> glow
+- **Recklessness ** (Warrior_Utility): aura 1719 on player; spell Recklessness (Cooldown Progress (Spell)) — expirationTime < 1 -> glow
+- **Bloodrage ** (Warrior_Utility): aura 2687 on player; spell Bloodrage (Cooldown Progress (Spell)) — expirationTime < 1 -> glow
+- **Shield_Wall** (Warrior_Utility): aura 871 on player; spell Shield Wall (Cooldown Progress (Spell)) — expirationTime < 1 -> glow
+- **Last_Stand** (Warrior_Utility): aura 12975 on player; spell Last Stand (Cooldown Progress (Spell)) — expirationTime < 1 -> glow
+- **Retaliation** (Warrior_Utility): aura 20230 on player; spell Retaliation (Cooldown Progress (Spell)) — expirationTime < 1 -> glow
+- **Enraged_Regeneration** (Warrior_Utility): aura 55694 on player; spell Enraged Regeneration (Cooldown Progress (Spell)) — expirationTime < 1 -> glow
+- **Pummel** (Warrior_Utility): spell Pummel (Cooldown Progress (Spell)) — expirationTime < 1 -> glow
+- **Shield_Bash** (Warrior_Utility): spell Shield Bash (Cooldown Progress (Spell)) — expirationTime < 1 -> glow
+- **Shield_Bash 2** (Warrior_Utility): spell Concussion Blow (Cooldown Progress (Spell)) — expirationTime < 1 -> glow
+- **Intervene 2** (Warrior_Utility): spell Intervene (Cooldown Progress (Spell)) — expirationTime < 1 -> glow
+- **Charge** (Warrior_Utility): spell Charge (Cooldown Progress (Spell))
+- **Intercept ** (Warrior_Utility): spell Intercept (Cooldown Progress (Spell))
+- **Heroic_Fury** (Warrior_Utility): spell Heroic Fury (Cooldown Progress (Spell)) — charges < 1 -> grey
+- **Heroic_Throw** (Warrior_Utility): spell Heroic Throw (Cooldown Progress (Spell))
+- **Piercing_Howl** (Warrior_Utility): spell Piercing Howl (Cooldown Progress (Spell))
+- **Intimidating_Shout** (Warrior_Utility): spell Intimidating Shout (Cooldown Progress (Spell))
+- **Disarm** (Warrior_Utility): aura 676 on target; spell Disarm (Cooldown Progress (Spell))
+- **Mocking Blow** (Warrior_Utility): aura 694 on target; spell Mocking Blow (Cooldown Progress (Spell))
+- **Shattering_Trhow** (Warrior_Utility): aura 64382 on target; spell Shattering Throw (Cooldown Progress (Spell)) — expirationTime < 1 -> glow
+- **Berserker_Rage** (Warrior_Utility): aura 18499 on player; spell Berserker Rage (Cooldown Progress (Spell))
+- **Spell_Reflect** (Warrior_Utility): aura 23920 on player; spell Spell Reflection (Cooldown Progress (Spell)) — expirationTime < 1 -> glow
+- **Challenging_Shout** (Warrior_Utility): spell 1161 (Cooldown Progress (Spell))
+- **Taunt** (Warrior_Utility): spell Taunt (Cooldown Progress (Spell))
+- **Battle Shout 2** (Warrior_Utility): aura 6673,19740,25782 on player
+- **Commanding Shout 2** (Warrior_Utility): aura 469,6307 on player
+- **Vigilance** (Warrior_Utility): aura 50720 on group
+- **Racial_Traits_Warrior** (Warrior_Utility): spell Gift of the Naaru (Cooldown Progress (Spell)); spell Stoneform (Cooldown Progress (Spell)); spell Escape Artist (Cooldown Progress (Spell)); spell Arcane Torrent (Cooldown Progress (Spell))
+- **BloodLust_Warrior** (Warrior_Utility): aura 32182,2825 on player
+- **Saves_Warrior** (Warrior_Utility): aura 33206,6940,1022,15286,47788,31821 on player
+
+## mod-playerbots : déclencheur → actions (priorité)
+
+### ArmsWarriorStrategy
+- par défaut : bladestorm, mortal strike, sunder armor, melee
+- `enemy out of melee` → charge (ACTION_MOVE+10)
+- `battle stance` → battle stance (ACTION_HIGH+10)
+- `battle shout` → battle shout (ACTION_HIGH+9)
+- `rend` → rend (ACTION_HIGH+8)
+- `rend on attacker` → rend on attacker (ACTION_HIGH+8)
+- `mortal strike` → mortal strike (ACTION_HIGH+3)
+- `target critical health` → execute (ACTION_HIGH+5)
+- `sudden death` → execute (ACTION_HIGH+5)
+- `hamstring` → piercing howl (ACTION_HIGH)
+- `overpower` → overpower (ACTION_HIGH+4)
+- `taste for blood` → overpower (ACTION_HIGH+4)
+- `victory rush` → victory rush (ACTION_INTERRUPT)
+- `high rage available` → heroic strike (ACTION_HIGH), slam (ACTION_HIGH+1)
+- `bloodrage` → bloodrage (ACTION_HIGH+2)
+- `death wish` → death wish (ACTION_HIGH+2)
+- `critical health` → intimidating shout (ACTION_EMERGENCY)
+- `medium health` → enraged regeneration (ACTION_EMERGENCY)
+- `almost full health` → retaliation (ACTION_EMERGENCY+1)
+- `shattering throw trigger` → shattering throw (ACTION_INTERRUPT+1)
+
+### FuryWarriorStrategy
+- par défaut : bloodthirst, whirlwind, sunder armor, execute, melee
+- `enemy out of melee` → charge (ACTION_MOVE+9)
+- `berserker stance` → berserker stance (ACTION_HIGH+9)
+- `battle shout` → battle shout (ACTION_HIGH+8)
+- `pummel on enemy healer` → pummel on enemy healer (ACTION_INTERRUPT)
+- `pummel` → pummel (ACTION_INTERRUPT)
+- `victory rush` → victory rush (ACTION_INTERRUPT)
+- `bloodthirst` → bloodthirst (ACTION_HIGH+7)
+- `whirlwind` → whirlwind (ACTION_HIGH+6)
+- `instant slam` → slam (ACTION_HIGH+5)
+- `bloodrage` → bloodrage (ACTION_HIGH+2)
+- `medium rage available` → heroic strike (ACTION_DEFAULT+0.1f)
+- `death wish` → death wish (ACTION_HIGH)
+- `recklessness` → recklessness (ACTION_HIGH)
+- `critical health` → enraged regeneration (ACTION_EMERGENCY)
+
+### GenericWarriorNonCombatStrategy
+- `fear sleep sap` → berserker rage (ACTION_EMERGENCY+1)
+
+### GenericWarriorStrategy
+- `enemy out of melee` → reach melee (ACTION_HIGH+1)
+- `fear sleep sap` → berserker rage (ACTION_EMERGENCY+1)
+- `light aoe` → sweeping strikes (ACTION_HIGH+7), bladestorm (ACTION_HIGH+6), thunder clap (ACTION_HIGH+5), shockwave (ACTION_HIGH+4), demoralizing shout without life time check (ACTION_HIGH+1), cleave (ACTION_HIGH)
+- `shockwave on snare target` → shockwave on snare target (ACTION_HIGH+5)
+
+### TankWarriorStrategy
+- par défaut : devastate, revenge, demoralizing shout, melee
+- `vigilance` → vigilance (ACTION_HIGH+7)
+- `enemy out of melee` → heroic throw (ACTION_MOVE+11), charge (ACTION_MOVE+10)
+- `thunder clap and rage` → thunder clap (ACTION_MOVE+11)
+- `defensive stance` → defensive stance (ACTION_HIGH+9)
+- `commanding shout` → commanding shout (ACTION_HIGH+8)
+- `bloodrage` → bloodrage (ACTION_HIGH+2)
+- `sunder armor` → devastate (ACTION_HIGH+2)
+- `medium rage available` → shield slam (ACTION_HIGH+2), devastate (ACTION_HIGH+1)
+- `shield block` → shield block (ACTION_INTERRUPT+1)
+- `revenge` → revenge (ACTION_HIGH+2)
+- `disarm` → disarm (ACTION_HIGH+1)
+- `lose aggro` → taunt (ACTION_INTERRUPT+1)
+- `taunt on snare target` → heroic throw on snare target (ACTION_INTERRUPT)
+- `low health` → shield wall (ACTION_MEDIUM_HEAL)
+- `critical health` → last stand (ACTION_EMERGENCY+3), enraged regeneration (ACTION_EMERGENCY+2)
+- `high aoe` → challenging shout (ACTION_HIGH+3)
+- `concussion blow` → concussion blow (ACTION_INTERRUPT)
+- `shield bash` → shield bash (ACTION_INTERRUPT)
+- `shield bash on enemy healer` → shield bash on enemy healer (ACTION_INTERRUPT)
+- `spell reflection` → spell reflection (ACTION_INTERRUPT+1)
+- `victory rush` → victory rush (ACTION_INTERRUPT)
+- `sword and board` → shield slam (ACTION_INTERRUPT)
+- `rend` → rend (ACTION_NORMAL+1)
+- `rend on attacker` → rend on attacker (ACTION_NORMAL+1)
+- `protect party member` → intervene (ACTION_EMERGENCY)
+- `high rage available` → heroic strike (ACTION_HIGH)
+- `medium rage available` → thunder clap (ACTION_HIGH+1)
