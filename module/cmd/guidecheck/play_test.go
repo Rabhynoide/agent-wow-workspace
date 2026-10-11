@@ -3,6 +3,7 @@ package main
 import (
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestNextBatchKeepsRouteOrder(t *testing.T) {
@@ -16,7 +17,7 @@ func TestNextBatchKeepsRouteOrder(t *testing.T) {
 		9: {ID: 9, MinLevel: 1, Level: 5},
 	}
 	entries := []routeQuest{{id: 9}, {id: 1}, {id: 5}, {id: 2}, {id: 3}, {id: 4}}
-	ps := &playState{finished: map[uint32]bool{}, skipped: map[uint32]string{9: "failed"}, retryAt: map[uint32]uint32{}}
+	ps := &playState{finished: map[uint32]bool{}, skipped: map[uint32]string{9: "failed"}, retryAt: map[uint32]uint32{}, waitUntil: map[uint32]time.Time{}}
 	batch, need, _ := nextBatch(entries, cache, nil, ps, human, warrior, "human", "warrior", 6, 2, 5)
 	if !reflect.DeepEqual(batch, []uint32{1, 2}) || need != 0 {
 		t.Fatalf("batch %v need %d, want [1 2] and 0 (stop before quest 3, keep the order)", batch, need)
@@ -36,7 +37,7 @@ func TestNextBatchKeepsRouteOrder(t *testing.T) {
 func TestLevelGateStopsTheRoute(t *testing.T) {
 	cache := map[uint32]*quest{1: {ID: 1, MinLevel: 1, Level: 2}, 2: {ID: 2, MinLevel: 1, Level: 3}}
 	entries := []routeQuest{{id: 1}, {gate: 5}, {id: 2}}
-	ps := &playState{finished: map[uint32]bool{}, skipped: map[uint32]string{}, retryAt: map[uint32]uint32{}}
+	ps := &playState{finished: map[uint32]bool{}, skipped: map[uint32]string{}, retryAt: map[uint32]uint32{}, waitUntil: map[uint32]time.Time{}}
 	if batch, need, _ := nextBatch(entries, cache, nil, ps, 1, 1, "human", "warrior", 4, 2, 5); len(batch) != 1 || need != 0 {
 		t.Fatalf("batch %v need %d: quest 1, then stop at the gate", batch, need)
 	}
@@ -46,6 +47,19 @@ func TestLevelGateStopsTheRoute(t *testing.T) {
 	}
 	if batch, _, _ := nextBatch(entries, cache, nil, ps, 1, 1, "human", "warrior", 5, 2, 5); len(batch) != 1 || batch[0] != 2 {
 		t.Fatalf("at level 5 the route goes on: %v", batch)
+	}
+}
+
+func TestPostponedQuestLetsTheNextOnesGo(t *testing.T) {
+	cache := map[uint32]*quest{1: {ID: 1, MinLevel: 1, Level: 2}, 2: {ID: 2, MinLevel: 1, Level: 2}}
+	ps := &playState{finished: map[uint32]bool{}, skipped: map[uint32]string{}, retryAt: map[uint32]uint32{},
+		waitUntil: map[uint32]time.Time{1: time.Now().Add(time.Minute)}}
+	if batch, _, _ := nextBatch([]routeQuest{{id: 1}, {id: 2}}, cache, nil, ps, 1, 1, "human", "warrior", 3, 2, 5); len(batch) != 1 || batch[0] != 2 {
+		t.Fatalf("batch %v: quest 1 waits, quest 2 goes", batch)
+	}
+	ps.waitUntil[1] = time.Now().Add(-time.Second)
+	if batch, _, _ := nextBatch([]routeQuest{{id: 1}, {id: 2}}, cache, nil, ps, 1, 1, "human", "warrior", 3, 2, 5); len(batch) != 2 || batch[0] != 1 {
+		t.Fatalf("batch %v: quest 1 is back first", batch)
 	}
 }
 

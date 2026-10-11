@@ -196,7 +196,8 @@ Icy Veins bloque ma lecture (403) : à chaque palier ci-dessous, prévenir l'uti
 - [x] Réparation impossible (pas d'argent) non bloquante ; pas de nouvel essai avant d'avoir gagné 1 pa.
 - [ ] Quête 62 (mine de Fargodeep) mortelle au niveau 5 : kobolds en groupe sur le chemin → fuite quand les PV baissent / évitement des monstres sur le chemin.
 - [ ] Argent très juste au niveau 5 (nourriture + réparations) : budget nourriture selon l'argent, vendre plus.
-- [ ] Heroic Strike refusé souvent (code 30) : comprendre.
+- [ ] Heroic Strike refusé souvent (code 30, puis 40 au run de référence) : comprendre. Rend tenté hors de portée (97) et Charge trop près (128) : vérifier les distances avant de lancer (« peut lancer »).
+- [x] Quête dont les monstres sont morts/absents : reportée de 4 min (3 essais) au lieu d'être sautée (run de référence : quête 18).
 
 ## Prochaines étapes suggérées (2026-10-11)
 - FAIT : suivi des auras et aura state (« Rotation et combat » étape 1). SUITE : « peut lancer » générique, moteur de priorités, rotations Guerrier/Prêtre en tables ; tester le prêtre (Claudia) en jeu.

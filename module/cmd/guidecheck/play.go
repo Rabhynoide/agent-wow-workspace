@@ -31,6 +31,9 @@ type playState struct {
 	finished map[uint32]bool
 	skipped  map[uint32]string
 	retryAt  map[uint32]uint32
+	// quests whose monsters were all dead or away: done later (after the next ones), at most 3 tries
+	waitUntil map[uint32]time.Time
+	tries     map[uint32]int
 }
 
 // nextBatch walks the route in order. It returns the first quests doable now (up to n, stopping at the
@@ -55,6 +58,10 @@ func nextBatch(entries []routeQuest, cache map[uint32]*quest, manual map[uint32]
 		q := cache[e.id]
 		if q == nil || seen[e.id] || ps.finished[e.id] || ps.skipped[e.id] != "" || manual[e.id] != "" {
 			continue
+		}
+		if time.Now().Before(ps.waitUntil[e.id]) {
+			seen[e.id] = true
+			continue // its monsters respawn: the next quests first
 		}
 		seen[e.id] = true
 		if len(e.only) > 0 && !onlyMatches(e.only, race, class) {
@@ -294,7 +301,8 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 	}
 	race, class := b.Self.Race, b.Self.ClassID
 	raceName, className := nameOf(raceIDs, race), nameOf(classIDs, class)
-	ps := &playState{finished: c.rewardedOf(char), skipped: map[uint32]string{}, retryAt: map[uint32]uint32{}}
+	ps := &playState{finished: c.rewardedOf(char), skipped: map[uint32]string{}, retryAt: map[uint32]uint32{},
+		waitUntil: map[uint32]time.Time{}, tries: map[uint32]int{}}
 	say("%s (%s %s) level %d -> %d, %d quests already rewarded", char, raceName, className, b.Self.Level, until, len(ps.finished))
 	deaths, idle := 0, 0
 	for {
@@ -353,6 +361,10 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 				case st.State == "stopped":
 					say("auto stopped from outside")
 					return 1
+				case strings.Contains(reason, "no live entry") && ps.tries[q] < 2:
+					ps.tries[q]++
+					ps.waitUntil[q] = time.Now().Add(4 * time.Minute)
+					say("  %d %s postponed 4 min (monsters dead or away, try %d/3)", q, c.cache[q].Title, ps.tries[q])
 				default:
 					ps.skipped[q] = reason
 					say("  SKIP %d %s: %s", q, c.cache[q].Title, reason)
