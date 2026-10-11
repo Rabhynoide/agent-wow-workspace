@@ -395,7 +395,9 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 				return 1
 			}
 			say("L%d grind to %d (next quest %d %s needs %d) on %v", me.Level, me.Level+1, blocker, c.cache[blocker].Title, need, targets)
-			st, err := r.job("auto.grind", map[string]any{"entries": targets, "until_level": me.Level + 1}, detail)
+			left := time.Duration(maxMin)*time.Minute - time.Since(start)
+			grindS := min(1500, max(60, int(left.Seconds())))
+			st, err := r.job("auto.grind", map[string]any{"entries": targets, "until_level": me.Level + 1, "max_s": grindS}, detail)
 			if err != nil {
 				say("auto.grind: %v", err)
 				return 1

@@ -15,6 +15,7 @@ import (
 	pb "wowagent/gen/questv1"
 	statepb "wowagent/gen/statev1"
 	"wowagent/internal/api"
+	"wowagent/internal/itemuse"
 	"wowagent/internal/loot"
 	"wowagent/internal/moveio"
 	"wowagent/internal/wire"
@@ -71,6 +72,12 @@ func (s *Service) find(ctx context.Context, kind string, entry uint32) (*statepb
 	r, err := s.api.Nearby(ctx, &statepb.NearbyRequest{Kind: kind, Entry: entry, Radius: 40, Max: 1})
 	if err != nil {
 		return nil, err
+	}
+	if len(r.Objs) == 0 && kind == "unit" {
+		// Some quests start or end at an object (a body, a sign, a chest): same packets with its GUID.
+		if r, err = s.api.Nearby(ctx, &statepb.NearbyRequest{Kind: "gameobject", Entry: entry, Radius: 40, Max: 1}); err != nil {
+			return nil, err
+		}
 	}
 	if len(r.Objs) == 0 {
 		return nil, fmt.Errorf("entry %d not visible within 40 yards", entry)
@@ -192,13 +199,6 @@ func (s *Service) Explore(ctx context.Context, r *pb.ExploreRequest) (*pb.QuestR
 	return &pb.QuestResult{Ok: true}, nil
 }
 
-// Target flags of SpellCastTargets.
-const (
-	targetUnit       = 0x2
-	targetDest       = 0x40
-	targetGameObject = 0x800
-)
-
 // useRange is how close the target must be: quest item spells reach 5 to 30 yards or more.
 const useRange = 30.0
 
@@ -255,30 +255,8 @@ func (s *Service) UseItem(ctx context.Context, r *pb.UseItemRequest) (*pb.QuestR
 	for len(s.failed) > 0 {
 		<-s.failed
 	}
-	w := &wire.Writer{}
-	w.U8(uint8(item.Bag))
-	w.U8(uint8(item.BagSlot))
-	w.U8(cnt)
-	w.U32(spell)
-	w.U64(item.Guid)
-	w.U32(0) // glyph index
-	w.U8(0)  // cast flags
-	switch {
-	case target == nil:
-		w.U32(0)
-	default:
-		flag := uint32(targetUnit)
-		if target.Kind == "gameobject" {
-			flag = targetGameObject
-		}
-		w.U32(flag | targetDest)
-		w.PackedGUID(target.Guid)
-		w.PackedGUID(0) // destination transport
-		w.F32(target.X)
-		w.F32(target.Y)
-		w.F32(target.Z)
-	}
-	if err := moveio.Packet(ctx, s.s, uint32(opcode.CMSGUseItem), w.B); err != nil {
+	payload := itemuse.Packet(item, spell, cnt, target)
+	if err := moveio.Packet(ctx, s.s, uint32(opcode.CMSGUseItem), payload); err != nil {
 		return fail("send: %v", err)
 	}
 	timer := time.NewTimer(1500 * time.Millisecond)

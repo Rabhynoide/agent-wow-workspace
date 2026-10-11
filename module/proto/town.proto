@@ -3,6 +3,7 @@ syntax = "proto3";
 package wowagent.town.v1;
 option go_package = "wowagent/gen/townv1;townv1";
 
+import "api/module/v1/session.proto";
 import "google/protobuf/empty.proto";
 
 message SellRequest {
@@ -46,9 +47,36 @@ message RepairResult {
   string vendor = 5;
 }
 
+message RestockRequest {
+  // Wanted number of food items (spell category 11) and drinks (59) usable at our level in the bags.
+  uint32 food = 1;
+  uint32 drink = 2;
+  // Spending limit in copper (0 = a third of our money).
+  uint32 max_copper = 3;
+}
+
+message BuyLine {
+  uint32 entry = 1;
+  string name = 2;
+  uint32 count = 3;
+  uint32 copper = 4;
+}
+
+message RestockResult {
+  bool ok = 1;
+  string reason = 2;
+  repeated BuyLine bought = 3;
+  // Copper spent (from the money before and after).
+  uint32 copper = 4;
+  string vendor = 5;
+}
+
 service Town {
   rpc SellJunk(SellRequest) returns (SellResult);
   // Repairs all items at a repair vendor within 5 yards.
   rpc Repair(google.protobuf.Empty) returns (RepairResult);
+  // Buys food and drink at the vendor within 5 yards (best usable at our level, within budget).
+  rpc Restock(RestockRequest) returns (RestockResult);
+  rpc OnPacket(agentwow.module.v1.WorldPacket) returns (google.protobuf.Empty);
   rpc BeforeLogout(google.protobuf.Empty) returns (google.protobuf.Empty);
 }

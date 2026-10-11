@@ -10,10 +10,10 @@ Les sections « Etat du personnage » et « Pièges » parlent de Claudia (prêt
 6. Guerrier : rotation de base (Charge, Battle Shout + Bloodrage, Victory Rush, Execute, Overpower, Rend, Thunder Clap avant 20, Heroic Strike avec la rage en trop, Mortal Strike / Slam plus tard). Pas de postures (quêtes de classe 10 et 30 à faire, mais la posture n'est pas utilisée), pas de Premiers soins, pas de nourriture : `combat.rest` attend les PV.
 7. Classes sans fichier dans `journal/classes/` : pas de talents automatiques ; combat de prêtre (sorts absents) = attaque automatique seulement.
 
-## Etat du personnage : Claudio (guerrier humain, GUID 3, test du 2026-10-10)
-- Niveau 10 atteint le 2026-10-11 (objectif du test) par `scripts/level.sh Claudio 10` ; XP 1552/7600, 8 pa 27 pc, talent du niveau 10 pris. Ferme des Brackwell (-9892,332), session fermée.
-- Fait : vallée de Northshire, 54, 2158, 106, 111, 107, 86, 84, 62, 76, 60, 47, 61 (+ précédentes). Sautées : 112/114 (murlocs dans l'eau), 88 (corrigé depuis : rayon de recherche), 87, 40 (sautées à tort pendant le blocage sur un îlot, à refaire). Détails : `journal/characters/Claudio.md`.
-- Continuer : `scripts/start.sh Claudio` puis `scripts/level.sh Claudio <niveau>` (en arrière-plan). Quête de classe du niveau 10 (1638 A Warrior's Training, posture défensive) : pas encore dans la route automatique.
+## Etat du personnage : Claudio (guerrier humain, GUID 3)
+- Niveau 11 (2026-10-11), XP ~50/8700, ~3,5 pa, vivant, session ouverte (Goldshire/Elwynn). Talents : Improved Rend 2/2. Nourriture achetée et mangée automatiquement.
+- Fait : vallée de Northshire, 54, 2158, 106, 111, 107, 86, 84, 62, 76, 60, 47, 61, 88, 40, 35, 112, 114, 37 (+ précédentes). Reste à refaire : 87 Goldtooth (mine de Fargodeep, sautée pour trop de combats en route ; limite relevée depuis).
+- Continuer : `scripts/start.sh Claudio` (si besoin) puis `scripts/level.sh Claudio <niveau>` en arrière-plan. Dès le niveau 11 : malus de résurrection, `auto.recover` ne passe plus par l'esprit guérisseur. Quête de classe du niveau 10 (1638, posture défensive) toujours à faire.
 
 ## Etat du personnage : Claudia (fin de session 2026-10-10)
 - Humain prêtre (guid 1), niveau 6, XP 1818/3600, 29 cuivres, 171 PV max, équipement réparé à 100 %. Sorts : Châtiment 2, Soins inférieurs 2, Bouclier, Mot de l'ombre : Douleur, Robustesse. Position : Elwynn, sud-ouest de Goldshire (~-9540,67), map 0. Session fermée.

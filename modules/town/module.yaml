@@ -13,5 +13,8 @@ grpc:
 rpc:
   sell_junk: /wowagent.town.v1.Town/SellJunk
   repair: /wowagent.town.v1.Town/Repair
+  restock: /wowagent.town.v1.Town/Restock
+packets:
+  SMSG_LIST_INVENTORY: /wowagent.town.v1.Town/OnPacket
 lifecycle:
   before_logout: /wowagent.town.v1.Town/BeforeLogout

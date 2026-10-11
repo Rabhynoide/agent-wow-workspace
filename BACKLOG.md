@@ -57,6 +57,7 @@ Légende : [ ] à faire, [~] partiel, [x] fait.
 
 ## Nage, eau et quêtes d'eau (question utilisateur, 2026-10-11)
 - [ ] `move` ne sait PAS nager : le navmesh est filtré sur le sol (GroundOnly), pas de drapeau de nage (MOVEMENTFLAG_SWIMMING 0x200000), pas de vitesse de nage, pas de gestion du souffle (SMSG_START_MIRROR_TIMER type 1, noyade après ~60 s sous l'eau, fatigue). Une destination dans l'eau est refusée (« not on the navmesh ») ; `nav.GroundPartial` (opt-in) mène au point marchable le plus proche mais n'est utilisé nulle part. A faire pour nager : (1) polygones NAV_WATER (flag 0x08) et niveau d'eau (liquide des `.map` et des vmaps) ; (2) paquets de mouvement de nage avec tangage ; (3) écouter le minuteur de souffle et remonter à la surface ; (4) ne nager que si un chemin marchable n'existe pas. Opus.
+- [ ] Ce que fait mod-playerbots (lu le 2026-10-11, `assets/sources/playerbots_class` + src/Ai/Base) : les bots tournent DANS le serveur et utilisent ses données de liquide (`GetLiquidData` : dans l'eau / sous l'eau). Dans l'eau : drapeau de nage activé ou désactivé selon ce statut, et PAS de pathfinding (ligne droite) ; marche sur l'eau si une aura le permet. Ils ÉVITENT l'eau : déplacements aléatoires et « go » refusent une destination dans l'eau. Respiration : rien de spécial (pas de gestion du souffle), seulement les buffs de classe quand on nage (Respiration interminable du démoniste, Respiration aquatique / Marche sur l'eau du chaman). À reprendre : (1) niveau d'eau lu dans les `.map` (couche liquide ; notre `terrain` ne lit que les hauteurs) ; (2) dans l'eau, ligne droite avec MOVEMENTFLAG_SWIMMING et la vitesse de nage ; (3) éviter les destinations dans l'eau sauf besoin ; (4) en plus d'eux : minuteur de souffle (SMSG_START_MIRROR_TIMER) pour remonter.
 - [ ] Les quêtes de murlocs du lac (112 Collecting Kelp, 114 The Escape) : les monstres sont sur la rive, en groupes de 5-6 (niveau 6-7) ; Claudio y est mort 2 fois (niveau 8, 193 PV) sans nager : combat contre le groupe. A faire : évitement/aggro de groupe (voir « Sécurité ») avant de refaire ces quêtes.
 - [x] `hunt` essaie le point d'apparition suivant quand l'un est hors navmesh ; chemin partiel désactivé par défaut (seul `GroundPartial` l'active).
 
@@ -64,7 +65,7 @@ Légende : [ ] à faire, [~] partiel, [x] fait.
 - [x] « Fight timeout » et mort : analysée (personnage laissé sans job parmi des loups après l'arrêt de `auto.grind` ; coups refusés par le serveur) ; corrigé : garde d'`auto` (`combat.defend`), `auto.grind` tolérant, refus de mêlée écoutés (portée/orientation), abandon d'une cible sans dégâts après 25 s. Validé 15 min sans mort.
 - [x] Parry : en fait utile (permet de parer), pas un défaut. (Si un sort doit être exclu un jour : `training.skip` du fichier de classe.)
 - [~] Overpower seulement après une esquive (journal de combat) et recharge de Charge suivie entre combats : fait. Reste : Victory Rush tenté hors fenêtre (code 67) — suivre l'aura « Victorious » ; Charge refusée pour ligne de vue (47) malgré `move.los` (doodads M2 ou relief).
-- [ ] Soins du guerrier : aucun (pas de nourriture ni de Premiers soins) ; le repos à 75 % réduit les morts mais ralentit. A faire : acheter/manger de la nourriture, Premiers soins (compétence + bandages).
+- [~] Soins du guerrier : nourriture achetée et mangée (fait) ; reste Premiers soins (compétence + bandages).
 - [ ] Portée visible : le serveur n'envoie que les monstres proches (~100 yards), donc les chasses « rayon 150 » sur des créatures éloignées échouent vite ; `auto.grind` saute, mais `world.spawns` pourrait guider `hunt` vers les points d'apparition éloignés (déjà fait dans `hunt` ; à vérifier pour `grind`).
 - [x] Danger par classe, rotation (Battle Shout/Charge/Heroic Strike), boucle de `grind.sh` (voir `journal/characters/Claudio.md`).
 
@@ -101,6 +102,21 @@ Légende : [ ] à faire, [~] partiel, [x] fait.
 - [ ] Quêtes de classe (1638 au niveau 10, 1718 au niveau 30) : pas dans la route Zygor convertie ; à ajouter au plan selon `journal/classes/<classe>.yaml`.
 - [ ] Mine de Fargodeep (47, 60) : mort en y marchant (groupes de kobolds) ; dépend du pull d'un seul monstre / évitement.
 - [ ] Voyages (bateau, tram, vols, autre continent) : `level.sh` ne sait pas encore changer de zone autrement qu'à pied.
+
+## Revue de mod-playerbots (2026-10-11) : à développer
+Détail et comparaison : `journal/playerbots_review.md`. Attention, une partie de leur aisance vient de
+triches serveur (sorts, talents, équipement et consommables offerts, téléportations) que nous n'avons pas.
+- [x] Repos réel : manger/boire au repos, achat de nourriture/boisson de son niveau (fait et testé le 2026-10-11).
+- [ ] Potions/pierre de soins à PV critiques ; racials par déclencheur.
+- [x] Marche qui riposte quand un monstre attaque en route (fait et testé : niveau 10 → 11 sans mort, quêtes des murlocs 112/114 faites).
+- [ ] FleeManager (point sûr) : résurrection au bord du rayon du corps loin des monstres, recul après pull, fuite, distance des lanceurs.
+- [ ] Adds possibles + pull d'un seul monstre (voir « Points à réfléchir »).
+- [ ] Cible de grind : attaquants d'abord, même hauteur (± 5 yards), en vue ; en route, seulement ce qui sert aux quêtes ou nous attaque.
+- [ ] `quest_poi` / `quest_poi_points` pour trouver la zone de chaque objectif et du rendu.
+- [ ] Mêlée : se placer derrière la cible ; lanceurs : garder la distance.
+- [ ] Voyages : vols, bateaux/zeppelins, tram, pierre de foyer ; monture (achat au niveau 20, usage sur les longs trajets).
+- [ ] Journal de quêtes : jeter les grises/impossibles, garder des places.
+- [ ] Blocage : suivi du progrès et récupération graduée sans téléport.
 
 ## Rotation et combat : sources étudiées le 2026-10-11 (à faire, Opus)
 Sources :

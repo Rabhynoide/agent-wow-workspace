@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"math"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -50,6 +51,7 @@ type Service struct {
 	api    api.C
 	jobs   *jobs.Runner[*pb.AutoStatus]
 	guard  atomic.Bool // defend when attacked between jobs
+	items  sync.Map    // item entry -> *worldpb.ItemInfo (food checks)
 }
 
 func Register(g grpc.ServiceRegistrar, s modv1.SessionClient) {
@@ -448,13 +450,75 @@ func nearestNpc(list []*worldpb.QuestNpc, mapID uint32, x, y float32) *worldpb.Q
 	return best
 }
 
+// walk goes to the point. A monster attacking on the way is fought back (combat.defend) before going
+// on: the move alone ignores attacks and the character died walking with a monster at its back.
 func (r *run) walk(x, y, z, radius float32) error {
-	st, err := r.s.api.GotoWait(r.ctx, x, y, z, radius, 240)
+	deadline := time.Now().Add(240 * time.Second)
+	for fights := 0; ; {
+		st, err := r.s.api.Goto(r.ctx, x, y, z, radius, 2)
+		attacked := false
+		for err == nil && st.State == "moving" {
+			if attacked = r.inCombat(); attacked {
+				break
+			}
+			if time.Now().After(deadline) {
+				_ = r.s.api.MoveStop(r.ctx)
+				return fmt.Errorf("walk to (%.0f,%.0f): timeout", x, y)
+			}
+			st, err = r.s.api.MoveStatus(r.ctx, 2)
+		}
+		if err != nil {
+			return err
+		}
+		if !attacked {
+			if st.State != "arrived" {
+				return fmt.Errorf("walk to (%.0f,%.0f): %s %s", x, y, st.State, st.Reason)
+			}
+			return nil
+		}
+		_ = r.s.api.MoveStop(r.ctx)
+		if fights++; fights > 20 {
+			return fmt.Errorf("walk to (%.0f,%.0f): attacked %d times on the way", x, y, fights)
+		}
+		r.step("attacked on the way to (%.0f,%.0f): fighting back", x, y)
+		if err := r.defend(); err != nil {
+			return err
+		}
+		deadline = deadline.Add(60 * time.Second)
+	}
+}
+
+// inCombat tells whether a monster is attacking us: we are flagged in combat (UNIT_FLAG_IN_COMBAT,
+// which lingers a few seconds after a fight) and a unit in combat within 40 yards targets us.
+func (r *run) inCombat() bool {
+	const flag = 0x00080000
+	b, err := r.s.api.Brief(r.ctx)
+	if err != nil || b.Self == nil || b.Self.Dead || b.Self.UnitFlags&flag == 0 {
+		return false
+	}
+	vis, err := r.s.api.Nearby(r.ctx, &statepb.NearbyRequest{Kind: "unit", Radius: 40, Max: 12, AliveOnly: true})
+	if err != nil {
+		return false
+	}
+	for _, o := range vis.Objs {
+		if o.Target == b.Self.Guid && o.UnitFlags&flag != 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// defend fights whatever attacks us until things are calm.
+func (r *run) defend() error {
+	st, err := r.s.api.CombatDefend(r.ctx, 20)
+	for err == nil && st.State == "running" {
+		st, err = r.s.api.CombatStatus(r.ctx, 20)
+	}
 	if err != nil {
 		return err
 	}
-	if st.State != "arrived" {
-		return fmt.Errorf("walk to (%.0f,%.0f): %s %s", x, y, st.State, st.Reason)
+	if b, e := r.s.api.Brief(r.ctx); e == nil && b.Self != nil && b.Self.Dead {
+		return fmt.Errorf("character is dead")
 	}
 	return nil
 }
@@ -776,6 +840,43 @@ func (r *run) hunt(entry uint32, name string, count, itemEntry, itemCount uint32
 	return err2
 }
 
+// Food and drink kept in the bags (20 of each; below 5 a vendor within 500 yards is visited).
+const (
+	foodWanted, drinkWanted     = 20, 20
+	suppliesLow                 = 5
+	minMoneyForFood             = 100 // copper
+	categoryFood, categoryDrink = 11, 59
+)
+
+// supplies counts the food and drink in the bags usable at our level.
+func (r *run) supplies(me *statepb.SelfInfo) (food, drink uint32) {
+	snap, err := r.s.api.Snapshot(r.ctx)
+	if err != nil {
+		return foodWanted, drinkWanted // unknown: do not run to a vendor for it
+	}
+	for _, it := range snap.Items {
+		if it.Bag == 0 {
+			continue
+		}
+		var in *worldpb.ItemInfo
+		if v, ok := r.s.items.Load(it.Entry); ok {
+			in = v.(*worldpb.ItemInfo)
+		} else if in, err = r.s.api.ItemInfo(r.ctx, it.Entry); err == nil {
+			r.s.items.Store(it.Entry, in)
+		}
+		if in == nil || in.UseSpell == 0 || in.RequiredLevel > me.Level {
+			continue
+		}
+		switch in.SpellCategory {
+		case categoryFood:
+			food += it.Count
+		case categoryDrink:
+			drink += it.Count
+		}
+	}
+	return food, drink
+}
+
 // ensureSpace visits the nearest vendor when the bags are nearly full or the gear is worn out:
 // it sells what the rules allow and repairs when the vendor can.
 func (r *run) ensureSpace() error {
@@ -783,18 +884,38 @@ func (r *run) ensureSpace() error {
 	if err != nil {
 		return err
 	}
+	me := snap.Self
+	food, drink := r.supplies(me)
+	wantDrink := uint32(0)
+	if me.PowerType == 0 {
+		wantDrink = drinkWanted
+	}
 	needSell, needRepair := snap.FreeSlots < 3, snap.DurabilityPct < repairBelow
-	if !needSell && !needRepair {
+	needFood := (food < suppliesLow || (wantDrink > 0 && drink < suppliesLow)) && me.Money >= minMoneyForFood
+	if !needSell && !needRepair && !needFood {
 		return nil
 	}
 	const vendorFlag, repairFlag = 128, 4096
-	flags := uint32(vendorFlag)
-	if needRepair {
-		flags = repairFlag
+	var vendors []*worldpb.Spawn
+	if needSell || needRepair {
+		flags := uint32(vendorFlag)
+		if needRepair {
+			flags = repairFlag
+		}
+		r.step("visiting a vendor (free slots %d, durability %d%%)", snap.FreeSlots, snap.DurabilityPct)
+		vendors, err = r.s.api.FindVendor(r.ctx, me.Map, me.X, me.Y, flags)
+	} else {
+		category := uint32(categoryFood)
+		if food >= suppliesLow {
+			category = categoryDrink
+		}
+		r.step("buying food and drink (food %d, drink %d)", food, drink)
+		vendors, err = r.s.api.FindFoodVendor(r.ctx, me.Map, me.X, me.Y, category, me.Level)
+		if err == nil && len(vendors) == 0 {
+			r.note("no food vendor within 500 yards")
+			return nil
+		}
 	}
-	r.step("visiting a vendor (free slots %d, durability %d%%)", snap.FreeSlots, snap.DurabilityPct)
-	me := snap.Self
-	vendors, err := r.s.api.FindVendor(r.ctx, me.Map, me.X, me.Y, flags)
 	if err != nil {
 		return err
 	}
@@ -805,7 +926,13 @@ func (r *run) ensureSpace() error {
 		if len(v.Name) == 0 || v.Name[0] == '[' {
 			continue
 		}
-		o, err := r.s.api.ApproachNpc(r.ctx, v.Entry, v.X, v.Y, v.Z)
+		var o *statepb.Obj
+		err := r.approachNpc(v.Entry, v.X, v.Y, v.Z)
+		if err == nil {
+			if vis, e := r.s.api.Nearby(r.ctx, &statepb.NearbyRequest{Kind: "unit", Entry: v.Entry, Radius: 8, Max: 1}); e == nil && len(vis.Objs) > 0 {
+				o = vis.Objs[0]
+			}
+		}
 		switch {
 		case err != nil:
 			lastErr = err
@@ -819,6 +946,10 @@ func (r *run) ensureSpace() error {
 		}
 	}
 	if npc == nil {
+		if !needSell && !needRepair {
+			r.note("food vendor unreachable: %v", lastErr)
+			return nil
+		}
 		return fmt.Errorf("no reachable vendor (%d candidates): %v", len(vendors), lastErr)
 	}
 	if needSell || npc.NpcFlags&vendorFlag != 0 {
@@ -831,6 +962,17 @@ func (r *run) ensureSpace() error {
 		}
 		if needSell && res.FreeSlots < 2 {
 			return fmt.Errorf("bags still full after selling %d items: nothing else may be sold (see town.sell_junk with dry_run and show_kept)", res.Sold)
+		}
+	}
+	if npc.NpcFlags&vendorFlag != 0 && (food < foodWanted/2 || (wantDrink > 0 && drink < wantDrink/2)) {
+		if res, err := r.s.api.Restock(r.ctx, foodWanted, wantDrink); err == nil && res.Ok && len(res.Bought) > 0 {
+			var what []string
+			for _, b := range res.Bought {
+				what = append(what, fmt.Sprintf("%d %s", b.Count, b.Name))
+			}
+			r.note("bought %s for %d copper", strings.Join(what, ", "), res.Copper)
+		} else if err != nil || !res.Ok {
+			r.note("restock: %v %s", err, res.GetReason())
 		}
 	}
 	if npc.NpcFlags&repairFlag != 0 && snap.DurabilityPct < 100 {

@@ -8,6 +8,7 @@ package townv1
 
 import (
 	context "context"
+	v1 "github.com/agent-wow/agent-wow/pkg/modules/v1"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -22,6 +23,8 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	Town_SellJunk_FullMethodName     = "/wowagent.town.v1.Town/SellJunk"
 	Town_Repair_FullMethodName       = "/wowagent.town.v1.Town/Repair"
+	Town_Restock_FullMethodName      = "/wowagent.town.v1.Town/Restock"
+	Town_OnPacket_FullMethodName     = "/wowagent.town.v1.Town/OnPacket"
 	Town_BeforeLogout_FullMethodName = "/wowagent.town.v1.Town/BeforeLogout"
 )
 
@@ -32,6 +35,9 @@ type TownClient interface {
 	SellJunk(ctx context.Context, in *SellRequest, opts ...grpc.CallOption) (*SellResult, error)
 	// Repairs all items at a repair vendor within 5 yards.
 	Repair(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*RepairResult, error)
+	// Buys food and drink at the vendor within 5 yards (best usable at our level, within budget).
+	Restock(ctx context.Context, in *RestockRequest, opts ...grpc.CallOption) (*RestockResult, error)
+	OnPacket(ctx context.Context, in *v1.WorldPacket, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	BeforeLogout(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
@@ -63,6 +69,26 @@ func (c *townClient) Repair(ctx context.Context, in *emptypb.Empty, opts ...grpc
 	return out, nil
 }
 
+func (c *townClient) Restock(ctx context.Context, in *RestockRequest, opts ...grpc.CallOption) (*RestockResult, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RestockResult)
+	err := c.cc.Invoke(ctx, Town_Restock_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *townClient) OnPacket(ctx context.Context, in *v1.WorldPacket, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Town_OnPacket_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *townClient) BeforeLogout(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -80,6 +106,9 @@ type TownServer interface {
 	SellJunk(context.Context, *SellRequest) (*SellResult, error)
 	// Repairs all items at a repair vendor within 5 yards.
 	Repair(context.Context, *emptypb.Empty) (*RepairResult, error)
+	// Buys food and drink at the vendor within 5 yards (best usable at our level, within budget).
+	Restock(context.Context, *RestockRequest) (*RestockResult, error)
+	OnPacket(context.Context, *v1.WorldPacket) (*emptypb.Empty, error)
 	BeforeLogout(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	mustEmbedUnimplementedTownServer()
 }
@@ -96,6 +125,12 @@ func (UnimplementedTownServer) SellJunk(context.Context, *SellRequest) (*SellRes
 }
 func (UnimplementedTownServer) Repair(context.Context, *emptypb.Empty) (*RepairResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Repair not implemented")
+}
+func (UnimplementedTownServer) Restock(context.Context, *RestockRequest) (*RestockResult, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Restock not implemented")
+}
+func (UnimplementedTownServer) OnPacket(context.Context, *v1.WorldPacket) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method OnPacket not implemented")
 }
 func (UnimplementedTownServer) BeforeLogout(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method BeforeLogout not implemented")
@@ -157,6 +192,42 @@ func _Town_Repair_Handler(srv interface{}, ctx context.Context, dec func(interfa
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Town_Restock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RestockRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TownServer).Restock(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Town_Restock_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TownServer).Restock(ctx, req.(*RestockRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Town_OnPacket_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(v1.WorldPacket)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TownServer).OnPacket(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Town_OnPacket_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TownServer).OnPacket(ctx, req.(*v1.WorldPacket))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Town_BeforeLogout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
@@ -189,6 +260,14 @@ var Town_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Repair",
 			Handler:    _Town_Repair_Handler,
+		},
+		{
+			MethodName: "Restock",
+			Handler:    _Town_Restock_Handler,
+		},
+		{
+			MethodName: "OnPacket",
+			Handler:    _Town_OnPacket_Handler,
 		},
 		{
 			MethodName: "BeforeLogout",

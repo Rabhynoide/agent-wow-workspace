@@ -20,6 +20,7 @@ import (
 
 	pb "wowagent/gen/combatv1"
 	statepb "wowagent/gen/statev1"
+	worldpb "wowagent/gen/worldv1"
 	"wowagent/internal/api"
 	"wowagent/internal/jobs"
 	"wowagent/internal/loot"
@@ -59,6 +60,7 @@ type Service struct {
 	lastCharge time.Time // Charge has a 15 s cooldown across fights
 	melee      *meleeLog
 	abandoned  map[uint64]time.Time // targets given up (no damage dealt): not picked again for a while
+	items      map[uint32]*worldpb.ItemInfo
 }
 
 func Register(g grpc.ServiceRegistrar, s modv1.SessionClient) {
@@ -66,7 +68,7 @@ func Register(g grpc.ServiceRegistrar, s modv1.SessionClient) {
 	runner := jobs.NewRunner(&pb.CombatStatus{State: "idle"})
 	runner.Decorate = func(j *job, st *pb.CombatStatus) { st.ElapsedS = uint32(time.Since(j.Start).Seconds()) }
 	pb.RegisterCombatServer(g, &Service{s: s, api: api.C{S: s}, loot: loot.NewTracker(), guid: guid, jobs: runner, failures: map[uint8]castFailure{},
-		melee: newMeleeLog(), abandoned: map[uint64]time.Time{}})
+		melee: newMeleeLog(), abandoned: map[uint64]time.Time{}, items: map[uint32]*worldpb.ItemInfo{}})
 }
 
 func (s *Service) OnPacket(_ context.Context, p *modv1.WorldPacket) (*emptypb.Empty, error) {
@@ -273,7 +275,6 @@ func (s *Service) refresh(ctx context.Context, j *job) (*statepb.BriefResponse, 
 
 func (s *Service) rest(ctx context.Context, j *job, hpTarget, manaTarget uint32, maxS int) (string, string) {
 	j.Update(func(st *pb.CombatStatus) { st.Doing = "resting" })
-	s.stand(ctx, 1)
 	defer s.stand(context.Background(), 0)
 	startHP := uint32(0)
 	for i := 0; i < maxS; i++ {
@@ -289,6 +290,11 @@ func (s *Service) rest(ctx context.Context, j *job, hpTarget, manaTarget uint32,
 		hp := pct(me.Hp, me.MaxHp)
 		if i == 0 {
 			startHP = hp
+			if s.eatAndDrink(ctx, me) {
+				j.Update(func(st *pb.CombatStatus) { st.Doing = "eating / drinking" })
+			} else {
+				s.stand(ctx, 1)
+			}
 		}
 		if hp+5 < startHP {
 			return "done", "attacked while resting"

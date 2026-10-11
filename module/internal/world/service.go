@@ -98,6 +98,11 @@ func (s *Service) FindNpc(ctx context.Context, r *pb.FindNpcRequest) (*pb.FindNp
 		where = append(where, "(ct.npcflag & ?)<>0")
 		args = append(args, r.NpcFlags)
 	}
+	if r.SellsSpellCategory != 0 {
+		where = append(where, `EXISTS (SELECT 1 FROM npc_vendor v JOIN item_template i ON i.entry=v.item
+			WHERE v.entry=ct.entry AND i.spellcategory_1=? AND i.RequiredLevel<=?)`)
+		args = append(args, r.SellsSpellCategory, r.SellsMaxLevel)
+	}
 	dist := "0"
 	order := "ct.entry"
 	if r.X != 0 || r.Y != 0 {

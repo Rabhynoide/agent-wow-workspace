@@ -52,3 +52,8 @@ Corrigés (commit 4b36bc8) :
 - 1er essai : quête 60 non rendue (sacs pleins, récompense en objet) ; puis bloqué sur un îlot de navmesh près de la mine de Fargodeep (-9837,188) : 47, 88, 87, 40, 112 sautées en « no walkable path ». Corrigé : place dans les sacs avant le rendu, déblocage dans `move`.
 - 2e essai : 60 faite ; mort dans la mine (47, kobolds) ; grind choisi sur des monstres d'événement (invasion du Fléau, absents) : corrigé (exclusion `game_event_creature`) ; mort comptée deux fois : corrigé.
 - 3e essai : 47 et 61 faites, 88 sautée (Princess à 1200 yards, rayon 800 : corrigé à 2000), NIVEAU 10 en 17 min.
+
+## Niveau 10 → 11 (2026-10-11, vrai repos)
+- Nourriture : achetée (bananes, Haunch of Meat) et mangée au repos ; réparations en route.
+- 1er essai : mort en marchant vers un marchand (la marche ignorait l'attaque) → `auto` riposte maintenant pendant les marches.
+- 2e essai (25 min) : 40, 35, 112, 114 (murlocs du lac !) faites, niveau 11, AUCUNE mort ; 87 sautée (7 combats en route vers la mine, limite relevée à 20) ; 37 non rendue (rendu à un objet) → corrigé, rendue ensuite.

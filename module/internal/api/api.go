@@ -233,6 +233,20 @@ func (c C) FindVendor(ctx context.Context, mapID uint32, x, y float32, flags uin
 	return r.Spawns, err
 }
 
+// FindFoodVendor lists the vendors within 500 yards selling food or drink (spell category) usable at level.
+func (c C) FindFoodVendor(ctx context.Context, mapID uint32, x, y float32, category, level uint32) ([]*worldpb.Spawn, error) {
+	var r worldpb.FindNpcResponse
+	err := invoke.Call(ctx, c.S, "world", "find_npc", &worldpb.FindNpcRequest{MapFilter: true, Map: mapID, X: x, Y: y, Radius: 500, Max: 6,
+		NpcFlags: 128, SellsSpellCategory: category, SellsMaxLevel: level}, &r)
+	return r.Spawns, err
+}
+
+func (c C) Restock(ctx context.Context, food, drink uint32) (*townpb.RestockResult, error) {
+	var r townpb.RestockResult
+	err := invoke.Call(ctx, c.S, "town", "restock", &townpb.RestockRequest{Food: food, Drink: drink}, &r)
+	return &r, err
+}
+
 func (c C) ItemInfo(ctx context.Context, entry uint32) (*worldpb.ItemInfo, error) {
 	var r worldpb.ItemInfoResponse
 	if err := invoke.Call(ctx, c.S, "world", "item_info", &worldpb.ItemInfoRequest{Entry: entry}, &r); err != nil {

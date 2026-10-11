@@ -4,8 +4,8 @@
 EmptyB}
 com.google.protobufB
 EmptyProtoPZ.google.golang.org/protobuf/types/known/emptypbø¢GPBªGoogle.Protobuf.WellKnownTypesbproto3
-ø&
-world.protowowagent.world.v1google/protobuf/empty.proto"Î
+Ò'
+world.protowowagent.world.v1google/protobuf/empty.proto"¨
 FindNpcRequest
 name (	Rname
 entry (Rentry
@@ -16,7 +16,10 @@ map_filter (R	mapFilter
 y (Ry
 radius (Rradius
 max (Rmax
-	npc_flags	 (RnpcFlags"†
+	npc_flags	 (RnpcFlags0
+sells_spell_category
+ (RsellsSpellCategory&
+sells_max_level (RsellsMaxLevel"†
 Spawn
 entry (Rentry
 name (	Rname

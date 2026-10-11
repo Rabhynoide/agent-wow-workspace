@@ -4,6 +4,7 @@ description: Hunt creatures with priest spells/melee, rest and loot (async jobs)
 requires:
   - state
   - move
+  - world
 compose:
   file: compose.yaml
   service: module

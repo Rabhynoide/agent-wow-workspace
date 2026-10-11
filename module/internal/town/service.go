@@ -33,10 +33,13 @@ type Service struct {
 	mu    sync.Mutex
 	items map[uint32]*worldpb.ItemInfo // item_template rows never change
 	quest map[uint32][]uint32          // quest id -> required item entries
+
+	lists chan []byte // SMSG_LIST_INVENTORY payloads
 }
 
 func Register(g grpc.ServiceRegistrar, s modv1.SessionClient) {
-	pb.RegisterTownServer(g, &Service{s: s, api: api.C{S: s}, items: map[uint32]*worldpb.ItemInfo{}, quest: map[uint32][]uint32{}})
+	pb.RegisterTownServer(g, &Service{s: s, api: api.C{S: s}, items: map[uint32]*worldpb.ItemInfo{}, quest: map[uint32][]uint32{},
+		lists: make(chan []byte, 4)})
 }
 
 func (s *Service) BeforeLogout(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {

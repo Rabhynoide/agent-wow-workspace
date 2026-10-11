@@ -36,9 +36,13 @@ type FindNpcRequest struct {
 	Radius float32 `protobuf:"fixed32,7,opt,name=radius,proto3" json:"radius,omitempty"`
 	Max    uint32  `protobuf:"varint,8,opt,name=max,proto3" json:"max,omitempty"`
 	// Keep only NPCs whose npcflag intersects this mask (vendor 128, repair 4096, innkeeper 65536, quest giver 2...).
-	NpcFlags      uint32 `protobuf:"varint,9,opt,name=npc_flags,json=npcFlags,proto3" json:"npc_flags,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	NpcFlags uint32 `protobuf:"varint,9,opt,name=npc_flags,json=npcFlags,proto3" json:"npc_flags,omitempty"`
+	// Keep only vendors selling an item whose first spell has this category (11 food, 59 drink) and
+	// whose required level is at most sells_max_level.
+	SellsSpellCategory uint32 `protobuf:"varint,10,opt,name=sells_spell_category,json=sellsSpellCategory,proto3" json:"sells_spell_category,omitempty"`
+	SellsMaxLevel      uint32 `protobuf:"varint,11,opt,name=sells_max_level,json=sellsMaxLevel,proto3" json:"sells_max_level,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *FindNpcRequest) Reset() {
@@ -130,6 +134,20 @@ func (x *FindNpcRequest) GetMax() uint32 {
 func (x *FindNpcRequest) GetNpcFlags() uint32 {
 	if x != nil {
 		return x.NpcFlags
+	}
+	return 0
+}
+
+func (x *FindNpcRequest) GetSellsSpellCategory() uint32 {
+	if x != nil {
+		return x.SellsSpellCategory
+	}
+	return 0
+}
+
+func (x *FindNpcRequest) GetSellsMaxLevel() uint32 {
+	if x != nil {
+		return x.SellsMaxLevel
 	}
 	return 0
 }
@@ -2090,7 +2108,7 @@ var File_world_proto protoreflect.FileDescriptor
 
 const file_world_proto_rawDesc = "" +
 	"\n" +
-	"\vworld.proto\x12\x11wowagent.world.v1\x1a\x1bgoogle/protobuf/empty.proto\"\xce\x01\n" +
+	"\vworld.proto\x12\x11wowagent.world.v1\x1a\x1bgoogle/protobuf/empty.proto\"\xa8\x02\n" +
 	"\x0eFindNpcRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05entry\x18\x02 \x01(\rR\x05entry\x12\x1d\n" +
@@ -2101,7 +2119,10 @@ const file_world_proto_rawDesc = "" +
 	"\x01y\x18\x06 \x01(\x02R\x01y\x12\x16\n" +
 	"\x06radius\x18\a \x01(\x02R\x06radius\x12\x10\n" +
 	"\x03max\x18\b \x01(\rR\x03max\x12\x1b\n" +
-	"\tnpc_flags\x18\t \x01(\rR\bnpcFlags\"\x86\x02\n" +
+	"\tnpc_flags\x18\t \x01(\rR\bnpcFlags\x120\n" +
+	"\x14sells_spell_category\x18\n" +
+	" \x01(\rR\x12sellsSpellCategory\x12&\n" +
+	"\x0fsells_max_level\x18\v \x01(\rR\rsellsMaxLevel\"\x86\x02\n" +
 	"\x05Spawn\x12\x14\n" +
 	"\x05entry\x18\x01 \x01(\rR\x05entry\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1b\n" +
