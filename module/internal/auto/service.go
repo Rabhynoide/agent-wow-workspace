@@ -161,15 +161,25 @@ func (r *run) recover() error {
 			return r.ctx.Err()
 		}
 	}
-	// The corpse is often inside the pack that killed us: the spirit healer of the graveyard
-	// brings us back safely, but only while that is free of resurrection sickness (a heavy stat
-	// debuff from sicknessLevel on; reclaiming the corpse never applies it). It still costs durability.
+	// Back at the corpse (safe spot near it): only the death's 10 % durability. The spirit healer adds
+	// 25 % more (gear broke in the 2026-10-11 benches) and resurrection sickness from sicknessLevel:
+	// it is only the fallback when the corpse cannot be reclaimed, below that level.
+	err = r.corpseRez(send)
+	if err == nil || r.ctx.Err() != nil {
+		return err
+	}
 	if snap.Self.Level < sicknessLevel {
+		r.note("corpse not reclaimed (%v): spirit healer", err)
 		if ok := r.healerRez(send); ok {
 			r.restAfterRez()
 			return nil
 		}
 	}
+	return err
+}
+
+// corpseRez runs to the corpse, waits at the safest spot within the reclaim radius, and reclaims it.
+func (r *run) corpseRez(send func(uint32, []byte)) error {
 	for len(r.s.corpse) > 0 {
 		<-r.s.corpse
 	}

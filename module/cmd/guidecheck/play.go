@@ -165,7 +165,10 @@ func (c *checker) grindTargets(mapID uint32, x, y, radius float64, level, class 
 }
 
 // rpc talks to the agent-wow world RPC (same endpoint as scripts/rpc.sh).
-type rpc struct{ url string }
+type rpc struct {
+	url      string
+	deadline time.Time // jobs are stopped past it (zero = none)
+}
 
 func (r rpc) call(method string, params, out any) error {
 	body, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": 1, "method": method, "params": params})
@@ -201,7 +204,8 @@ type jobStatus struct {
 	Level  uint32   `json:"level"`
 }
 
-// job starts an auto job and waits for its end, logging each new step.
+// job starts an auto job and waits for its end, logging each new step. Past the deadline the job is
+// stopped (a job stuck in a fight must not outlive the run's time limit).
 func (r rpc) job(method string, params map[string]any, log func(string, ...any)) (*jobStatus, error) {
 	params["wait_s"] = 25
 	st := &jobStatus{}
@@ -210,6 +214,11 @@ func (r rpc) job(method string, params map[string]any, log func(string, ...any))
 	}
 	last := ""
 	for st.State == "running" {
+		if !r.deadline.IsZero() && time.Now().After(r.deadline) {
+			_ = r.call("auto.stop", map[string]any{}, nil)
+			log("  time limit: auto stopped")
+			return &jobStatus{State: "stopped", Reason: "time limit"}, nil
+		}
 		if st.Step != last {
 			log("  %s", st.Step)
 			last = st.Step
@@ -267,6 +276,7 @@ func nameOf(m map[string]uint32, id uint32) string {
 func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin int) int {
 	logf, _ := os.OpenFile(filepath.Join("..", "logs", "level_"+char+".log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
 	start := time.Now()
+	r.deadline = start.Add(time.Duration(maxMin) * time.Minute)
 	stamp := func() string { return fmt.Sprintf("[%s]", time.Since(start).Round(time.Second)) }
 	say := func(format string, a ...any) { // stdout and log
 		line := stamp() + " " + fmt.Sprintf(format, a...)
@@ -358,6 +368,9 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 					deaths++
 					ps.retryAt[q] = me.Level + 1
 					say("  DEATH on %d (%d in this run), postponed to level %d: %s", q, deaths, me.Level+1, reason)
+				case st.State == "stopped" && st.Reason == "time limit":
+					say("time limit (%d min) reached during a job", maxMin)
+					return 2
 				case st.State == "stopped":
 					say("auto stopped from outside")
 					return 1

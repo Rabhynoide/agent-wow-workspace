@@ -144,10 +144,10 @@ func (s *Service) choosePull(ctx context.Context, j *job, me *statepb.SelfInfo, 
 		}
 		adds := addsOf(c, hostile.Objs, me.Level)
 		load := pullLoad(c, adds, me.Level)
-		slog.Info("pull candidate", "entry", c.Entry, "level", c.Level, "dist", int(c.Dist), "adds", len(adds), "load", load, "capacity", capacity)
 		if load <= capacity {
 			return c, nil
 		}
+		slog.Info("crowded target", "entry", c.Entry, "level", c.Level, "dist", int(c.Dist), "adds", len(adds), "load", load, "capacity", capacity)
 		crowded = append(crowded, c)
 	}
 	for i, c := range crowded {
@@ -156,7 +156,9 @@ func (s *Service) choosePull(ctx context.Context, j *job, me *statepb.SelfInfo, 
 		}
 		s.abandon(c.Guid, "too many monsters around it", c.Entry)
 	}
-	slog.Info("pull choice", "candidates", len(cands.Objs), "crowded", len(crowded), "taken", len(taken))
+	if len(crowded) > 0 {
+		slog.Info("pull choice", "candidates", len(cands.Objs), "crowded", len(crowded), "taken", len(taken))
+	}
 	if len(crowded) == 0 && len(taken) > 0 {
 		return taken[0], nil // the old behaviour: share a monster someone else fights
 	}

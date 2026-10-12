@@ -34,6 +34,8 @@ import (
 const (
 	castRange  = 26
 	meleeRange = 4.5
+	// defendMax bounds combat.defend (attackers keep coming, or one cannot be reached).
+	defendMax = 3 * time.Minute
 	// SpellCastResult 30 (EQUIPPED_ITEM_CLASS): the spell needs a usable weapon (missing or broken).
 	castFailedNoWeapon = 30
 	maxWait            = 25
@@ -227,8 +229,11 @@ func (s *Service) Defend(ctx context.Context, r *pb.StatusRequest) (*pb.CombatSt
 // defend fights the units attacking us, one after the other, until none has for 4 seconds.
 func (s *Service) defend(ctx context.Context, j *job) (string, string) {
 	var kills uint32
-	quiet := time.Now()
+	quiet, started := time.Now(), time.Now()
 	for time.Since(quiet) < 4*time.Second {
+		if time.Since(started) > defendMax {
+			return "done", "defend time limit"
+		}
 		if ctx.Err() != nil {
 			return "stopped", "cancelled"
 		}
@@ -326,8 +331,10 @@ func (s *Service) aggressor(ctx context.Context, me *statepb.SelfInfo) *statepb.
 		return nil
 	}
 	for _, o := range r.Objs {
-		// Friendly NPCs may face/target us (gossip): only units in combat are attackers.
-		if o.Target == me.Guid && o.UnitFlags&unitInCombat != 0 {
+		// Friendly NPCs may face/target us (gossip): only units in combat are attackers. A target given
+		// up (unreachable: another level of a mine) is skipped, or defend fought it forever (bench of
+		// 2026-10-12: 40 minutes against one kobold).
+		if o.Target == me.Guid && o.UnitFlags&unitInCombat != 0 && !s.wasAbandoned(o.Guid) {
 			return o
 		}
 	}
