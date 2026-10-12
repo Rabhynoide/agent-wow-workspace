@@ -17,7 +17,9 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -405,9 +407,7 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 				return 1
 			}
 			if st.State != "done" {
-				if strings.Contains(st.Reason, "dead") {
-					deaths++
-				}
+				deaths += jobDeaths(st.Reason)
 				say("  grind ended: %s %s", st.State, st.Reason)
 			}
 		default:
@@ -458,4 +458,19 @@ func (c *checker) rewardedOf(char string) map[uint32]bool {
 		}
 	}
 	return out
+}
+
+var diedTimes = regexp.MustCompile(`died (\d+) times`)
+
+// jobDeaths counts the deaths an auto job reports: "stopping: died 4 times" is four, not one (the
+// bench of 2026-10-12 counted 3 deaths for 11 and kept dying at the Fargodeep mine for 20 minutes).
+func jobDeaths(reason string) int {
+	if m := diedTimes.FindStringSubmatch(reason); m != nil {
+		n, _ := strconv.Atoi(m[1])
+		return n
+	}
+	if strings.Contains(reason, "dead") {
+		return 1
+	}
+	return 0
 }

@@ -132,7 +132,7 @@ func (s *Service) choosePull(ctx context.Context, j *job, me *statepb.SelfInfo, 
 	self := &statepb.Obj{Guid: me.Guid, X: me.X, Y: me.Y, Z: me.Z}
 	var crowded, taken []*statepb.Obj
 	for _, c := range cands.Objs {
-		if s.wasAbandoned(c.Guid) {
+		if s.wasAbandoned(c.Guid) || s.wasCrowded(c.Guid) {
 			continue
 		}
 		if c.Target == me.Guid {
@@ -154,7 +154,7 @@ func (s *Service) choosePull(ctx context.Context, j *job, me *statepb.SelfInfo, 
 		if r.BodyPull && i < 2 && s.bodyPull(ctx, j, self, c, hostile.Objs, me.Level) {
 			return c, nil
 		}
-		s.abandon(c.Guid, "too many monsters around it", c.Entry)
+		s.skipCrowded(c.Guid)
 	}
 	if len(crowded) > 0 {
 		slog.Info("pull choice", "candidates", len(cands.Objs), "crowded", len(crowded), "taken", len(taken))

@@ -134,6 +134,13 @@ Icy Veins bloque ma lecture (403) : à chaque palier ci-dessous, prévenir l'uti
 - [x] Limite de temps de level.sh appliquée aussi pendant un job bloqué.
 - [ ] Revalider au bench : résurrection au corps (plus d'esprit guérisseur), nettoyage du chemin de la quête 62, niveau 6.
 
+## Bench 9b66e71 (2026-10-12) : L5 en 59 min, 11 morts
+- [x] Régression : les cibles « trop entourées » étaient marquées abandonnées, donc ignorées par la défense ; attaqué par elles, le personnage mangeait sous les coups. Liste séparée (`crowded`).
+- [x] level.sh comptait « died 4 times » comme 1 mort (3 comptées pour 11) : compte réel.
+- [ ] Résurrection à l'entrée de la mine : point « sûr » à 16-19 yards des kobolds (aggro ~20) ; chercher plus loin (rayon 39) ou attendre plus longtemps.
+- [ ] Grind lancé au milieu des kobolds de la mine (toutes les cibles trop entourées) : préférer des apparitions isolées ou s'éloigner.
+- [ ] Quête 62 au niveau 5 : mort pendant le nettoyage (kobolds 5-6) ; la porte de niveau 6 la reporte, à confirmer.
+
 ## Prochaines étapes suggérées (2026-10-11)
 - FAIT : suivi des auras et aura state (« Rotation et combat » étape 1). FAIT aussi : « peut lancer ». SUITE : moteur de priorités en table, rotations Guerrier/Prêtre en tables ; tester le prêtre (Claudia) en jeu.
 - Pull où l'on est susceptible de gagner (voir « Points à réfléchir ») et capacité qui apprend des combats.

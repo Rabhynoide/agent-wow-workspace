@@ -64,6 +64,7 @@ type Service struct {
 	lastCharge time.Time // Charge has a 15 s cooldown across fights
 	melee      *meleeLog
 	abandoned  map[uint64]time.Time // targets given up (no damage dealt): not picked again for a while
+	crowded    map[uint64]time.Time // targets skipped for their adds: not pulled for a while, still fought back
 	items      map[uint32]*worldpb.ItemInfo
 	book       *spellBook
 }
@@ -73,7 +74,7 @@ func Register(g grpc.ServiceRegistrar, s modv1.SessionClient) {
 	runner := jobs.NewRunner(&pb.CombatStatus{State: "idle"})
 	runner.Decorate = func(j *job, st *pb.CombatStatus) { st.ElapsedS = uint32(time.Since(j.Start).Seconds()) }
 	pb.RegisterCombatServer(g, &Service{s: s, api: api.C{S: s}, loot: loot.NewTracker(), guid: guid, jobs: runner, failures: map[uint8]castFailure{},
-		melee: newMeleeLog(), abandoned: map[uint64]time.Time{}, items: map[uint32]*worldpb.ItemInfo{}, book: &spellBook{ready: map[uint32]time.Time{}}})
+		melee: newMeleeLog(), abandoned: map[uint64]time.Time{}, crowded: map[uint64]time.Time{}, items: map[uint32]*worldpb.ItemInfo{}, book: &spellBook{ready: map[uint32]time.Time{}}})
 }
 
 func (s *Service) OnPacket(_ context.Context, p *modv1.WorldPacket) (*emptypb.Empty, error) {
@@ -727,6 +728,21 @@ func (s *Service) wasAbandoned(guid uint64) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return time.Since(s.abandoned[guid]) < 2*time.Minute
+}
+
+// skipCrowded leaves a target alone for a while because of the monsters around it. Unlike abandon,
+// it does not stop us from fighting it back when it attacks (bench of 2026-10-12 at the Fargodeep
+// mine: crowded kobolds attacked and the character ate under their blows until it died).
+func (s *Service) skipCrowded(guid uint64) {
+	s.mu.Lock()
+	s.crowded[guid] = time.Now()
+	s.mu.Unlock()
+}
+
+func (s *Service) wasCrowded(guid uint64) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return time.Since(s.crowded[guid]) < 2*time.Minute
 }
 
 // noProgress is the time without any damage on the target: our hits (combat log) or its health dropping.
