@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"os"
 	"os/signal"
@@ -23,6 +24,7 @@ import (
 	"time"
 
 	"wowagent/internal/faction"
+	"wowagent/internal/xpscore"
 )
 
 // playState is what the route walk needs besides the route: quests finished (rewarded before the run
@@ -126,43 +128,157 @@ func dangerMargin(class uint32) uint32 {
 // playerFactions maps a race to its player faction template (ChrRaces.dbc).
 var playerFactions = map[uint32]uint32{1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 115, 8: 116, 10: 1610, 11: 1629}
 
-// grindTargets lists attackable, non-elite monsters spawned at least 3 times within radius of (x, y)
-// that give experience and are not too dangerous, nearest first.
-func (c *checker) grindTargets(mapID uint32, x, y, radius float64, level, class uint32, player faction.Template, factions faction.Table) []uint32 {
+// Learned fights (xpscore.Table) and the combat log they come from, relative to module/.
+const (
+	fightsFile = "../journal/learn/fights.json"
+	combatLog  = "../logs/combat.log"
+)
+
+// learnFights adds the new fight lines of the combat log to the learned table and saves it.
+func (c *checker) learnFights() (int, error) {
+	if c.fights == nil {
+		t, err := xpscore.Load(fightsFile)
+		if err != nil {
+			return 0, err
+		}
+		c.fights = t
+	}
+	f, err := os.Open(combatLog)
+	if err != nil {
+		return 0, err
+	}
+	defer f.Close()
+	n := c.fights.Learn(f)
+	if n > 0 {
+		return n, c.fights.Save(fightsFile)
+	}
+	return 0, nil
+}
+
+// printScore prints the grind ranking around "map,x,y" (human player faction) without a session.
+func (c *checker) printScore(where string, level, class uint32, dbcDir string) int {
+	var mapID uint32
+	var x, y float64
+	if _, err := fmt.Sscanf(where, "%d,%f,%f", &mapID, &x, &y); err != nil || class == 0 {
+		fmt.Println("-score map,x,y with -level and -class:", err)
+		return 1
+	}
+	factions, err := faction.Load(dbcDir)
+	if err != nil {
+		fmt.Println(err)
+		return 1
+	}
+	if _, err := c.learnFights(); err != nil {
+		fmt.Println("learned fights:", err)
+	}
+	fmt.Println("learned:", strings.Join(c.fights.Summary(class), " | "))
+	targets, report := c.grindTargets(mapID, x, y, 250, level, class, factions[playerFactions[1]], factions)
+	for _, l := range report {
+		fmt.Println(l)
+	}
+	fmt.Println("chosen:", targets)
+	return 0
+}
+
+// campRadius: hostile spawn points this close to a monster's spawn point may join its fight.
+const campRadius = 15
+
+// grindTargets ranks the attackable, non-elite monsters spawned at least 3 times within radius of
+// (x, y) by experience per minute (xpscore: kill time, rest, search, death risk from the learned
+// fights and the spawns around), and returns the best ones with a report line for each candidate.
+func (c *checker) grindTargets(mapID uint32, x, y, radius float64, level, class uint32, player faction.Template, factions faction.Table) ([]uint32, []string) {
 	lo := max(grayLevel(level)+1, level-min(level-1, 3))
 	hi := level + dangerMargin(class)
-	rows, err := c.db.Query(`SELECT t.entry, t.faction, COUNT(*) n,
-			MIN(POW(c.position_x-?,2)+POW(c.position_y-?,2)) d
-		FROM creature c JOIN creature_template t ON t.entry=c.id
-		WHERE c.map=? AND POW(c.position_x-?,2)+POW(c.position_y-?,2) < ?
-			AND t.`+"`rank`"+`=0 AND t.npcflag=0 AND t.type NOT IN (8,11,12)
+	rows, err := c.db.Query(`SELECT c.id, t.name, t.faction, t.minlevel, t.maxlevel, t.HealthModifier, t.DamageModifier,
+			t.BaseAttackTime, t.ExperienceModifier, c.spawntimesecs, c.position_x, c.position_y, c.wander_distance,
+			t.`+"`rank`"+`=0 AND t.npcflag=0 AND t.type NOT IN (8,11,12)
 			AND (t.unit_flags & (0x2|0x100|0x2000000))=0 AND (t.flags_extra & (0x2|0x80))=0
-			AND t.minlevel >= ? AND t.maxlevel <= ?
-			AND NOT EXISTS (SELECT 1 FROM game_event_creature g WHERE g.guid=c.guid)
-		GROUP BY t.entry, t.faction HAVING n >= 3 ORDER BY d LIMIT 12`,
-		x, y, mapID, x, y, radius*radius, lo, hi)
+			AND NOT EXISTS (SELECT 1 FROM game_event_creature g WHERE g.guid=c.guid) huntable
+		FROM creature c JOIN creature_template t ON t.entry=c.id
+		WHERE c.map=? AND POW(c.position_x-?,2)+POW(c.position_y-?,2) < ?`,
+		mapID, x, y, (radius+campRadius)*(radius+campRadius))
 	if err != nil {
-		fmt.Println("grind targets:", err)
-		return nil
+		return nil, []string{"grind targets: " + err.Error()}
 	}
 	defer rows.Close()
-	var out []uint32
+	type spawn struct {
+		entry, fac uint32
+		x, y       float64
+		wander     float64
+		hostile    bool
+	}
+	var spawns []spawn
+	mobs := map[uint32]*xpscore.Mob{}
+	var order []uint32
 	for rows.Next() {
-		var entry, fac, n uint32
-		var d float64
-		if rows.Scan(&entry, &fac, &n, &d) != nil {
+		var m xpscore.Mob
+		var fac uint32
+		var respawn, sx, sy, wander float64
+		var huntable bool
+		if rows.Scan(&m.Entry, &m.Name, &fac, &m.MinLevel, &m.MaxLevel, &m.HealthMod, &m.DamageMod, &m.AttackMs, &m.ExpMod,
+			&respawn, &sx, &sy, &wander, &huntable) != nil {
 			continue
 		}
-		if t, ok := factions[fac]; ok && faction.Friendly(t, player) {
+		t, known := factions[fac]
+		hostile := known && faction.Hostile(t, player)
+		spawns = append(spawns, spawn{m.Entry, fac, sx, sy, wander, hostile})
+		if !huntable || m.MinLevel < lo || m.MaxLevel > hi || (known && faction.Friendly(t, player)) ||
+			math.Hypot(sx-x, sy-y) > radius {
 			continue
 		}
-		out = append(out, entry)
-		if len(out) >= 5 {
-			break
+		if mobs[m.Entry] == nil {
+			m.AreaRadius = radius
+			mobs[m.Entry] = &m
+			order = append(order, m.Entry)
+		}
+		mobs[m.Entry].Spawns++
+		mobs[m.Entry].RespawnS += respawn
+	}
+	// Neighbours: hostile spawn points near each spawn point of the monster (an add risk).
+	near := map[uint32]int{}
+	for _, a := range spawns {
+		m := mobs[a.entry]
+		if m == nil || math.Hypot(a.x-x, a.y-y) > radius {
+			continue
+		}
+		for _, b := range spawns {
+			// Wandering monsters (wolves) come closer than their spawn point.
+			if b != a && b.hostile && math.Hypot(a.x-b.x, a.y-b.y) < campRadius+a.wander+b.wander {
+				near[a.entry]++
+			}
 		}
 	}
-	return out
+	type ranked struct {
+		m *xpscore.Mob
+		s xpscore.Score
+	}
+	var all []ranked
+	for _, e := range order {
+		m := mobs[e]
+		if m.Spawns < 3 {
+			continue
+		}
+		m.RespawnS /= float64(m.Spawns)
+		m.Neighbours = float64(near[e]) / float64(m.Spawns)
+		all = append(all, ranked{m, xpscore.Of(*m, level, class, c.fights)})
+	}
+	sort.SliceStable(all, func(i, j int) bool { return all[i].s.XPMin > all[j].s.XPMin })
+	var out []uint32
+	var report []string
+	for _, r := range all {
+		keep := r.s.PDeath <= maxDeathRisk && r.s.XP > 0 && len(out) < 4
+		if keep {
+			out = append(out, r.m.Entry)
+		}
+		report = append(report, fmt.Sprintf("%-5d %-22s L%d-%d spawns %2d near %.1f: %3.0f xp/min (xp %.0f, kill %.0fs, rest %.0fs, search %.0fs, loss %.0f%%, death %.0f%%)%s",
+			r.m.Entry, r.m.Name, r.m.MinLevel, r.m.MaxLevel, r.m.Spawns, r.m.Neighbours, r.s.XPMin, r.s.XP, r.s.KillS, r.s.RestS, r.s.SearchS,
+			r.s.Loss, 100*r.s.PDeath, map[bool]string{true: " <-", false: ""}[keep]))
+	}
+	return out, report
 }
+
+// maxDeathRisk: monster types with a higher estimated death risk per kill are not grinded.
+const maxDeathRisk = 0.1
 
 // rpc talks to the agent-wow world RPC (same endpoint as scripts/rpc.sh).
 type rpc struct {
@@ -385,9 +501,17 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 				}
 			}
 		case need > 0:
-			targets := c.grindTargets(me.Map, me.X, me.Y, 250, me.Level, class, factions[playerFactions[race]], factions)
+			if n, err := c.learnFights(); err != nil {
+				say("learned fights: %v", err)
+			} else if n > 0 {
+				say("learned %d fights: %s", n, strings.Join(c.fights.Summary(class), " | "))
+			}
+			targets, report := c.grindTargets(me.Map, me.X, me.Y, 250, me.Level, class, factions[playerFactions[race]], factions)
 			if len(targets) == 0 {
-				targets = c.grindTargets(me.Map, me.X, me.Y, 600, me.Level, class, factions[playerFactions[race]], factions)
+				targets, report = c.grindTargets(me.Map, me.X, me.Y, 600, me.Level, class, factions[playerFactions[race]], factions)
+			}
+			for _, l := range report {
+				detail("  score %s", l)
 			}
 			if len(targets) == 0 {
 				say("STOP: level %d needed (quest %d) and no monster to grind near (%.0f,%.0f)", need, blocker, me.X, me.Y)

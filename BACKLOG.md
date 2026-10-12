@@ -146,7 +146,7 @@ Icy Veins bloque ma lecture (403) : à chaque palier ci-dessous, prévenir l'uti
 - [ ] Morts en marchant pendant le grind (riposte en route) : éviter les monstres sur le chemin.
 
 ## Choix des monstres par XP/minute (idée utilisateur, 2026-10-12)
-- [ ] Score par type de monstre : XP/min = XP_kill / (T_kill + T_récup + T_recherche + P_mort × T_mort).
+- [~] Fait le 2026-10-12 (`xpscore`, choix des cibles de grind) ; reste : P_mort mesurée (morts par type de monstre, combats enchaînés), régénération mesurée, remplacer « niveau + 1 » dans auto et la capacité de pull. Modèle : XP/min = XP_kill / (T_kill + T_récup + T_recherche + P_mort × T_mort).
   - XP_kill : formule du serveur (×(20+écart)/20 au-dessus, réduction grise en dessous).
   - Monstre (base, vérifié) : PV = creature_classlevelstats.basehp{exp} × HealthModifier ; dégâts = damage_base (+ attackpower) × DamageModifier, BaseAttackTime ; densité = nombre d'apparitions et spawntimesecs (table creature).
   - Nous (mesuré) : DPS effectif et dégâts reçus par niveau d'écart depuis les lignes `fight` ; régénération depuis les repos ; P_mort depuis les combats perdus (adds, camps).

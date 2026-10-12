@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"wowagent/internal/xpscore"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -81,6 +82,7 @@ type checker struct {
 	order    []uint32
 	entries  []routeQuest
 	where    map[uint32]string // quest -> route file where it is first accepted
+	fights   *xpscore.Table    // learned fights (-play)
 }
 
 func main() {
@@ -102,6 +104,7 @@ func main() {
 	dbcDir := flag.String("dbc", "../assets/dbc", "with -play: client DBC directory (FactionTemplate.dbc)")
 	maxMin := flag.Int("max_min", 180, "with -play: stop after this many minutes")
 	above := flag.Int("maxabove", 2, "with -plan: skip quests more than this many levels above the character (danger)")
+	score := flag.String("score", "", "rank grind monsters by xp/min around map,x,y for -level and -class (e.g. 0,-9464,62)")
 	flag.Parse()
 	// Files given as arguments are checked in that order (one race's chain); else the whole directory.
 	files := flag.Args()
@@ -123,7 +126,7 @@ func main() {
 		files, _ = filepath.Glob(filepath.Join(*dir, "*.json"))
 		sort.Strings(files)
 	}
-	if len(files) == 0 {
+	if len(files) == 0 && *score == "" {
 		fmt.Println("no guide files in", *dir)
 		os.Exit(1)
 	}
@@ -134,6 +137,9 @@ func main() {
 		os.Exit(1)
 	}
 	c := &checker{db: db, cache: map[uint32]*quest{}, manual: map[uint32]string{}, accepted: map[uint32]bool{}, done: map[uint32]bool{}, where: map[uint32]string{}}
+	if *score != "" {
+		os.Exit(c.printScore(*score, uint32(*level), classIDs[strings.ToLower(*class)], *dbcDir))
+	}
 	total := 0
 	for _, f := range files {
 		var g guide

@@ -21,6 +21,8 @@ type fightRecord struct {
 	entry    uint32
 	level    uint32
 	myLevel  uint32
+	class    uint32
+	maxHP    uint32
 	hpStart  uint32
 	hpMin    uint32
 	hpEnd    uint32
@@ -59,7 +61,7 @@ func (s *Service) sampleFight(ctx context.Context, r *fightRecord, first bool) {
 		hp = 0
 	}
 	if first {
-		r.hpStart, r.myLevel = hp, me.Level
+		r.hpStart, r.myLevel, r.class, r.maxHP = hp, me.Level, me.ClassId, me.MaxHp
 	}
 	r.hpMin, r.hpEnd = min(r.hpMin, hp), hp
 	n, err := s.api.Nearby(ctx, &statepb.NearbyRequest{Kind: "unit", Radius: 40, Max: 12, AliveOnly: true})
@@ -93,7 +95,7 @@ func (r *fightRecord) done(dead bool, why string) {
 	case why != "":
 		result = why
 	}
-	slog.Info("fight", "result", result, "target", r.entry, "target_level", r.level, "level", r.myLevel,
+	slog.Info("fight", "result", result, "target", r.entry, "target_level", r.level, "level", r.myLevel, "class", r.class, "max_hp", r.maxHP,
 		"hp_start", r.hpStart, "hp_min", r.hpMin, "hp_end", r.hpEnd, "attackers_max", r.most,
 		"attackers", entries, "s", int(time.Since(r.start).Seconds()))
 }
