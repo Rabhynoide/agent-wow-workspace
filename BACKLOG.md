@@ -132,7 +132,7 @@ Icy Veins bloque ma lecture (403) : à chaque palier ci-dessous, prévenir l'uti
 ## Bench e9aa9fd (2026-10-12)
 - [x] combat.defend bloqué 60 min sur un kobold inaccessible : cibles abandonnées ignorées, 3 min max.
 - [x] Limite de temps de level.sh appliquée aussi pendant un job bloqué.
-- [ ] Revalider au bench : résurrection au corps (plus d'esprit guérisseur), nettoyage du chemin de la quête 62, niveau 6.
+- [x] Revalidé au bench 9eca5b5 : niveau 6 en 55,5 min, résurrection au corps, plus de riposte manquée.
 
 ## Bench 9b66e71 (2026-10-12) : L5 en 59 min, 11 morts
 - [x] Régression : les cibles « trop entourées » étaient marquées abandonnées, donc ignorées par la défense ; attaqué par elles, le personnage mangeait sous les coups. Liste séparée (`crowded`).
