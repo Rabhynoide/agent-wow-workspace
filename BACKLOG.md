@@ -86,13 +86,13 @@ Sources :
 - WeakAuras Afenar WotLK Guerrier (Tsttn04EF) et Prêtre (9W5YhSqB_).
 
 Ordre proposé :
-3. [ ] Rotation en TABLE DE PRIORITÉS par classe (modèle Ovale : la première ligne dont les conditions passent et dont le sort est lançable gagne), dans `journal/classes/<classe>.yaml`. Conditions utiles d'Ovale :
+3. [x] (2026-10-12 : `combat/priority.go`, format dans `journal/classes/README.md` ; reste « sort presque prêt », posture, talents) Rotation en TABLE DE PRIORITÉS par classe (modèle Ovale : la première ligne dont les conditions passent et dont le sort est lançable gagne), dans `journal/classes/<classe>.yaml`. Conditions utiles d'Ovale :
    - BuffExpires/Present(n s, stacks), TargetDebuffExpires(mine) ;
    - TargetLifePercent, Mana/rage, Stance, TalentPoints ;
    - « 1s before Spell(X) » (sort presque prêt) ;
    - TargetDeadIn (temps avant la mort de la cible, estimé par la baisse de ses PV : pas de DoT/Rend sur une cible qui meurt dans moins de 6-8 s, mieux que notre « Rend si cible > 50 % »).
-4. [ ] Tables de priorités Guerrier (Armes) et Prêtre (Ombre) : priorités détaillées dans `journal/rotations/warrior.md` et `priest.md` (Ovale, Mirash, Afenar).
-6. [ ] Défensifs, seuils de playerbots : PV critiques 25 %, bas 45 %, moyens 65 %, presque pleins 85 %.
+4. [~] (2026-10-12 : tables de leveling bas niveau reprises de l'ancien code ; à enrichir avec les sorts des niveaux 20+) Tables de priorités Guerrier (Armes) et Prêtre (Ombre) : priorités détaillées dans `journal/rotations/warrior.md` et `priest.md` (Ovale, Mirash, Afenar).
+6. [~] (2026-10-12 : dans les tables, sauf Berserker Rage contre la peur et Fade ; pas encore vus en jeu, appris à partir du niveau 20) Défensifs, seuils de playerbots : PV critiques 25 %, bas 45 %, moyens 65 %, presque pleins 85 %.
    - Guerrier : Intimidating Shout à PV critiques, Enraged Regeneration à PV moyens, Retaliation, Berserker Rage contre la peur, Bloodrage si PV ≥ 65 % et rage < 20.
    - Prêtre : Psychic Scream face à plusieurs attaquants, Desperate Prayer, Fade.
 7. [ ] Pull à distance (lien avec « Pull d'un seul monstre ») : tir ou lancer selon l'arme à distance équipée (playerbots), Heroic Throw au niveau 80.
@@ -146,6 +146,10 @@ Icy Veins bloque ma lecture (403) : à chaque palier ci-dessous, prévenir l'uti
 - [ ] Morts en marchant pendant le grind (riposte en route) : éviter les monstres sur le chemin.
 
 ## Bench 8ce2ca4 (2026-10-12) : niveau 6 en 48,9 min, 0 mort (meilleur run)
+
+## Bench table de priorités (2026-10-12) : niveau 5 en 52 min, 5 morts
+- [x] Moteur de priorités en table (`combat/priority.go`) : combats simples identiques à l'ancien code (voir journal/bench/20261012_2045_Benchgnnqye.md).
+- [ ] Morts en enchaînement contre les Mangy Wolf (525) au niveau 5, les araignées étant épuisées : P_mort mesurée par monstre (étape suivante) et pas de nouveau combat volontaire sous ~40 % de PV.
 
 ## Choix des monstres par XP/minute (idée utilisateur, 2026-10-12)
 - [~] Fait le 2026-10-12 (`xpscore`, choix des cibles de grind) ; reste : P_mort mesurée (morts par type de monstre, combats enchaînés), régénération mesurée, remplacer « niveau + 1 » dans auto et la capacité de pull. Modèle : XP/min = XP_kill / (T_kill + T_récup + T_recherche + P_mort × T_mort).

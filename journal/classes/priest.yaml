@@ -34,3 +34,22 @@ talent_order:
   - { levels: "74-76", tree: Shadow, talent: "Focused Mind", points: 3 }
   - { levels: "77-78", tree: Shadow, talent: "Improved Vampiric Embrace", points: 2 }
   - { levels: "79-80", tree: Shadow, talent: "Shadow Power", points: 2 }
+
+# Tables de priorités lues par le module combat (voir README.md « Tables de priorités »). Sans mana
+# (moins de 8 %), le combat passe à la baguette ou à la mêlée.
+priorities:
+  - { spell: "Desperate Prayer", target: self, if: 'hp < 30' }
+  - { spell: "Psychic Scream", target: self, if: 'hp < 50 and attackers >= 2' }
+  - { spell: "Heal", target: self, if: 'hp < 40 and mana >= 12', cast: 3 }
+  - { spell: "Lesser Heal", target: self, if: 'hp < 40 and mana >= 12 and not known("Heal")', cast: 3 }
+  - { spell: "Power Word: Shield", target: self, every: 3,
+      if: 'hp < 80 and mana >= 15 and not aura("Weakened Soul") and not aura("Power Word: Shield")' }
+  - { spell: "Renew", target: self, if: 'hp < 65 and mana >= 15 and my_aura_left("Renew") < 1', every: 3 }
+  - { spell: "Shadow Word: Pain", every: 3,
+      if: 'mana >= 20 and target_hp > 30 and target_aura_left("Shadow Word: Pain") < 1 and target_dies_in > 6' }
+  - { spell: "Mind Blast", if: 'mana >= 30', every: 1 }
+  - { spell: "Smite", if: 'mana >= 8', cast: 2.5 }
+
+buffs:
+  - { spell: "Power Word: Fortitude", target: self, every: 10, if: 'mana >= 40 and my_aura_left("Power Word: Fortitude") < 60' }
+  - { spell: "Inner Fire", target: self, every: 10, if: 'mana >= 40 and my_aura_left("Inner Fire") < 60' }

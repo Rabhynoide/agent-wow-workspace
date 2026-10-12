@@ -113,3 +113,28 @@ pitfalls:
 source: https://www.icy-veins.com/wotlk-classic/warrior-leveling-guide
 source_spec: https://www.icy-veins.com/wotlk-classic/arms-warrior-leveling-guide
 last_updated: "2022-09-06"
+
+# Tables de priorités lues par le module combat (voir README.md « Tables de priorités ») : la première
+# ligne dont la condition passe et dont le sort est lançable (recharge, rage, aura state, portée, arme) gagne.
+priorities:
+  - { spell: "Charge", if: 'not in_combat and not target_on_me and dist >= 9 and dist <= 24 and visible', after: 0.8 }
+  # Défensifs (seuils de mod-playerbots : critique 25 %, bas 45 %, moyen 65 %).
+  - { spell: "Intimidating Shout", target: self, if: 'hp < 25 and attackers >= 2' }
+  - { spell: "Retaliation", target: self, if: 'hp < 45 and attackers >= 2' }
+  - { spell: "Enraged Regeneration", target: self, if: 'hp < 45 and aura("Bloodrage")' }
+  - { spell: "Bloodrage", target: self, if: 'in_combat and hp >= 65 and rage < 20' }
+  - { spell: "Battle Shout", target: self, if: 'my_aura_left("Battle Shout") < 3' }
+  - { spell: "Victory Rush", every: 1, reactive: true }
+  - { spell: "Execute", if: 'target_aura_state(2) or target_hp < 20 or aura("Sudden Death")' }
+  - { spell: "Overpower", if: 'dodged(4) or aura("Taste for Blood")', every: 1, reactive: true }
+  - { spell: "Rend", if: 'target_aura_left("Rend") < 2 and target_hp > 25 and target_dies_in > 8', every: 2 }
+  - { spell: "Mortal Strike", if: 'rage >= 30' }
+  - { spell: "Slam", if: 'level >= 41' }
+  - { spell: "Thunder Clap", if: 'level < 20', every: 1 }
+  # Remplace le prochain coup (sans recharge globale) : rage en trop seulement.
+  - { spell: "Heroic Strike", off_gcd: true, every: 3.5, if: '(level < 41 and rage >= 30) or rage >= 60' }
+
+# Hors combat, avant un pull.
+buffs:
+  - { spell: "Bloodrage", target: self, if: 'my_aura_left("Battle Shout") < 30 and rage < 10' }
+  - { spell: "Battle Shout", target: self, if: 'my_aura_left("Battle Shout") < 30' }

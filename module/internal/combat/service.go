@@ -1,4 +1,4 @@
-// Package combat hunts creatures, fights with priest spells and loots.
+// Package combat hunts creatures, fights with the priority table of the class and loots.
 package combat
 
 import (
@@ -57,16 +57,13 @@ type Service struct {
 	castCount uint8
 	// failures by cast count (our CMSG_CAST_SPELL counter): SMSG_CAST_FAILED of other casts
 	// (server-side or item spells, count 0) must not be taken for ours.
-	failures   map[uint8]castFailure
-	lastShield time.Time // last shield cast (the Weakened Soul aura takes a moment to show up)
-	lastRenew  time.Time
-	lastBuff   time.Time // last out-of-combat buff attempt
-	lastCharge time.Time // Charge has a 15 s cooldown across fights
-	melee      *meleeLog
-	abandoned  map[uint64]time.Time // targets given up (no damage dealt): not picked again for a while
-	crowded    map[uint64]time.Time // targets skipped for their adds: not pulled for a while, still fought back
-	items      map[uint32]*worldpb.ItemInfo
-	book       *spellBook
+	failures  map[uint8]castFailure
+	rotations map[uint32]*classTables // class -> priority tables (journal/classes), nil = none
+	melee     *meleeLog
+	abandoned map[uint64]time.Time // targets given up (no damage dealt): not picked again for a while
+	crowded   map[uint64]time.Time // targets skipped for their adds: not pulled for a while, still fought back
+	items     map[uint32]*worldpb.ItemInfo
+	book      *spellBook
 }
 
 func Register(g grpc.ServiceRegistrar, s modv1.SessionClient) {
@@ -74,7 +71,7 @@ func Register(g grpc.ServiceRegistrar, s modv1.SessionClient) {
 	runner := jobs.NewRunner(&pb.CombatStatus{State: "idle"})
 	runner.Decorate = func(j *job, st *pb.CombatStatus) { st.ElapsedS = uint32(time.Since(j.Start).Seconds()) }
 	pb.RegisterCombatServer(g, &Service{s: s, api: api.C{S: s}, loot: loot.NewTracker(), guid: guid, jobs: runner, failures: map[uint8]castFailure{},
-		melee: newMeleeLog(), abandoned: map[uint64]time.Time{}, crowded: map[uint64]time.Time{}, items: map[uint32]*worldpb.ItemInfo{}, book: &spellBook{ready: map[uint32]time.Time{}}})
+		rotations: map[uint32]*classTables{}, melee: newMeleeLog(), abandoned: map[uint64]time.Time{}, crowded: map[uint64]time.Time{}, items: map[uint32]*worldpb.ItemInfo{}, book: &spellBook{ready: map[uint32]time.Time{}}})
 }
 
 func (s *Service) OnPacket(_ context.Context, p *modv1.WorldPacket) (*emptypb.Empty, error) {
@@ -487,39 +484,51 @@ func (s *Service) mark(t *time.Time) {
 	s.mu.Unlock()
 }
 
-// forgetBuffs is called on death: buffs (and Weakened Soul) are gone.
+// forgetBuffs is called on death: buffs (and Weakened Soul) are gone, so are the waits between tries.
 func (s *Service) forgetBuffs() {
 	s.mu.Lock()
-	s.lastBuff, s.lastShield, s.lastRenew = time.Time{}, time.Time{}, time.Time{}
-	s.mu.Unlock()
+	defer s.mu.Unlock()
+	for _, t := range s.rotations {
+		if t == nil {
+			continue
+		}
+		for _, r := range []*rotation{t.fight, t.buffs} {
+			for _, l := range r.lines {
+				l.mark = time.Time{}
+			}
+		}
+	}
 }
 
-// buff refreshes Power Word: Fortitude and Inner Fire every 25 minutes (out of combat).
+// buff casts the buffs table of the class out of combat (Battle Shout, Fortitude, Inner Fire...),
+// up to three spells in a row.
 func (s *Service) buff(ctx context.Context, me *statepb.SelfInfo) {
-	if me.ClassId == warrior.ClassID {
-		s.warriorBuff(ctx, me)
-		return
-	}
-	if s.since(&s.lastBuff) < 10*time.Second || pct(me.Power, me.MaxPower) < 40 {
+	tab := s.tables(me.ClassId)
+	if tab == nil || len(tab.buffs.lines) == 0 {
 		return
 	}
 	known, err := s.api.Spells(ctx)
 	if err != nil {
 		return
 	}
-	// Renew a buff that is missing or has less than a minute left (from its aura).
-	for _, ranks := range [][]uint32{priest.Fortitude, priest.InnerFire} {
-		if id := best(known, ranks); id != 0 && needsRefresh(me.Auras, ranks, 60000) {
-			s.tryCast(ctx, id, me.Guid)
-			s.mark(&s.lastBuff)
-			sleep(ctx, 1200*time.Millisecond) // global cooldown
+	tab.buffs.prepare(known)
+	for i := 0; i < 3; i++ {
+		e := &env{ctx: ctx, s: s, me: me, known: known, started: time.Now(), diesIn: 99}
+		if cast, _ := s.step(ctx, tab.buffs, e, me.Guid); !cast {
+			return
 		}
+		sleep(ctx, 1700*time.Millisecond) // global cooldown (Bloodrage: its rage comes in)
+		b, err := s.api.Brief(ctx)
+		if err != nil || b.Self == nil {
+			return
+		}
+		me = b.Self
 	}
 }
 
 // fight returns whether the target died; a non-empty reason aborts the job.
-// Priority: heal when low, shield, renew, Shadow Word: Pain once, Mind Blast, Smite;
-// out of mana: wand (Shoot) if one is equipped, else melee.
+// Spells come from the priority table of the class (journal/classes/<class>.yaml); a caster out of
+// mana uses its wand (Shoot) if one is equipped, else melee.
 func (s *Service) fight(ctx context.Context, j *job, guid uint64) (bool, string) {
 	rec := s.watchFight(ctx, guid)
 	dead, why := s.fightClass(ctx, j, guid)
@@ -528,10 +537,11 @@ func (s *Service) fight(ctx context.Context, j *job, guid uint64) (bool, string)
 }
 
 func (s *Service) fightClass(ctx context.Context, j *job, guid uint64) (bool, string) {
-	if b, err := s.api.Brief(ctx); err == nil && b.Self != nil && b.Self.ClassId == warrior.ClassID {
+	b, err := s.api.Brief(ctx)
+	if err == nil && b.Self != nil && b.Self.ClassId == warrior.ClassID {
 		return s.fightWarrior(ctx, j, guid)
 	}
-	var busyUntil, lastSwing, lastShoot, lastBlast, painAt, losAt, lastFace time.Time
+	var lastSwing, lastShoot, losAt, lastFace time.Time
 	progress, lastHP := time.Now(), uint32(0)
 	selected := false
 	fails := 0
@@ -541,13 +551,11 @@ func (s *Service) fightClass(ctx context.Context, j *job, guid uint64) (bool, st
 	if err != nil {
 		return false, "spells unavailable"
 	}
-	smite := best(known, priest.Smite)
-	heal := best(known, priest.Heal)
-	if heal == 0 {
-		heal = best(known, priest.LesserHeal)
+	var rot *rotation
+	if b != nil && b.Self != nil {
+		rot = s.fightTable(b.Self.ClassId, known)
 	}
-	shield, renew := best(known, priest.Shield), best(known, priest.Renew)
-	pain, blast := best(known, priest.Pain), best(known, priest.MindBlast)
+	smite := best(known, priest.Smite)
 	shoot := uint32(0)
 	if snap, err := s.api.Snapshot(ctx); err == nil {
 		for _, it := range snap.Items {
@@ -582,7 +590,7 @@ func (s *Service) fightClass(ctx context.Context, j *job, guid uint64) (bool, st
 			s.forgetBuffs()
 			return false, "dead"
 		}
-		hp, mana := pct(me.Hp, me.MaxHp), pct(me.Power, me.MaxPower)
+		mana := pct(me.Power, me.MaxPower)
 		if lastHP == 0 || t.Hp < lastHP || s.melee.lastHit(guid).After(progress) {
 			progress = time.Now()
 		}
@@ -632,42 +640,17 @@ func (s *Service) fightClass(ctx context.Context, j *job, guid uint64) (bool, st
 		if force {
 			lastFace = time.Now()
 		}
-		if time.Now().After(busyUntil) {
-			// spell, target, time the cast keeps us busy (cast time or global cooldown)
-			var spell uint32
-			var target uint64
-			busy := 1600 * time.Millisecond
-			switch {
-			case heal != 0 && hp < 40 && mana >= 12:
-				spell, target, busy = heal, me.Guid, 3100*time.Millisecond
-			// Auras from the server; the short timers only cover the time the aura takes to show up.
-			case shield != 0 && hp < 80 && mana >= 15 && !hasAura(me.Auras, append([]uint32{priest.WeakenedSoul}, priest.Shield...)...) &&
-				s.since(&s.lastShield) > 3*time.Second:
-				spell, target = shield, me.Guid
-				s.mark(&s.lastShield)
-			case renew != 0 && hp < 65 && mana >= 15 && needsRefresh(me.Auras, priest.Renew, 1000) && s.since(&s.lastRenew) > 3*time.Second:
-				spell, target = renew, me.Guid
-				s.mark(&s.lastRenew)
-			case outOfMana:
-			case pain != 0 && mana >= 20 && pct(t.Hp, t.MaxHp) > 30 && needsRefresh(t.Auras, priest.Pain, 1000) && time.Since(painAt) > 3*time.Second &&
-				s.can(pain, me, t, dist):
-				spell, target, painAt = pain, guid, time.Now()
-			case blast != 0 && mana >= 30 && time.Since(lastBlast) > time.Second && s.can(blast, me, t, dist): // cooldown from the server
-				spell, target, lastBlast = blast, guid, time.Now()
-			default:
-				spell, target, busy = smite, guid, 2600*time.Millisecond
+		if rot != nil {
+			e := &env{ctx: ctx, s: s, me: me, t: t, dist: dist, known: known, started: started, diesIn: rot.observe(t),
+				noEnemy: time.Now().Before(meleeUntil)}
+			cast, refused := s.step(ctx, rot, e, guid)
+			if cast {
+				fails = 0
+				continue
 			}
-			if spell != 0 {
-				busyUntil = time.Now().Add(busy)
-				if !s.tryCast(ctx, spell, target) {
-					busyUntil = time.Now()
-					if target == guid {
-						if fails++; fails >= 3 {
-							meleeUntil = time.Now().Add(8 * time.Second) // e.g. line of sight: fight in melee for a while
-							fails = 0
-						}
-					}
-				} else {
+			if refused {
+				if fails++; fails >= 3 {
+					meleeUntil = time.Now().Add(8 * time.Second) // e.g. line of sight: fight in melee for a while
 					fails = 0
 				}
 				continue
@@ -763,51 +746,19 @@ func (s *Service) visible(ctx context.Context, t *statepb.Obj) bool {
 
 // ---- warrior --------------------------------------------------------------
 
-const (
-	inCombatFlag = 0x00080000 // UNIT_FLAG_IN_COMBAT on ourselves
-	chargeMin    = 8          // Charge range: 8 to 25 yards
-	chargeMax    = 24
-)
+const inCombatFlag = 0x00080000 // UNIT_FLAG_IN_COMBAT on ourselves
 
-// warriorBuff keeps Battle Shout up between fights; Bloodrage gives the 10 rage it costs.
-func (s *Service) warriorBuff(ctx context.Context, me *statepb.SelfInfo) {
-	// Out of combat, renew the shout before a pull when it has less than 30 s left (its aura says so).
-	if !needsRefresh(me.Auras, warrior.BattleShout, 30000) {
-		return
-	}
-	known, err := s.api.Spells(ctx)
-	if err != nil {
-		return
-	}
-	shout := best(known, warrior.BattleShout)
-	if shout == 0 {
-		return
-	}
-	if me.Power < 100 { // rage is stored x10; Battle Shout costs 10
-		br := best(known, warrior.Bloodrage)
-		if br == 0 || !s.tryCast(ctx, br, me.Guid) {
-			return // no rage out of combat: the shout is cast in the fight, with the first rage
-		}
-		sleep(ctx, 1500*time.Millisecond)
-	}
-	_ = s.tryCast(ctx, shout, me.Guid)
-}
-
-// fightWarrior follows journal/classes/warrior.yaml (rotation_solo): Charge to open, auto-attack,
-// Victory Rush after a kill, Execute on a low target, Overpower when it fires, Rend on targets that
-// live long enough, Mortal Strike / Slam once known, Thunder Clap at low level, Heroic Strike with
-// spare rage.
+// fightWarrior moves and swings; the spells come from the priority table of
+// journal/classes/warrior.yaml (Charge to open, Victory Rush, Execute, Overpower, Rend, defensives,
+// Heroic Strike with spare rage...).
 func (s *Service) fightWarrior(ctx context.Context, j *job, guid uint64) (bool, string) {
 	known, err := s.api.Spells(ctx)
 	if err != nil {
 		return false, "spells unavailable"
 	}
-	charge, rend, hs := best(known, warrior.Charge), best(known, warrior.Rend), best(known, warrior.HeroicStrike)
-	tc, vr, op := best(known, warrior.ThunderClap), best(known, warrior.VictoryRush), best(known, warrior.Overpower)
-	exe, ms, slam := best(known, warrior.Execute), best(known, warrior.MortalStrike), best(known, warrior.Slam)
-	var gcdUntil, lastSwing, lastFace, rendAt, tcAt, opTry, vrTry, msAt, hsAt time.Time
+	rot := s.fightTable(warrior.ClassID, known)
+	var lastSwing, lastFace time.Time
 	progress, lastHP := time.Now(), uint32(0)
-	shout := best(known, warrior.BattleShout)
 	selected := false
 	started := time.Now()
 	for time.Since(started) < 120*time.Second {
@@ -836,8 +787,6 @@ func (s *Service) fightWarrior(ctx context.Context, j *job, guid uint64) (bool, 
 			s.forgetBuffs()
 			return false, "dead"
 		}
-		rage := me.Power / 10
-		targetPct := pct(t.Hp, t.MaxHp)
 		dist := float32(math.Hypot(float64(t.X-me.X), float64(t.Y-me.Y)))
 		dist3 := float32(math.Sqrt(float64(dist*dist + (t.Z-me.Z)*(t.Z-me.Z))))
 		now := time.Now()
@@ -851,20 +800,26 @@ func (s *Service) fightWarrior(ctx context.Context, j *job, guid uint64) (bool, 
 			s.abandon(guid, "no damage dealt", t.Entry)
 			return false, ""
 		}
-		// Open with Charge (out of combat only): the server moves us next to the target.
-		if ok, _ := s.book.canCast(charge, me, t, dist3); charge != 0 && ok && dist >= chargeMin+1 && dist <= chargeMax && me.UnitFlags&inCombatFlag == 0 && t.Target != me.Guid &&
-			s.since(&s.lastCharge) > 15*time.Second && s.visible(ctx, t) {
+		if !selected {
 			s.packetU64(ctx, uint32(opcode.CMSGSetSelection), guid)
 			selected = true
-			s.face(ctx, me, t.X, t.Y)
-			s.mark(&s.lastCharge)
-			if s.tryCast(ctx, charge, guid) {
-				sleep(ctx, 800*time.Millisecond) // the charge itself
+		}
+		// Re-send our orientation when the server says we are not facing it, and every 2 s anyway.
+		tooFar, badFacing := s.melee.recent(1500 * time.Millisecond)
+		force := badFacing || now.Sub(lastFace) > 2*time.Second
+		s.faceTo(ctx, me, t.X, t.Y, force)
+		if force {
+			lastFace = now
+		}
+		s.checkWeapon(ctx)
+		// The table at any distance: Charge opens from afar, melee spells wait for the range check.
+		if rot != nil {
+			e := &env{ctx: ctx, s: s, me: me, t: t, dist: dist3, known: known, started: started, diesIn: rot.observe(t)}
+			if cast, _ := s.step(ctx, rot, e, guid); cast {
 				continue
 			}
 		}
 		// The server refuses swings out of range: get closer than our own estimate says.
-		tooFar, badFacing := s.melee.recent(1500 * time.Millisecond)
 		if dist3 > meleeRange || tooFar {
 			radius := float32(meleeRange - 2)
 			if tooFar {
@@ -876,84 +831,24 @@ func (s *Service) fightWarrior(ctx context.Context, j *job, guid uint64) (bool, 
 			}
 			continue
 		}
-		if !selected {
-			s.packetU64(ctx, uint32(opcode.CMSGSetSelection), guid)
-			selected = true
-		}
-		// Re-send our orientation when the server says we are not facing it, and every 2 s anyway.
-		force := badFacing || now.Sub(lastFace) > 2*time.Second
-		s.faceTo(ctx, me, t.X, t.Y, force)
-		if force {
-			lastFace = now
-		}
 		if now.Sub(lastSwing) > 3*time.Second {
 			s.packetU64(ctx, uint32(opcode.CMSGAttackswing), guid)
 			lastSwing = now
-		}
-		s.checkWeapon(ctx)
-		if now.After(gcdUntil) {
-			// Priority list: the first option whose condition holds and that the client-side check
-			// allows (cooldown, rage, aura state, range from Spell.dbc) is cast.
-			type option struct {
-				ok       bool
-				spell    uint32
-				mark     *time.Time
-				reactive bool // only usable after an event (dodge, kill): failures are expected
-				self     bool
-			}
-			opts := []option{
-				{ok: shout != 0 && needsRefresh(me.Auras, warrior.BattleShout, 3000), spell: shout, self: true},
-				{ok: vr != 0 && now.Sub(vrTry) > time.Second, spell: vr, mark: &vrTry, reactive: true},
-				{ok: exe != 0 && (auraState(t.AuraState, warrior.StateHealthBelow20) || targetPct < 20 || hasAura(me.Auras, warrior.SuddenDeath)), spell: exe},
-				{ok: op != 0 && (s.melee.dodged(guid, 4*time.Second) || hasAura(me.Auras, warrior.TasteForBlood)) && now.Sub(opTry) > time.Second,
-					spell: op, mark: &opTry, reactive: true},
-				{ok: rend != 0 && targetPct > 50 && needsRefresh(t.Auras, warrior.Rend, 2000) && now.Sub(rendAt) > 2*time.Second, spell: rend, mark: &rendAt},
-				{ok: ms != 0 && rage >= 30, spell: ms, mark: &msAt},
-				{ok: slam != 0 && me.Level >= 41, spell: slam},
-				{ok: tc != 0 && me.Level < 20 && now.Sub(tcAt) > time.Second, spell: tc, mark: &tcAt},
-			}
-			var spell uint32
-			var mark *time.Time
-			reactive := false
-			for _, o := range opts {
-				if !o.ok {
-					continue
-				}
-				var target *statepb.Obj
-				if !o.self {
-					target = t
-				}
-				if ok, _ := s.book.canCast(o.spell, me, target, dist3); !ok {
-					continue
-				}
-				spell, mark, reactive = o.spell, o.mark, o.reactive
-				break
-			}
-			if spell != 0 {
-				if mark != nil {
-					*mark = now
-				}
-				if s.tryCast(ctx, spell, guid) {
-					gcdUntil = time.Now().Add(1100 * time.Millisecond) // 1.5 s global cooldown minus the check
-
-				} else if !reactive && mark != nil {
-					*mark = time.Time{}
-				}
-				continue
-			}
-		}
-		// Heroic Strike replaces the next swing (no global cooldown): spend spare rage.
-		spare := uint32(30)
-		if me.Level >= 41 {
-			spare = 60 // Slam and Mortal Strike need the rage
-		}
-		if ok, _ := s.book.canCast(hs, me, t, dist3); hs != 0 && ok && rage >= spare && time.Since(hsAt) > 3500*time.Millisecond { // one per swing (2-3.6 s)
-			_, _ = s.cast(ctx, hs, guid)
-			hsAt = time.Now()
 		}
 		if !sleep(ctx, 300*time.Millisecond) {
 			return false, "cancelled"
 		}
 	}
 	return false, "fight timeout"
+}
+
+// fightTable returns the fight table of a class with the ranks we know, or nil.
+func (s *Service) fightTable(class uint32, known map[uint32]bool) *rotation {
+	tab := s.tables(class)
+	if tab == nil {
+		return nil
+	}
+	tab.fight.prepare(known)
+	tab.fight.target = 0
+	return tab.fight
 }

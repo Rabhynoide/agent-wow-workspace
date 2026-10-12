@@ -12,6 +12,19 @@ Un fichier YAML par classe (`warrior.yaml`, …), extrait des guides Icy Veins W
 - `null` = info absente ou ambiguë dans la source. `classic_only: true` = peut différer en 3.3.5a, à vérifier en jeu.
 - Noms de sorts/talents en anglais, tels qu'affichés par le client 3.3.5a.
 
+## Tables de priorités (`priorities`, `buffs`)
+Lues par le module combat (modèle Ovale). `priorities` en combat, `buffs` hors combat avant un pull : la première ligne
+dont la condition `if` passe et dont le sort est lançable (recharge, coût, aura state, portée, arme, d'après Spell.dbc)
+est lancée. Champs : `spell` (nom anglais, rangs dans `module/internal/<classe>`), `target: self` (sinon la cible),
+`every` (secondes entre deux essais), `cast` (secondes d'incantation, défaut : recharge globale), `after` (attente après
+le sort : la course de Charge), `reactive` (sort sur événement, les refus sont normaux), `off_gcd` (Heroic Strike :
+envoyé sans attendre).
+Conditions : `and`, `or`, `not`, `< <= > >= == !=`, parenthèses. Variables : `hp`, `mana` (%), `rage`, `level`,
+`in_combat`, `attackers` (unités qui nous ciblent à 30 yards), `fight_s`, `dist`, `visible`, `target_hp` (%),
+`target_level`, `target_on_me`, `target_dies_in` (s, d'après la baisse de ses PV ; 99 sans mesure). Fonctions :
+`aura("X")` (sur nous), `my_aura_left("X")` (s, la nôtre ; 0 si absente), `target_aura("X")`, `target_aura_left("X")`,
+`known("X")`, `dodged(s)`, `aura_state(n)`, `target_aura_state(n)`. Validées par le test de `combat` (`go test ./internal/combat`).
+
 ## Validation (workspace)
 `cd module && go run ./cmd/classcheck ../journal/classes/<classe>.yaml` : rejoue `talent_order` niveau par niveau avec les règles
 du serveur (1 point par niveau dès 10, 5 points par palier dans l'arbre, prérequis, rangs max, `removed_at`), vérifie l'arbre

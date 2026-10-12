@@ -7,3 +7,6 @@ services:
     volumes:
       - ../../logs:/logs
       - ../../assets/dbc:/dbc:ro
+      - ../../journal/classes:/classes:ro
+    environment:
+      CLASSES_DIR: /classes

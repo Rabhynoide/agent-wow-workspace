@@ -16,7 +16,12 @@ fi
 setsid nohup agent-wow char play "$char" --module-timeout 8m > logs/play.log 2>&1 < /dev/null &
 for _ in $(seq 1 100); do
   sleep 5
-  if grep -q "world session ready" logs/play.log; then echo "ready ($char, port $port)"; exit 0; fi
+  if grep -q "world session ready" logs/play.log; then
+    # Each start rebuilds the module images: drop the replaced ones (dangling) and keep the build
+    # cache under 2 GB, or they fill the disk (2026-10-12). Images in use are never touched.
+    (docker image prune -f; docker builder prune -f --max-used-space 2gb) > logs/docker_prune.log 2>&1 &
+    echo "ready ($char, port $port)"; exit 0
+  fi
   if ! pgrep -f "agent-wow char play $char" >/dev/null; then
     echo "char play exited:"; grep -iE "error|fail" logs/play.log | tail -5; exit 1
   fi

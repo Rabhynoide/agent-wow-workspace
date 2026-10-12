@@ -27,10 +27,21 @@ var (
 	Slam           = []uint32{47475, 47474, 25242, 25241, 11605, 11604, 8820, 1464}
 	SweepingStrike = []uint32{12328}
 	Bladestorm     = []uint32{46924}
+	IntimShout     = []uint32{5246}
+	Retaliation    = []uint32{20230}
+	EnragedRegen   = []uint32{55694}
+	BerserkerRage  = []uint32{18499}
 
 	SpellGroups = map[string][]uint32{
 		"Battle Shout": BattleShout, "Charge": Charge, "Rend": Rend, "Heroic Strike": HeroicStrike, "Thunder Clap": ThunderClap,
 		"Victory Rush": VictoryRush, "Overpower": Overpower, "Bloodrage": Bloodrage, "Execute": Execute, "Mortal Strike": MortalStrike,
-		"Slam": Slam, "Sweeping Strikes": SweepingStrike, "Bladestorm": Bladestorm,
+		"Slam": Slam, "Sweeping Strikes": SweepingStrike, "Bladestorm": Bladestorm, "Intimidating Shout": IntimShout,
+		"Retaliation": Retaliation, "Enraged Regeneration": EnragedRegen, "Berserker Rage": BerserkerRage,
+	}
+
+	// Auras by name for the priority table (journal/classes/warrior.yaml), when the aura is not the
+	// spell itself: procs and the buff Bloodrage leaves.
+	Auras = map[string][]uint32{
+		"Taste for Blood": {TasteForBlood}, "Sudden Death": {SuddenDeath}, "Victorious": {32216}, "Bloodrage": {29131},
 	}
 )

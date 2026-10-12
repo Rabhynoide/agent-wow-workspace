@@ -22,11 +22,26 @@ type Entry struct {
 	RemovedAt int    `yaml:"removed_at"`
 }
 
+// Priority is one line of a priority table (priorities, buffs): the first line whose condition holds
+// and whose spell can be cast wins (Ovale model). See journal/classes/README.md.
+type Priority struct {
+	Spell    string  `yaml:"spell"`
+	Target   string  `yaml:"target"` // "self", or empty for the enemy
+	If       string  `yaml:"if"`     // condition (combat/priority.go), empty = always
+	Every    float64 `yaml:"every"`  // seconds between two attempts
+	Cast     float64 `yaml:"cast"`   // seconds the cast keeps us busy (default: global cooldown)
+	After    float64 `yaml:"after"`  // seconds to wait after the cast (Charge: the run)
+	Reactive bool    `yaml:"reactive"`
+	OffGCD   bool    `yaml:"off_gcd"` // next-swing spells (Heroic Strike): sent without waiting
+}
+
 // File is the part of a class file the modules use.
 type File struct {
-	Class       string  `yaml:"class"`
-	Spec        string  `yaml:"recommended_leveling_spec"`
-	TalentOrder []Entry `yaml:"talent_order"`
+	Class       string     `yaml:"class"`
+	Spec        string     `yaml:"recommended_leveling_spec"`
+	TalentOrder []Entry    `yaml:"talent_order"`
+	Priorities  []Priority `yaml:"priorities"`
+	Buffs       []Priority `yaml:"buffs"`
 	Training    struct {
 		Skip []string `yaml:"skip"`
 	} `yaml:"training"`

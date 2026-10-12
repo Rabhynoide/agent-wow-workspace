@@ -19,10 +19,17 @@ var (
 	Fortitude   = []uint32{48161, 25389, 10938, 10937, 2791, 1245, 1244, 1243}
 	InnerFire   = []uint32{48168, 48040, 25431, 10952, 10951, 1006, 602, 7128, 588}
 	Shoot       = []uint32{5019}
+	Scream      = []uint32{10890, 10888, 8124, 8122}
+	Desperate   = []uint32{48173, 48172, 25437, 19243, 19242, 19241, 19240, 19238, 19236}
+	Fade        = []uint32{586}
 	SpellGroups = map[string][]uint32{
 		"Smite": Smite, "Lesser Heal": LesserHeal, "Heal": Heal, "Power Word: Shield": Shield, "Renew": Renew,
 		"Shadow Word: Pain": Pain, "Mind Blast": MindBlast, "Power Word: Fortitude": Fortitude, "Inner Fire": InnerFire, "Shoot": Shoot,
+		"Psychic Scream": Scream, "Desperate Prayer": Desperate, "Fade": Fade,
 	}
+
+	// Auras by name for the priority table (journal/classes/priest.yaml) that are not spells we cast.
+	Auras = map[string][]uint32{"Weakened Soul": {WeakenedSoul}, "Spirit Tap": {15271}}
 )
 
 // Best returns the highest known rank, or 0.
