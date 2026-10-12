@@ -145,6 +145,8 @@ Icy Veins bloque ma lecture (403) : à chaque palier ci-dessous, prévenir l'uti
 - [ ] Deux runs finissent « dead » au passage niveau 6 : à comprendre.
 - [ ] Morts en marchant pendant le grind (riposte en route) : éviter les monstres sur le chemin.
 
+## Bench 8ce2ca4 (2026-10-12) : niveau 6 en 48,9 min, 0 mort (meilleur run)
+
 ## Choix des monstres par XP/minute (idée utilisateur, 2026-10-12)
 - [~] Fait le 2026-10-12 (`xpscore`, choix des cibles de grind) ; reste : P_mort mesurée (morts par type de monstre, combats enchaînés), régénération mesurée, remplacer « niveau + 1 » dans auto et la capacité de pull. Modèle : XP/min = XP_kill / (T_kill + T_récup + T_recherche + P_mort × T_mort).
   - XP_kill : formule du serveur (×(20+écart)/20 au-dessus, réduction grise en dessous).
