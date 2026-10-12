@@ -6,3 +6,6 @@ services:
         CMD: auto
     volumes:
       - ../../logs:/logs
+      - ../../journal/learn:/learn:ro
+    environment:
+      LEARN_DIR: /learn

@@ -21,12 +21,17 @@ time=2026-10-12T15:00:04Z level=INFO msg=fight result=won target=1 target_level=
 time=2026-10-12T15:00:05Z level=INFO msg=fight result=won target=1 target_level=5 level=5 class=1 hp_start=100 hp_end=86 attackers_max=1 s=12
 time=2026-10-12T15:00:06Z level=INFO msg=fight result=won target=1 target_level=5 level=5 class=1 hp_start=100 hp_end=40 attackers_max=2 s=12
 time=2026-10-12T15:00:07Z level=INFO msg=fight result=died target=1 target_level=6 level=5 class=1 hp_start=30 hp_end=0 attackers_max=1 s=12
+time=2026-10-12T15:00:08Z level=INFO msg=fight result=died target=2 target_level=5 level=5 class=1 hp_start=100 hp_end=0 attackers_max=3 s=12
+time=2026-10-12T15:00:09Z level=INFO msg=fight result=died target=2 target_level=5 level=5 class=1 hp_start=35 hp_end=0 attackers_max=1 s=12
 `
 
 func TestLearnAndScore(t *testing.T) {
 	tb := &Table{Classes: map[string]map[string]*Cell{}}
-	if n := tb.Learn(strings.NewReader(lines)); n != 6 {
-		t.Fatalf("learned %d fights, want 6", n)
+	if n := tb.Learn(strings.NewReader(lines)); n != 10 {
+		t.Fatalf("learned %d fights, want 10", n)
+	}
+	if c := tb.Measured(1, 1, 1); c != (MobCell{N: 1, Deaths: 1, Chained: 1, ChainedDeaths: 1}) {
+		t.Fatalf("monster 1 at +1: %+v", c)
 	}
 	if n := tb.Learn(strings.NewReader(lines)); n != 0 {
 		t.Fatalf("lines learned twice: %d", n)
@@ -48,5 +53,25 @@ func TestLearnAndScore(t *testing.T) {
 	}
 	if c := Of(camp, 5, 1, tb); c.XPMin >= easy.XPMin || c.PDeath <= easy.PDeath {
 		t.Errorf("a camp (%.0f xp/min, death %.2f) should score below lone monsters (%.0f, %.2f)", c.XPMin, c.PDeath, easy.XPMin, easy.PDeath)
+	}
+	// Two deaths in two fights against monster 2 (same level): the measured risk wins over the model.
+	killer := base
+	killer.Entry, killer.MinLevel, killer.MaxLevel = 2, 5, 5
+	if k := Of(killer, 5, 1, tb); k.PDeath < 2.0/12 || k.Deaths != 2 || k.Chained != 1 {
+		t.Errorf("monster 2: death %.2f, measured %+v", k.PDeath, k)
+	}
+}
+
+// A table saved before the death counts reads the old lines again for them, once.
+func TestLearnMobsAfterUpgrade(t *testing.T) {
+	tb := &Table{Classes: map[string]map[string]*Cell{}, Until: "2026-10-12T15:00:09Z"}
+	if n := tb.Learn(strings.NewReader(lines)); n != 10 {
+		t.Fatalf("learned %d lines, want 10 (monster counts only)", n)
+	}
+	if tb.Classes["1"] != nil {
+		t.Fatal("single fights counted twice")
+	}
+	if c := tb.Measured(1, 2, 0); c.N != 2 || c.Deaths != 2 {
+		t.Fatalf("monster 2: %+v", c)
 	}
 }

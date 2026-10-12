@@ -116,15 +116,6 @@ func grayLevel(l uint32) uint32 {
 	return l - 9
 }
 
-// dangerMargin mirrors auto: monsters more than this many levels above the character are refused.
-func dangerMargin(class uint32) uint32 {
-	switch class {
-	case 5, 8, 9:
-		return 2
-	}
-	return 1
-}
-
 // playerFactions maps a race to its player faction template (ChrRaces.dbc).
 var playerFactions = map[uint32]uint32{1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 115, 8: 116, 10: 1610, 11: 1629}
 
@@ -188,7 +179,7 @@ const campRadius = 15
 // fights and the spawns around), and returns the best ones with a report line for each candidate.
 func (c *checker) grindTargets(mapID uint32, x, y, radius float64, level, class uint32, player faction.Template, factions faction.Table) ([]uint32, []string) {
 	lo := max(grayLevel(level)+1, level-min(level-1, 3))
-	hi := level + dangerMargin(class)
+	hi := level + 3 // searched; the too strong ones are refused by xpscore.Risky, as in auto
 	rows, err := c.db.Query(`SELECT c.id, t.name, t.faction, t.minlevel, t.maxlevel, t.HealthModifier, t.DamageModifier,
 			t.BaseAttackTime, t.ExperienceModifier, c.spawntimesecs, c.position_x, c.position_y, c.wander_distance,
 			t.`+"`rank`"+`=0 AND t.npcflag=0 AND t.type NOT IN (8,11,12)
@@ -266,24 +257,26 @@ func (c *checker) grindTargets(mapID uint32, x, y, radius float64, level, class 
 	var out []uint32
 	var report []string
 	for _, r := range all {
-		keep := r.s.PDeath <= maxDeathRisk && r.s.XP > 0 && len(out) < 4
+		risky := xpscore.Risky(*r.m, level, class, c.fights)
+		keep := risky == "" && r.s.PDeath <= xpscore.MaxDeathRisk && r.s.XP > 0 && len(out) < 4
 		if keep {
 			out = append(out, r.m.Entry)
 		}
-		report = append(report, fmt.Sprintf("%-5d %-22s L%d-%d spawns %2d near %.1f: %3.0f xp/min (xp %.0f, kill %.0fs, rest %.0fs, search %.0fs, loss %.0f%%, death %.0f%%)%s",
+		report = append(report, fmt.Sprintf("%-5d %-22s L%d-%d spawns %2d near %.1f: %3.0f xp/min (xp %.0f, kill %.0fs, rest %.0fs, search %.0fs, loss %.0f%%, death %.0f%%; measured %d fights, %d deaths, chained %d/%d)%s",
 			r.m.Entry, r.m.Name, r.m.MinLevel, r.m.MaxLevel, r.m.Spawns, r.m.Neighbours, r.s.XPMin, r.s.XP, r.s.KillS, r.s.RestS, r.s.SearchS,
-			r.s.Loss, 100*r.s.PDeath, map[bool]string{true: " <-", false: ""}[keep]))
+			r.s.Loss, 100*r.s.PDeath, r.s.Fights, r.s.Deaths, r.s.ChainedDeaths, r.s.Chained, map[bool]string{true: " <-", false: ""}[keep]))
+		if risky != "" {
+			report[len(report)-1] += " refused: " + risky
+		}
 	}
 	return out, report
 }
-
-// maxDeathRisk: monster types with a higher estimated death risk per kill are not grinded.
-const maxDeathRisk = 0.1
 
 // rpc talks to the agent-wow world RPC (same endpoint as scripts/rpc.sh).
 type rpc struct {
 	url      string
 	deadline time.Time // jobs are stopped past it (zero = none)
+	until    uint32    // jobs are stopped as soon as the character reaches this level (0 = never)
 }
 
 func (r rpc) call(method string, params, out any) error {
@@ -336,6 +329,14 @@ func (r rpc) job(method string, params map[string]any, log func(string, ...any))
 			log("  time limit: auto stopped")
 			return &jobStatus{State: "stopped", Reason: "time limit"}, nil
 		}
+		if r.until > 0 && st.Level >= r.until {
+			// Level reached: stop at once (user request, 2026-10-12), then fight off whatever is still
+			// attacking us, since auto.stop also stops the guard.
+			_ = r.call("auto.stop", map[string]any{}, nil)
+			r.defend()
+			log("  level %d reached: auto stopped", st.Level)
+			return &jobStatus{State: "stopped", Reason: "level reached", Level: st.Level}, nil
+		}
 		if st.Step != last {
 			log("  %s", st.Step)
 			last = st.Step
@@ -346,6 +347,20 @@ func (r rpc) job(method string, params map[string]any, log func(string, ...any))
 		}
 	}
 	return st, nil
+}
+
+// defend fights back until nothing attacks us (combat.defend, at most 3 minutes).
+func (r rpc) defend() {
+	st := &jobStatus{}
+	if r.call("combat.defend", map[string]any{"wait_s": 25}, st) != nil {
+		return
+	}
+	for i := 0; i < 8 && st.State == "running"; i++ {
+		st = &jobStatus{}
+		if r.call("combat.status", map[string]any{"wait_s": 25}, st) != nil {
+			return
+		}
+	}
 }
 
 type brief struct {
@@ -394,6 +409,7 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 	logf, _ := os.OpenFile(filepath.Join("..", "logs", "level_"+char+".log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
 	start := time.Now()
 	r.deadline = start.Add(time.Duration(maxMin) * time.Minute)
+	r.until = until
 	stamp := func() string { return fmt.Sprintf("[%s]", time.Since(start).Round(time.Second)) }
 	say := func(format string, a ...any) { // stdout and log
 		line := stamp() + " " + fmt.Sprintf(format, a...)

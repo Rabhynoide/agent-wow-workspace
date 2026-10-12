@@ -24,6 +24,7 @@ import (
 	"wowagent/internal/api"
 	"wowagent/internal/jobs"
 	"wowagent/internal/wire"
+	"wowagent/internal/xpscore"
 )
 
 const (
@@ -36,11 +37,6 @@ const (
 	// Do not walk further than this (yards) to a class trainer between quests: the walk does not
 	// avoid monsters yet.
 	maxTrainerDist = 400
-	// Monsters more than this many levels above the character, or elites, are not hunted: classes that
-	// heal or shield themselves (priest, mage, warlock) get 2 levels, melee classes without a heal 1
-	// (a level-5 warrior died twice on level 7-8 boars).
-	dangerLevelsCaster = 2
-	dangerLevelsMelee  = 1
 	// Repair when an equipped item falls below this durability (percent).
 	repairBelow = 60
 )
@@ -59,12 +55,14 @@ type Service struct {
 	repairFailedAt atomic.Uint32
 	// money when a food trip bought nothing (too poor): no new trip before we earn a silver more
 	foodFailedAt atomic.Uint32
+	// learned fights (journal/learn/fights.json): the danger of a monster type
+	fights *xpscore.File
 }
 
 func Register(g grpc.ServiceRegistrar, s modv1.SessionClient) {
 	runner := jobs.NewRunner(&pb.AutoStatus{State: "idle"})
 	runner.Decorate = func(j *job, st *pb.AutoStatus) { st.ElapsedS = uint32(time.Since(j.Start).Seconds()) }
-	svc := &Service{sess: s, corpse: make(chan [4]float32, 4), api: api.C{S: s}, jobs: runner}
+	svc := &Service{sess: s, corpse: make(chan [4]float32, 4), api: api.C{S: s}, jobs: runner, fights: xpscore.LearnedFile()}
 	pb.RegisterAutoServer(g, svc)
 	go svc.guardLoop()
 }
@@ -519,6 +517,9 @@ func nearestNpc(list []*worldpb.QuestNpc, mapID uint32, x, y float32) *worldpb.Q
 func (r *run) walk(x, y, z, radius float32) error {
 	deadline := time.Now().Add(240 * time.Second)
 	for fights := 0; ; {
+		// No new fight below walkRestBelow: a monster met on the way would be a chained fight
+		// (4 of the 5 deaths of the 2026-10-12 bench started at 12-41 %).
+		r.restBelow(walkRestBelow)
 		st, err := r.s.api.Goto(r.ctx, x, y, z, radius, 2)
 		attacked := false
 		for err == nil && st.State == "moving" {
@@ -779,7 +780,7 @@ func (r *run) huntAny(entries []uint32, name string, count uint32) error {
 		if err != nil || len(sp) == 0 {
 			continue
 		}
-		if why := tooDangerous(sp[0], me.Level, me.ClassId); why != "" {
+		if why := r.s.tooDangerous(sp[0], me.Level, me.ClassId); why != "" {
 			risky = append(risky, why)
 			continue
 		}
@@ -842,20 +843,22 @@ func (r *run) useItemOn(o *worldpb.QuestObjective, q *statepb.Quest) error {
 	return fmt.Errorf("used item %d on %s but got no credit", o.UseItem, best.Name)
 }
 
-// tooDangerous explains why a creature should not be hunted at this level ("" when it is fine).
-func tooDangerous(sp *worldpb.Spawn, level, class uint32) string {
-	margin := uint32(dangerLevelsMelee)
-	switch class {
-	case 5, 8, 9: // priest, mage, warlock
-		margin = dangerLevelsCaster
-	}
-	switch {
-	case sp.Rank == 1 || sp.Rank == 2 || sp.Rank == 3:
+// tooDangerous explains why a creature should not be hunted at this level ("" when it is fine): elites,
+// and monsters whose fight costs too much health or kills too often (xpscore.Risky, from the learned
+// fights; it replaces the fixed "level + 1" margin).
+func (s *Service) tooDangerous(sp *worldpb.Spawn, level, class uint32) string {
+	if sp.Rank == 1 || sp.Rank == 2 || sp.Rank == 3 {
 		return fmt.Sprintf("%s is an elite (rank %d)", sp.Name, sp.Rank)
-	case sp.MinLevel > level+margin:
-		return fmt.Sprintf("%s is level %d-%d (character %d)", sp.Name, sp.MinLevel, sp.MaxLevel, level)
+	}
+	if why := xpscore.Risky(spawnMob(sp), level, class, s.fights.Get()); why != "" {
+		return fmt.Sprintf("%s is level %d-%d (character %d): %s", sp.Name, sp.MinLevel, sp.MaxLevel, level, why)
 	}
 	return ""
+}
+
+func spawnMob(sp *worldpb.Spawn) xpscore.Mob {
+	return xpscore.Mob{Entry: sp.Entry, Name: sp.Name, MinLevel: sp.MinLevel, MaxLevel: sp.MaxLevel,
+		HealthMod: float64(sp.HealthMod), DamageMod: float64(sp.DamageMod), AttackMs: sp.AttackMs}
 }
 
 // campSize: a spawn point with this many others of the same creature within campRadius is a camp
@@ -903,7 +906,7 @@ func (r *run) huntAt(entry uint32, name string, count, itemEntry, itemCount uint
 	if err != nil || len(sp) == 0 {
 		return fmt.Errorf("no spawn found for %s (%d)", name, entry)
 	}
-	if why := tooDangerous(sp[0], me.Level, me.ClassId); why != "" {
+	if why := r.s.tooDangerous(sp[0], me.Level, me.ClassId); why != "" {
 		return fmt.Errorf("too dangerous for now: %s", why)
 	}
 	sp = byIsolation(sp)
@@ -1155,7 +1158,7 @@ func (r *run) collect(o *worldpb.QuestObjective) error {
 		if err != nil || len(sp) == 0 {
 			continue
 		}
-		if why := tooDangerous(sp[0], me.Level, me.ClassId); why != "" {
+		if why := r.s.tooDangerous(sp[0], me.Level, me.ClassId); why != "" {
 			risky = append(risky, why)
 			continue
 		}

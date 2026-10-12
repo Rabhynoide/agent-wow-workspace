@@ -166,7 +166,12 @@ type Spawn struct {
 	Z        float32                `protobuf:"fixed32,10,opt,name=z,proto3" json:"z,omitempty"`
 	Dist     float32                `protobuf:"fixed32,11,opt,name=dist,proto3" json:"dist,omitempty"`
 	// creature_template.rank: 0 normal, 1 elite, 2 rare elite, 3 boss, 4 rare.
-	Rank          uint32 `protobuf:"varint,12,opt,name=rank,proto3" json:"rank,omitempty"`
+	Rank uint32 `protobuf:"varint,12,opt,name=rank,proto3" json:"rank,omitempty"`
+	// creature_template.HealthModifier, DamageModifier, BaseAttackTime (ms); 0 for game objects and
+	// find_npc.
+	HealthMod     float32 `protobuf:"fixed32,13,opt,name=health_mod,json=healthMod,proto3" json:"health_mod,omitempty"`
+	DamageMod     float32 `protobuf:"fixed32,14,opt,name=damage_mod,json=damageMod,proto3" json:"damage_mod,omitempty"`
+	AttackMs      uint32  `protobuf:"varint,15,opt,name=attack_ms,json=attackMs,proto3" json:"attack_ms,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -281,6 +286,27 @@ func (x *Spawn) GetDist() float32 {
 func (x *Spawn) GetRank() uint32 {
 	if x != nil {
 		return x.Rank
+	}
+	return 0
+}
+
+func (x *Spawn) GetHealthMod() float32 {
+	if x != nil {
+		return x.HealthMod
+	}
+	return 0
+}
+
+func (x *Spawn) GetDamageMod() float32 {
+	if x != nil {
+		return x.DamageMod
+	}
+	return 0
+}
+
+func (x *Spawn) GetAttackMs() uint32 {
+	if x != nil {
+		return x.AttackMs
 	}
 	return 0
 }
@@ -2122,7 +2148,7 @@ const file_world_proto_rawDesc = "" +
 	"\tnpc_flags\x18\t \x01(\rR\bnpcFlags\x120\n" +
 	"\x14sells_spell_category\x18\n" +
 	" \x01(\rR\x12sellsSpellCategory\x12&\n" +
-	"\x0fsells_max_level\x18\v \x01(\rR\rsellsMaxLevel\"\x86\x02\n" +
+	"\x0fsells_max_level\x18\v \x01(\rR\rsellsMaxLevel\"\xe1\x02\n" +
 	"\x05Spawn\x12\x14\n" +
 	"\x05entry\x18\x01 \x01(\rR\x05entry\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1b\n" +
@@ -2136,7 +2162,12 @@ const file_world_proto_rawDesc = "" +
 	"\x01z\x18\n" +
 	" \x01(\x02R\x01z\x12\x12\n" +
 	"\x04dist\x18\v \x01(\x02R\x04dist\x12\x12\n" +
-	"\x04rank\x18\f \x01(\rR\x04rank\"C\n" +
+	"\x04rank\x18\f \x01(\rR\x04rank\x12\x1d\n" +
+	"\n" +
+	"health_mod\x18\r \x01(\x02R\thealthMod\x12\x1d\n" +
+	"\n" +
+	"damage_mod\x18\x0e \x01(\x02R\tdamageMod\x12\x1b\n" +
+	"\tattack_ms\x18\x0f \x01(\rR\battackMs\"C\n" +
 	"\x0fFindNpcResponse\x120\n" +
 	"\x06spawns\x18\x01 \x03(\v2\x18.wowagent.world.v1.SpawnR\x06spawns\"8\n" +
 	"\x10QuestInfoRequest\x12\x0e\n" +

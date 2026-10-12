@@ -39,6 +39,11 @@ message Spawn {
   float dist = 11;
   // creature_template.rank: 0 normal, 1 elite, 2 rare elite, 3 boss, 4 rare.
   uint32 rank = 12;
+  // creature_template.HealthModifier, DamageModifier, BaseAttackTime (ms); 0 for game objects and
+  // find_npc.
+  float health_mod = 13;
+  float damage_mod = 14;
+  uint32 attack_ms = 15;
 }
 
 message FindNpcResponse {

@@ -9,6 +9,7 @@ import (
 	pb "wowagent/gen/combatv1"
 	statepb "wowagent/gen/statev1"
 	"wowagent/internal/safe"
+	"wowagent/internal/xpscore"
 )
 
 // Pulling a single monster. A monster attacks on sight within its aggro range; the ones around our
@@ -37,18 +38,6 @@ func pullWeight(player, creature uint32) float32 {
 	return 1
 }
 
-// pullCapacity is how many monsters (weighted) we accept at once by default. It grows with the level
-// (more health, area spells); see BACKLOG for making it learn from the fights.
-func pullCapacity(level uint32) float32 {
-	switch {
-	case level >= 40:
-		return 2
-	case level >= 20:
-		return 1.5
-	}
-	return 1
-}
-
 func dist2D(ax, ay, bx, by float32) float32 {
 	return float32(math.Hypot(float64(ax-bx), float64(ay-by)))
 }
@@ -68,9 +57,9 @@ func addsOf(t *statepb.Obj, hostiles []*statepb.Obj, level uint32) []*statepb.Ob
 	return out
 }
 
-// pullLoad is the weighted count of the target and its adds. The target alone counts at most 1: a
-// monster a level or two above us is still fine alone (too strong ones are refused before, by the
-// danger margin); only the adds can push the load over the capacity.
+// pullLoad is the weighted count of the target and its adds, against an explicit max_pull. The
+// target alone counts at most 1: a monster a level or two above us is still fine alone (too strong
+// ones are refused before, by auto's danger check); only the adds can push the load over it.
 func pullLoad(t *statepb.Obj, adds []*statepb.Obj, level uint32) float32 {
 	w := min(pullWeight(level, t.Level), 1)
 	for _, a := range adds {
@@ -107,6 +96,32 @@ func pullSpot(me, t *statepb.Obj, others []*statepb.Obj, level uint32) (x, y flo
 	return x, y, ok
 }
 
+// pullFits tells whether a target and its adds can be fought now, with the load and its limit: with
+// maxPull > 0, the weighted count (pullLoad) against it; otherwise the expected health loss of the
+// learned fights (xpscore.PullLoss) must leave xpscore.PullReserve of our health. A lone target
+// always fits (auto refuses the too strong ones).
+func (s *Service) pullFits(me *statepb.SelfInfo, maxPull float32) func(t *statepb.Obj, adds []*statepb.Obj) (bool, float32, float32) {
+	if maxPull > 0 {
+		return func(t *statepb.Obj, adds []*statepb.Obj) (bool, float32, float32) {
+			load := pullLoad(t, adds, me.Level)
+			return load <= maxPull, load, maxPull
+		}
+	}
+	table := s.fights.Get()
+	limit := float32(pct(me.Hp, me.MaxHp)) - xpscore.PullReserve
+	return func(t *statepb.Obj, adds []*statepb.Obj) (bool, float32, float32) {
+		if len(adds) == 0 {
+			return true, 0, limit
+		}
+		levels := []uint32{t.Level}
+		for _, a := range adds {
+			levels = append(levels, a.Level)
+		}
+		loss := float32(xpscore.PullLoss(levels, me.Level, me.ClassId, table))
+		return loss <= limit, loss, limit
+	}
+}
+
 // choosePull returns the target to fight, after a body pull when needed; nil when no monster of the
 // entry can be engaged safely for now (they are marked as given up for a while).
 func (s *Service) choosePull(ctx context.Context, j *job, me *statepb.SelfInfo, r *pb.KillRequest, radius float32) (*statepb.Obj, error) {
@@ -125,10 +140,7 @@ func (s *Service) choosePull(ctx context.Context, j *job, me *statepb.SelfInfo, 
 	if err != nil {
 		return nil, err
 	}
-	capacity := r.MaxPull
-	if capacity <= 0 {
-		capacity = pullCapacity(me.Level)
-	}
+	fits := s.pullFits(me, r.MaxPull)
 	self := &statepb.Obj{Guid: me.Guid, X: me.X, Y: me.Y, Z: me.Z}
 	var crowded, taken []*statepb.Obj
 	for _, c := range cands.Objs {
@@ -143,11 +155,11 @@ func (s *Service) choosePull(ctx context.Context, j *job, me *statepb.SelfInfo, 
 			continue
 		}
 		adds := addsOf(c, hostile.Objs, me.Level)
-		load := pullLoad(c, adds, me.Level)
-		if load <= capacity {
+		ok, load, limit := fits(c, adds)
+		if ok {
 			return c, nil
 		}
-		slog.Info("crowded target", "entry", c.Entry, "level", c.Level, "dist", int(c.Dist), "adds", len(adds), "load", load, "capacity", capacity)
+		slog.Info("crowded target", "entry", c.Entry, "level", c.Level, "dist", int(c.Dist), "adds", len(adds), "load", load, "limit", limit)
 		crowded = append(crowded, c)
 	}
 	for i, c := range crowded {

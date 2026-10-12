@@ -6,7 +6,9 @@ services:
         CMD: combat
     volumes:
       - ../../logs:/logs
+      - ../../journal/learn:/learn:ro
       - ../../assets/dbc:/dbc:ro
       - ../../journal/classes:/classes:ro
     environment:
+      LEARN_DIR: /learn
       CLASSES_DIR: /classes

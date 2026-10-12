@@ -1,9 +1,11 @@
 package combat
 
 import (
+	"path/filepath"
 	"testing"
 
 	statepb "wowagent/gen/statev1"
+	"wowagent/internal/xpscore"
 )
 
 func TestAggroAndWeights(t *testing.T) {
@@ -12,9 +14,6 @@ func TestAggroAndWeights(t *testing.T) {
 	}
 	if pullWeight(10, 4) != 0.25 || pullWeight(10, 7) != 0.5 || pullWeight(10, 10) != 1 || pullWeight(10, 13) != 2 {
 		t.Fatal("pull weights")
-	}
-	if pullCapacity(8) != 1 || pullCapacity(25) != 1.5 || pullCapacity(60) != 2 {
-		t.Fatal("capacity")
 	}
 }
 
@@ -30,12 +29,12 @@ func TestAddsAndPullSpot(t *testing.T) {
 	if len(adds) != 1 || adds[0].Guid != 2 {
 		t.Fatalf("adds = %+v, want only the idle friend", adds)
 	}
-	if load := pullLoad(target, adds, lvl); load != 2 || load <= pullCapacity(lvl) {
-		t.Fatalf("load %v: the pair must exceed a level-10 capacity", load)
+	if load := pullLoad(target, adds, lvl); load != 2 {
+		t.Fatalf("load %v, want 2", load)
 	}
-	// Alone, a monster above our level still fits the capacity.
+	// Alone, a monster above our level still counts 1.
 	strong := &statepb.Obj{Guid: 5, Level: 12}
-	if load := pullLoad(strong, nil, lvl); load > pullCapacity(lvl) {
+	if load := pullLoad(strong, nil, lvl); load > 1 {
 		t.Fatalf("a lone level-12 monster has load %v at level 10", load)
 	}
 	if len(addsOf(far, all, lvl)) != 0 {
@@ -61,5 +60,33 @@ func TestAddsAndPullSpot(t *testing.T) {
 	}
 	if _, _, ok := pullSpot(me, target, ring, lvl); ok {
 		t.Fatal("a surrounded target cannot be pulled alone")
+	}
+}
+
+// Pull capacity from the learned fights (no table: 14 % per fight at the same level).
+func TestPullFits(t *testing.T) {
+	s := &Service{fights: xpscore.NewFile(filepath.Join(t.TempDir(), "none.json"))}
+	full := &statepb.SelfInfo{Level: 5, ClassId: 1, Hp: 100, MaxHp: 100}
+	hurt := &statepb.SelfInfo{Level: 5, ClassId: 1, Hp: 75, MaxHp: 100}
+	mob := func(lv uint32) *statepb.Obj { return &statepb.Obj{Level: lv} }
+	for _, c := range []struct {
+		me   *statepb.SelfInfo
+		adds []*statepb.Obj
+		ok   bool
+	}{
+		{hurt, nil, true},                     // alone
+		{full, []*statepb.Obj{mob(5)}, true},  // 14 × 2.5 = 35 ≤ 65
+		{hurt, []*statepb.Obj{mob(5)}, true},  // 35 ≤ 40
+		{hurt, []*statepb.Obj{mob(6)}, false}, // (14 + 26) / 2 × 2.5 = 50 > 40
+		{full, []*statepb.Obj{mob(5), mob(5)}, true},
+		{full, []*statepb.Obj{mob(5), mob(5), mob(5)}, false},
+	} {
+		ok, loss, limit := s.pullFits(c.me, 0)(mob(5), c.adds)
+		if ok != c.ok {
+			t.Errorf("hp %d, %d adds: fits=%v (loss %.0f, limit %.0f), want %v", c.me.Hp, len(c.adds), ok, loss, limit, c.ok)
+		}
+	}
+	if ok, _, _ := s.pullFits(full, 1)(mob(5), []*statepb.Obj{mob(5)}); ok {
+		t.Error("max_pull 1 must refuse a pair")
 	}
 }

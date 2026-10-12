@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bot WoW</title>
+<style>
+:root {
+  --bg: #f6f5f2; --card: #ffffff; --text: #1d1c1a; --muted: #6b6862; --line: #e4e1db;
+  --accent: #2f6fde; --good: #2e8b57; --bad: #c8412f; --warn: #c88a1f; --bar: #ebe8e2;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141414; --card: #1d1d1d; --text: #ecebe8; --muted: #9a968f; --line: #2e2d2b;
+    --accent: #6b9cff; --good: #5cc28a; --bad: #ef6f5c; --warn: #e6b04a; --bar: #2a2927;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 1180px; margin: 0 auto; padding: 20px 16px 40px; }
+header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+h1 { font-size: 20px; margin: 0; }
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+.muted { color: var(--muted); }
+.grid { display: grid; gap: 14px; grid-template-columns: repeat(12, 1fr); }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; min-width: 0; }
+.s4 { grid-column: span 4; } .s5 { grid-column: span 5; } .s6 { grid-column: span 6; } .s7 { grid-column: span 7; } .s8 { grid-column: span 8; } .s12 { grid-column: span 12; }
+@media (max-width: 860px) { .s4, .s5, .s6, .s7, .s8 { grid-column: span 12; } }
+.big { font-size: 28px; font-weight: 650; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin-top: 10px; }
+.meter { height: 8px; background: var(--bar); border-radius: 4px; overflow: hidden; margin: 4px 0 8px; }
+.meter > div { height: 100%; border-radius: 4px; transition: width .4s; }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.pill.ok { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good); }
+.pill.bad { background: color-mix(in srgb, var(--bad) 18%, transparent); color: var(--bad); }
+.pill.idle { background: var(--bar); color: var(--muted); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { color: var(--muted); font-weight: 600; font-size: 12px; }
+tr.died td { color: var(--bad); font-weight: 600; }
+.scroll { overflow-x: auto; }
+pre { margin: 0; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; word-break: break-word; max-height: 380px; overflow-y: auto; }
+.steps { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.step { border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px; font-size: 12px; }
+.step b { font-size: 14px; }
+svg text { fill: var(--muted); font-size: 11px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Bot WoW <span id="who" class="muted"></span></h1>
+    <span class="muted" id="refresh">…</span>
+  </header>
+  <div class="grid">
+    <section class="card s4">
+      <h2>Personnage (en direct)</h2>
+      <div id="live" class="muted">Session non joignable.</div>
+    </section>
+    <section class="card s8">
+      <h2>Run en cours</h2>
+      <div id="levels" class="steps"></div>
+      <pre id="log" style="margin-top:10px"></pre>
+    </section>
+    <section class="card s7">
+      <h2>Derniers combats</h2>
+      <div class="scroll"><table id="fights"></table></div>
+    </section>
+    <section class="card s5">
+      <h2>Risque appris par monstre</h2>
+      <div class="scroll"><table id="mobs"></table></div>
+      <h2 style="margin-top:16px">Combat seul par écart de niveau (guerrier)</h2>
+      <div class="scroll"><table id="gaps"></table></div>
+    </section>
+    <section class="card s12">
+      <h2>Benchs 1 → 6</h2>
+      <svg id="chart" width="100%" height="150" role="img" aria-label="Minutes et morts par bench"></svg>
+      <div class="scroll"><table id="benches"></table></div>
+    </section>
+  </div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const el = (tag, text, cls) => { const e = document.createElement(tag); if (text !== undefined) e.textContent = text; if (cls) e.className = cls; return e; };
+let names = {};
+
+function table(id, head, rows, rowClass) {
+  const t = $(id); t.replaceChildren();
+  const tr = el('tr'); head.forEach(h => tr.append(el('th', h))); t.append(tr);
+  rows.forEach(r => { const row = el('tr', undefined, rowClass ? rowClass(r) : ''); r.cells.forEach(c => row.append(el('td', c == null ? '' : c))); t.append(row); });
+  if (!rows.length) { const row = el('tr'); const td = el('td', 'rien pour l’instant', 'muted'); td.colSpan = head.length; row.append(td); t.append(row); }
+}
+
+function meter(label, value, max, color) {
+  const box = el('div');
+  const pct = max ? Math.max(0, Math.min(100, 100 * value / max)) : 0;
+  box.append(el('div', `${label} ${value} / ${max} (${Math.round(pct)} %)`, 'muted'));
+  const m = el('div', undefined, 'meter'); const f = el('div'); f.style.width = pct + '%'; f.style.background = color; m.append(f); box.append(m);
+  return box;
+}
+
+function live(d) {
+  const box = $('live'); box.replaceChildren();
+  const s = d.live && d.live.self;
+  if (!s) { box.textContent = 'Session non joignable (bot arrêté ?).'; box.className = 'muted'; return; }
+  box.className = '';
+  const state = s.dead || s.ghost ? el('span', s.ghost ? 'fantôme' : 'mort', 'pill bad') : el('span', 'vivant', 'pill ok');
+  const top = el('div'); top.append(el('span', `Niveau ${s.level} `, 'big'), state); box.append(top);
+  box.append(meter('PV', s.hp || 0, s.maxHp || 0, 'var(--good)'));
+  box.append(meter('XP', s.xp || 0, s.nextXp || 0, 'var(--accent)'));
+  const kv = el('div', undefined, 'kv');
+  const money = s.money || 0;
+  [['Argent', `${Math.floor(money / 10000)} po ${Math.floor(money / 100) % 100} pa ${money % 100} pc`],
+   ['Durabilité', d.live.durabilityPct !== undefined ? d.live.durabilityPct + ' %' : '—'],
+   ['Sacs libres', d.live.freeSlots == null ? '—' : d.live.freeSlots],
+   ['Position', `${Math.round(s.x)}, ${Math.round(s.y)} (carte ${s.map || 0})`],
+   ['Quêtes en cours', (d.live.quests || []).length]].forEach(([k, v]) => kv.append(el('span', k, 'muted'), el('span', String(v))));
+  box.append(kv);
+}
+
+function run(d) {
+  const r = d.run; $('levels').replaceChildren(); $('log').textContent = '';
+  if (!r) return;
+  names = r.names || {};
+  $('who').textContent = '· ' + r.name;
+  const age = Math.round(Date.now() / 1000 - r.updated);
+  const status = el('span', age < 120 ? 'actif' : `inactif depuis ${Math.round(age / 60)} min`, 'pill ' + (age < 120 ? 'ok' : 'idle'));
+  $('levels').append(status);
+  Object.entries(r.levels).sort((a, b) => a[0] - b[0]).forEach(([lv, min]) => {
+    const s = el('span', undefined, 'step'); s.append(el('b', 'L' + lv), document.createTextNode(` à ${min} min`)); $('levels').append(s);
+  });
+  $('log').textContent = r.lines.map(l => l.replace(/^\d{4}-\d\d-\d\d /, '')).join('\n');
+  $('log').scrollTop = $('log').scrollHeight;
+}
+
+const mob = e => names[e] ? `${names[e]} (${e})` : e;
+
+function render(d) {
+  live(d); run(d);
+  table('fights', ['Heure', 'Résultat', 'Cible', 'Niv.', 'Écart', 'PV début', 'PV min', 'Attaquants', 'Durée'],
+    d.fights.map(f => ({ died: f.result === 'died', cells: [f.time, f.result === 'died' ? 'mort' : 'gagné', mob(f.target), f.level, (f.gap > 0 ? '+' : '') + f.gap, f.hp_start + ' %', f.hp_min + ' %', f.attackers, f.s + ' s'] })),
+    r => r.died ? 'died' : '');
+  table('mobs', ['Monstre', 'Combats', 'Morts', 'Taux', 'Enchaînés (morts)'],
+    d.learned.mobs.slice(0, 12).map(m => ({ died: m.deaths > 0, cells: [mob(m.entry), m.n, m.deaths, m.n ? Math.round(100 * m.deaths / m.n) + ' %' : '—', `${m.chained} (${m.chained_deaths})`] })),
+    r => r.died ? 'died' : '');
+  table('gaps', ['Écart', 'Combats', 'PV perdus', 'Durée'],
+    Object.entries(d.learned.gaps).sort((a, b) => a[0] - b[0]).map(([g, c]) => ({ cells: [(g > 0 ? '+' : '') + g, c.n, c.loss + ' %', c.s + ' s'] })));
+  const b = d.benches.slice().reverse();
+  table('benches', ['Date', 'Commit', 'Niveau', 'Minutes', 'Morts', 'Quêtes', 'Combats en marchant', 'Argent'],
+    b.map(x => ({ died: x.deaths !== '0', cells: [x.date, x.commit, `${x.final_level}${x.reached === '1' ? ' ✓' : ''}`, x.minutes, x.deaths, x.quests_done, x.walk_fights, x.money] })));
+  chart(d.benches);
+}
+
+function chart(rows) {
+  const svg = $('chart'); svg.replaceChildren();
+  const ns = 'http://www.w3.org/2000/svg', W = svg.clientWidth || 800, H = 150, pad = 24;
+  if (!rows.length) return;
+  const maxMin = Math.max(...rows.map(r => +r.minutes || 0), 1), bw = (W - pad) / rows.length;
+  rows.forEach((r, i) => {
+    const h = (H - pad - 8) * (+r.minutes || 0) / maxMin, x = pad + i * bw;
+    const rect = document.createElementNS(ns, 'rect');
+    Object.entries({ x: x + bw * .15, y: H - pad - h, width: bw * .7, height: h, rx: 3,
+      fill: r.reached === '1' ? 'var(--good)' : (r.deaths !== '0' ? 'var(--bad)' : 'var(--warn)') }).forEach(([k, v]) => rect.setAttribute(k, v));
+    const t = document.createElementNS(ns, 'title'); t.textContent = `${r.date} · ${r.commit} · niveau ${r.final_level} en ${r.minutes} min, ${r.deaths} morts`; rect.append(t);
+    svg.append(rect);
+    const lbl = document.createElementNS(ns, 'text'); lbl.setAttribute('x', x + bw / 2); lbl.setAttribute('y', H - 8); lbl.setAttribute('text-anchor', 'middle');
+    lbl.textContent = `L${r.final_level}·${r.deaths}☠`; svg.append(lbl);
+  });
+  const ax = document.createElementNS(ns, 'text'); ax.setAttribute('x', 0); ax.setAttribute('y', 12); ax.textContent = `${Math.round(maxMin)} min`; svg.append(ax);
+}
+
+async function tick() {
+  try {
+    const r = await fetch('/api/data', { cache: 'no-store' });
+    render(await r.json());
+    $('refresh').textContent = 'mis à jour ' + new Date().toLocaleTimeString('fr-FR') + ' · toutes les 10 s';
+  } catch (e) { $('refresh').textContent = 'serveur du tableau de bord arrêté'; }
+}
+tick(); setInterval(tick, 10000);
+</script>
+</body>
+</html>

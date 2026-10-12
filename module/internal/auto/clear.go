@@ -10,6 +10,7 @@ import (
 	statepb "wowagent/gen/statev1"
 	worldpb "wowagent/gen/worldv1"
 	"wowagent/internal/safe"
+	"wowagent/internal/xpscore"
 )
 
 // Clearing a path step by step (user's idea for the mine explorations): look at the next stretch of
@@ -80,15 +81,16 @@ func (r *run) clearWalk(x, y, z, radius float32) error {
 		}
 		if bl := blockers(seg, vis.Objs, me.Level); len(bl) > 0 {
 			t := bl[0]
-			sp := &worldpb.Spawn{Name: fmt.Sprintf("monster %d", t.Entry), MinLevel: t.Level, MaxLevel: t.Level}
-			if why := tooDangerous(sp, me.Level, me.ClassId); why != "" {
+			sp := &worldpb.Spawn{Entry: t.Entry, Name: fmt.Sprintf("monster %d", t.Entry), MinLevel: t.Level, MaxLevel: t.Level}
+			if why := r.s.tooDangerous(sp, me.Level, me.ClassId); why != "" {
 				return fmt.Errorf("path blocked: %s", why)
 			}
-			// One fight at a time, but against a whole passage: a guard above our level wins too often
-			// (bench c8edda2: three deaths clearing the Fargodeep mine at level 5 against level-6 kobolds).
-			// "too dangerous" makes level.sh postpone the quest to the next level.
-			if t.Level > me.Level {
-				return fmt.Errorf("too dangerous for now: path guarded by monster %d (level %d, character %d)", t.Entry, t.Level, me.Level)
+			// One fight at a time, but against a whole passage: each guard must cost at most
+			// passageLoss (bench c8edda2: three deaths clearing the Fargodeep mine at level 5 against
+			// level-6 kobolds, about 28 % each). "too dangerous" makes level.sh postpone the quest to
+			// the next level.
+			if loss, _ := xpscore.Single(spawnMob(sp), t.Level, me.Level, me.ClassId, r.s.fights.Get()); loss > passageLoss {
+				return fmt.Errorf("too dangerous for now: path guarded by monster %d (level %d, character %d, expected loss %.0f %%)", t.Entry, t.Level, me.Level, loss)
 			}
 			r.step("clearing the way: monster %d (level %d) %.0f yards away", t.Entry, t.Level, t.Dist)
 			if _, err := r.fightJob(&combatpb.KillRequest{Guid: t.Guid, Radius: 80, MaxS: 120, WaitS: 20}); err != nil &&
@@ -106,12 +108,23 @@ func (r *run) clearWalk(x, y, z, radius float32) error {
 	return fmt.Errorf("clearing the way to (%.0f,%.0f): too many steps", x, y)
 }
 
+// passageLoss: the most health (percent) one guard of a passage may cost on average; the fights
+// follow each other with a rest only below 70 %.
+const passageLoss = 0.6 * xpscore.MaxLoss
+
 // restIfHurt rests (and eats) below 70 % health before the next monster.
-func (r *run) restIfHurt() {
+func (r *run) restIfHurt() { r.restBelow(70) }
+
+// walkRestBelow: a walk starts (or goes on after a fight) only above this health (percent).
+const walkRestBelow = 40
+
+// restBelow rests (and eats) when alive with less than pct % health.
+func (r *run) restBelow(pct uint32) {
 	b, err := r.s.api.Brief(r.ctx)
-	if err != nil || b.Self == nil || b.Self.MaxHp == 0 || b.Self.Hp*100/b.Self.MaxHp >= 70 {
+	if err != nil || b.Self == nil || b.Self.Dead || b.Self.Ghost || b.Self.MaxHp == 0 || b.Self.Hp*100/b.Self.MaxHp >= pct {
 		return
 	}
+	r.step("resting first (%d %% health)", b.Self.Hp*100/b.Self.MaxHp)
 	st, err := r.s.api.CombatRest(r.ctx)
 	for err == nil && st.State == "running" {
 		st, err = r.s.api.CombatStatus(r.ctx, 20)

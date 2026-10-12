@@ -39,8 +39,9 @@ type KillRequest struct {
 	// Seconds to block before returning the current status (default 20, max 25).
 	WaitS  uint32 `protobuf:"varint,7,opt,name=wait_s,json=waitS,proto3" json:"wait_s,omitempty"`
 	NoLoot bool   `protobuf:"varint,8,opt,name=no_loot,json=noLoot,proto3" json:"no_loot,omitempty"`
-	// Monsters (weighted by level) we accept to fight at once; 0 = default by level (1, 1.5 from 20, 2
-	// from 40). A target with more around it is body pulled or skipped.
+	// Monsters (weighted by level) we accept to fight at once; 0 = from the learned fights: the expected
+	// loss of the target and its adds must leave 35 % of health (xpscore.PullLoss). A target with more
+	// around it is body pulled or skipped.
 	MaxPull float32 `protobuf:"fixed32,9,opt,name=max_pull,json=maxPull,proto3" json:"max_pull,omitempty"`
 	// Try to body pull a crowded target alone (experimental: see BACKLOG); otherwise crowded targets
 	// are skipped for a while.

@@ -139,10 +139,10 @@ func (s *Service) FindNpc(ctx context.Context, r *pb.FindNpcRequest) (*pb.FindNp
 
 func (s *Service) Spawns(ctx context.Context, r *pb.SpawnsRequest) (*pb.SpawnsResponse, error) {
 	table, tpl, idcol := "creature", "creature_template", "id"
-	nameExpr, lvl := "t.name", "t.minlevel, t.maxlevel, t.npcflag, t.faction, t.`rank`"
+	nameExpr, lvl := "t.name", "t.minlevel, t.maxlevel, t.npcflag, t.faction, t.`rank`, t.HealthModifier, t.DamageModifier, t.BaseAttackTime"
 	if r.Kind == "gameobject" {
 		table, tpl = "gameobject", "gameobject_template"
-		lvl = "0, 0, 0, 0, 0"
+		lvl = "0, 0, 0, 0, 0, 0, 0, 0"
 	}
 	q := fmt.Sprintf("SELECT t.entry, %s, %s, c.map, c.position_x, c.position_y, c.position_z, SQRT(POW(c.position_x-?,2)+POW(c.position_y-?,2)) AS dist "+
 		"FROM %s c JOIN %s t ON t.entry=c.%s WHERE c.%s=? AND c.map=?", nameExpr, lvl, table, tpl, idcol, idcol)
@@ -160,7 +160,7 @@ func (s *Service) Spawns(ctx context.Context, r *pb.SpawnsRequest) (*pb.SpawnsRe
 	out := &pb.SpawnsResponse{}
 	for rows.Next() {
 		sp := &pb.Spawn{}
-		if err := rows.Scan(&sp.Entry, &sp.Name, &sp.MinLevel, &sp.MaxLevel, &sp.NpcFlags, &sp.Faction, &sp.Rank, &sp.Map, &sp.X, &sp.Y, &sp.Z, &sp.Dist); err != nil {
+		if err := rows.Scan(&sp.Entry, &sp.Name, &sp.MinLevel, &sp.MaxLevel, &sp.NpcFlags, &sp.Faction, &sp.Rank, &sp.HealthMod, &sp.DamageMod, &sp.AttackMs, &sp.Map, &sp.X, &sp.Y, &sp.Z, &sp.Dist); err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 		out.Spawns = append(out.Spawns, sp)

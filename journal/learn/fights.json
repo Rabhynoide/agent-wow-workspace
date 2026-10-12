@@ -1,31 +1,171 @@
 {
-  "until": "2026-10-12T19:12:06.190Z",
+  "until": "2026-10-12T21:29:04.012Z",
   "classes": {
     "1": {
       "-1": {
-        "n": 43,
-        "loss_sum": 194,
-        "sec_sum": 461
+        "n": 86,
+        "loss_sum": 433,
+        "sec_sum": 914
       },
       "-2": {
-        "n": 1,
-        "loss_sum": 6,
-        "sec_sum": 15
+        "n": 4,
+        "loss_sum": 22,
+        "sec_sum": 53
       },
       "0": {
-        "n": 60,
-        "loss_sum": 895,
-        "sec_sum": 758
+        "n": 99,
+        "loss_sum": 1456,
+        "sec_sum": 1245
       },
       "1": {
-        "n": 45,
-        "loss_sum": 1214,
-        "sec_sum": 703
+        "n": 97,
+        "loss_sum": 2626,
+        "sec_sum": 1492
+      },
+      "2": {
+        "n": 2,
+        "loss_sum": 51,
+        "sec_sum": 40
       },
       "3": {
         "n": 1,
         "loss_sum": 65,
         "sec_sum": 19
+      }
+    }
+  },
+  "mobs_until": "2026-10-12T21:29:04.012Z",
+  "mobs": {
+    "1": {
+      "103": {
+        "1": {
+          "n": 4,
+          "deaths": 0,
+          "chained": 0,
+          "chained_deaths": 0
+        }
+      },
+      "113": {
+        "0": {
+          "n": 8,
+          "deaths": 0,
+          "chained": 0,
+          "chained_deaths": 0
+        },
+        "1": {
+          "n": 8,
+          "deaths": 0,
+          "chained": 0,
+          "chained_deaths": 0
+        }
+      },
+      "299": {
+        "-1": {
+          "n": 43,
+          "deaths": 0,
+          "chained": 0,
+          "chained_deaths": 0
+        }
+      },
+      "30": {
+        "0": {
+          "n": 4,
+          "deaths": 0,
+          "chained": 0,
+          "chained_deaths": 0
+        },
+        "1": {
+          "n": 18,
+          "deaths": 0,
+          "chained": 0,
+          "chained_deaths": 0
+        }
+      },
+      "38": {
+        "-1": {
+          "n": 40,
+          "deaths": 0,
+          "chained": 0,
+          "chained_deaths": 0
+        },
+        "-2": {
+          "n": 4,
+          "deaths": 0,
+          "chained": 0,
+          "chained_deaths": 0
+        },
+        "0": {
+          "n": 63,
+          "deaths": 0,
+          "chained": 0,
+          "chained_deaths": 0
+        },
+        "1": {
+          "n": 37,
+          "deaths": 0,
+          "chained": 0,
+          "chained_deaths": 0
+        },
+        "2": {
+          "n": 2,
+          "deaths": 0,
+          "chained": 0,
+          "chained_deaths": 0
+        }
+      },
+      "525": {
+        "0": {
+          "n": 22,
+          "deaths": 4,
+          "chained": 7,
+          "chained_deaths": 3
+        },
+        "1": {
+          "n": 23,
+          "deaths": 0,
+          "chained": 4,
+          "chained_deaths": 0
+        }
+      },
+      "6": {
+        "-1": {
+          "n": 1,
+          "deaths": 0,
+          "chained": 0,
+          "chained_deaths": 0
+        },
+        "0": {
+          "n": 23,
+          "deaths": 0,
+          "chained": 0,
+          "chained_deaths": 0
+        },
+        "1": {
+          "n": 16,
+          "deaths": 0,
+          "chained": 0,
+          "chained_deaths": 0
+        }
+      },
+      "94": {
+        "-1": {
+          "n": 6,
+          "deaths": 0,
+          "chained": 2,
+          "chained_deaths": 0
+        },
+        "0": {
+          "n": 12,
+          "deaths": 0,
+          "chained": 2,
+          "chained_deaths": 0
+        },
+        "1": {
+          "n": 17,
+          "deaths": 3,
+          "chained": 5,
+          "chained_deaths": 3
+        }
       }
     }
   }

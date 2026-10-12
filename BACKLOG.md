@@ -149,10 +149,12 @@ Icy Veins bloque ma lecture (403) : à chaque palier ci-dessous, prévenir l'uti
 
 ## Bench table de priorités (2026-10-12) : niveau 5 en 52 min, 5 morts
 - [x] Moteur de priorités en table (`combat/priority.go`) : combats simples identiques à l'ancien code (voir journal/bench/20261012_2045_Benchgnnqye.md).
-- [ ] Morts en enchaînement contre les Mangy Wolf (525) au niveau 5, les araignées étant épuisées : P_mort mesurée par monstre (étape suivante) et pas de nouveau combat volontaire sous ~40 % de PV.
+- [x] Morts en enchaînement contre les Mangy Wolf (525) au niveau 5 : P_mort mesurée par monstre et par écart (`xpscore`), repos avant toute marche sous 40 % de PV. Bench a12ac5c+ : niveau 6 en 53,6 min, 2 morts (au lieu de 5).
+- [ ] Score à la place de « niveau + 1 » et de la capacité de pull (bench 2026-10-12 23:01) : niveau 6 en 51,4 min, 3 morts, pas plus de combats à plusieurs. Morts restantes = loups errants qui rejoignent un combat en cours : fuite/défense quand un add arrive et que la perte prévue dépasse les PV, pénaliser l'errance dans le choix des zones.
+- [ ] Les 2 morts restantes : loup + Defias Cutpurse niveau 6 ensemble ; le Cutpurse achève après le loup (49 % puis 14 % de PV). Pas de fuite ; envisager la fuite ou un défensif (Intimidating Shout n'est appris qu'au niveau 22).
 
 ## Choix des monstres par XP/minute (idée utilisateur, 2026-10-12)
-- [~] Fait le 2026-10-12 (`xpscore`, choix des cibles de grind) ; reste : P_mort mesurée (morts par type de monstre, combats enchaînés), régénération mesurée, remplacer « niveau + 1 » dans auto et la capacité de pull. Modèle : XP/min = XP_kill / (T_kill + T_récup + T_recherche + P_mort × T_mort).
+- [~] Fait le 2026-10-12 : `xpscore` (choix des cibles de grind), P_mort mesurée par monstre et écart (combats enchaînés compris), « niveau + 1 » d'auto et capacité de pull remplacés par le score (perte attendue). Reste : régénération mesurée ; perte par add apprise (1,5 fixe) ; tables du prêtre (aucun combat appris : valeurs du guerrier par défaut). Modèle : XP/min = XP_kill / (T_kill + T_récup + T_recherche + P_mort × T_mort).
   - XP_kill : formule du serveur (×(20+écart)/20 au-dessus, réduction grise en dessous).
   - Monstre (base, vérifié) : PV = creature_classlevelstats.basehp{exp} × HealthModifier ; dégâts = damage_base (+ attackpower) × DamageModifier, BaseAttackTime ; densité = nombre d'apparitions et spawntimesecs (table creature).
   - Nous (mesuré) : DPS effectif et dégâts reçus par niveau d'écart depuis les lignes `fight` ; régénération depuis les repos ; P_mort depuis les combats perdus (adds, camps).

@@ -6,10 +6,13 @@ import (
 	"io"
 	"math"
 	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 )
 
 // Cell sums the fights won against one monster, started with at least 90 % health, for one class and
@@ -20,13 +23,33 @@ type Cell struct {
 	SecSum  float64 `json:"sec_sum"`
 }
 
+// MobCell counts every fight against one monster type (the fight's target) at one level gap, won or
+// lost, whatever the health at the start: the measured death risk, chained fights included.
+type MobCell struct {
+	N      int `json:"n"`
+	Deaths int `json:"deaths"`
+	// Chained fights: started below chainedBelow % health (attacked again before resting).
+	Chained       int `json:"chained"`
+	ChainedDeaths int `json:"chained_deaths"`
+}
+
 // Table is the measured side of the model, kept in journal/learn/fights.json.
 type Table struct {
 	// Last fight line read (its time field), so a log is never counted twice.
 	Until string `json:"until"`
 	// Class id -> gap -> cell.
 	Classes map[string]map[string]*Cell `json:"classes"`
+	// Same as Until for Mobs (added later: the logs read before are read again once).
+	MobsUntil string `json:"mobs_until"`
+	// Class id -> monster entry -> gap -> cell.
+	Mobs map[string]map[string]map[string]*MobCell `json:"mobs"`
 }
+
+// chainedBelow: a fight started below this health (percent) is a chained one.
+const chainedBelow = 60
+
+// priorFights: weight of the model's death risk, in fights, against the measured deaths.
+const priorFights = 10
 
 // minFights below which a gap is extrapolated from its neighbours.
 const minFights = 3
@@ -43,7 +66,7 @@ var defaultCell = Cell{N: 1, LossSum: 14, SecSum: 12}
 
 // Load reads a table; a missing file gives an empty one.
 func Load(path string) (*Table, error) {
-	t := &Table{Classes: map[string]map[string]*Cell{}}
+	t := &Table{Classes: map[string]map[string]*Cell{}, Mobs: map[string]map[string]map[string]*MobCell{}}
 	b, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
 		return t, nil
@@ -56,6 +79,9 @@ func Load(path string) (*Table, error) {
 	}
 	if t.Classes == nil {
 		t.Classes = map[string]map[string]*Cell{}
+	}
+	if t.Mobs == nil {
+		t.Mobs = map[string]map[string]map[string]*MobCell{}
 	}
 	return t, nil
 }
@@ -95,10 +121,17 @@ func (t *Table) Fight(class uint32, gap int) (loss, secs float64) {
 
 var field = regexp.MustCompile(`(\w+)=("[^"]*"|\S+)`)
 
-// Learn adds the fight lines of a combat log written after t.Until; it returns how many were added.
+// Learn adds the fight lines of a combat log written after t.Until (t.MobsUntil for the death
+// counts); it returns how many lines were added to either.
 func (t *Table) Learn(r io.Reader) int {
+	if t.Classes == nil {
+		t.Classes = map[string]map[string]*Cell{}
+	}
+	if t.Mobs == nil {
+		t.Mobs = map[string]map[string]map[string]*MobCell{}
+	}
 	added := 0
-	last := t.Until
+	last, lastMobs := t.Until, t.MobsUntil
 	sc := bufio.NewScanner(r)
 	sc.Buffer(make([]byte, 64*1024), 1024*1024)
 	for sc.Scan() {
@@ -110,36 +143,99 @@ func (t *Table) Learn(r io.Reader) int {
 		for _, m := range field.FindAllStringSubmatch(line, -1) {
 			f[m[1]] = m[2]
 		}
-		if f["time"] <= t.Until || f["class"] == "" {
+		newFight, newMob := f["time"] > t.Until, f["time"] > t.MobsUntil
+		if (!newFight && !newMob) || f["class"] == "" {
 			continue
 		}
-		last = max(last, f["time"])
 		start, _ := strconv.Atoi(f["hp_start"])
 		end, _ := strconv.Atoi(f["hp_end"])
 		secs, _ := strconv.Atoi(f["s"])
 		lv, _ := strconv.Atoi(f["level"])
 		tl, _ := strconv.Atoi(f["target_level"])
-		if f["result"] != "won" || f["attackers_max"] != "1" || start < 90 || tl == 0 || secs == 0 {
+		if tl == 0 {
 			continue
 		}
 		key := strconv.Itoa(tl - lv)
-		cells := t.Classes[f["class"]]
-		if cells == nil {
-			cells = map[string]*Cell{}
-			t.Classes[f["class"]] = cells
+		counted := false
+		if newMob && f["target"] != "" && f["target"] != "0" {
+			lastMobs = max(lastMobs, f["time"])
+			c := t.mobCell(f["class"], f["target"], key)
+			c.N++
+			died := f["result"] == "died"
+			if died {
+				c.Deaths++
+			}
+			if start < chainedBelow {
+				c.Chained++
+				if died {
+					c.ChainedDeaths++
+				}
+			}
+			counted = true
 		}
-		c := cells[key]
-		if c == nil {
-			c = &Cell{}
-			cells[key] = c
+		if newFight {
+			last = max(last, f["time"])
+			if f["result"] == "won" && f["attackers_max"] == "1" && start >= 90 && secs > 0 {
+				cells := t.Classes[f["class"]]
+				if cells == nil {
+					cells = map[string]*Cell{}
+					t.Classes[f["class"]] = cells
+				}
+				c := cells[key]
+				if c == nil {
+					c = &Cell{}
+					cells[key] = c
+				}
+				c.N++
+				c.LossSum += float64(max(start-end, 0))
+				c.SecSum += float64(secs)
+				counted = true
+			}
 		}
-		c.N++
-		c.LossSum += float64(max(start-end, 0))
-		c.SecSum += float64(secs)
-		added++
+		if counted {
+			added++
+		}
 	}
-	t.Until = last
+	t.Until, t.MobsUntil = last, lastMobs
 	return added
+}
+
+func (t *Table) mobCell(class, entry, gap string) *MobCell {
+	entries := t.Mobs[class]
+	if entries == nil {
+		entries = map[string]map[string]*MobCell{}
+		t.Mobs[class] = entries
+	}
+	gaps := entries[entry]
+	if gaps == nil {
+		gaps = map[string]*MobCell{}
+		entries[entry] = gaps
+	}
+	c := gaps[gap]
+	if c == nil {
+		c = &MobCell{}
+		gaps[gap] = c
+	}
+	return c
+}
+
+// Measured is the fights and deaths counted against a monster type at a level gap (zero cell when
+// none).
+func (t *Table) Measured(class, entry uint32, gap int) MobCell {
+	if t == nil {
+		return MobCell{}
+	}
+	if c := t.Mobs[strconv.Itoa(int(class))][strconv.Itoa(int(entry))][strconv.Itoa(gap)]; c != nil {
+		return *c
+	}
+	return MobCell{}
+}
+
+// DeathRisk blends the model's death risk per fight with the measured one: the model counts as
+// priorFights fights.
+func (t *Table) DeathRisk(class, entry uint32, gap int, model float64) float64 {
+	c := t.Measured(class, entry, gap)
+	return (float64(c.Deaths) + priorFights*model) / float64(c.N+priorFights)
 }
 
 // Summary lists the measured gaps of a class ("gap: n fights, loss %, seconds").
@@ -167,4 +263,37 @@ func abs(v int) int {
 		return -v
 	}
 	return v
+}
+
+// File is a table file read again when it changes (the modules read journal/learn/fights.json,
+// which level.sh updates).
+type File struct {
+	path string
+	mu   sync.Mutex
+	mod  time.Time
+	t    *Table
+}
+
+// NewFile watches path; an unreadable file gives the last table read (empty at first).
+func NewFile(path string) *File { return &File{path: path, t: &Table{}} }
+
+// Get returns the table, read again if the file changed.
+func (f *File) Get() *Table {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if st, err := os.Stat(f.path); err == nil && !st.ModTime().Equal(f.mod) {
+		if t, err := Load(f.path); err == nil {
+			f.t, f.mod = t, st.ModTime()
+		}
+	}
+	return f.t
+}
+
+// LearnedFile is the table of the modules: $LEARN_DIR/fights.json (journal/learn mounted at /learn).
+func LearnedFile() *File {
+	dir := os.Getenv("LEARN_DIR")
+	if dir == "" {
+		dir = "/learn"
+	}
+	return NewFile(filepath.Join(dir, "fights.json"))
 }
