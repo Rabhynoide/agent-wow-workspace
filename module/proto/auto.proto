@@ -44,6 +44,8 @@ message AutoStatus {
   uint32 elapsed_s = 8;
   // Gear, talents, training and reward choices made during the run (last 10).
   repeated string progress = 9;
+  // Deaths this job recovered from (one more when it ends dead).
+  uint32 deaths = 10;
 }
 
 message GotoRequest {

@@ -139,7 +139,19 @@ Icy Veins bloque ma lecture (403) : à chaque palier ci-dessous, prévenir l'uti
 - [x] level.sh comptait « died 4 times » comme 1 mort (3 comptées pour 11) : compte réel.
 - [x] Résurrection à l'entrée de la mine : point sûr cherché jusqu'à 37 yards du corps (au lieu de 33).
 - [x] Grind lancé au milieu des kobolds de la mine : apparitions triées par isolement, créature en camps seulement sautée par le grind.
-- [ ] Quête 62 au niveau 5 : mort pendant le nettoyage (kobolds 5-6) ; la porte de niveau 6 la reporte, à confirmer.
+- [x] Quête 62 au niveau 5 : 3 morts pendant le nettoyage (kobolds 5-6) au bench c8edda2 ; nettoyage refusé si un gardien est au-dessus de notre niveau (quête reportée).
+- [x] level.sh ne compte pas les morts qu'auto.run gère lui-même (3 morts dans la quête 62 comptées 1) : champ `deaths` du statut.
+- [x] Journal de combat insuffisant pour expliquer une mort : ligne `fight` par combat, combats perdus dans le rapport.
+- [ ] Deux runs finissent « dead » au passage niveau 6 : à comprendre.
+- [ ] Morts en marchant pendant le grind (riposte en route) : éviter les monstres sur le chemin.
+
+## Choix des monstres par XP/minute (idée utilisateur, 2026-10-12)
+- [ ] Score par type de monstre : XP/min = XP_kill / (T_kill + T_récup + T_recherche + P_mort × T_mort).
+  - XP_kill : formule du serveur (×(20+écart)/20 au-dessus, réduction grise en dessous).
+  - Monstre (base, vérifié) : PV = creature_classlevelstats.basehp{exp} × HealthModifier ; dégâts = damage_base (+ attackpower) × DamageModifier, BaseAttackTime ; densité = nombre d'apparitions et spawntimesecs (table creature).
+  - Nous (mesuré) : DPS effectif et dégâts reçus par niveau d'écart depuis les lignes `fight` ; régénération depuis les repos ; P_mort depuis les combats perdus (adds, camps).
+  - Usage : choix des cibles de grind (level.sh), puis remplace la règle fixe « niveau + 1 » et la capacité de pull (évolue seule avec l'équipement).
+  - Repères : mêlée +0/+1, lanceurs ≤ +2 (raté des sorts 17 % à +3), personnage fragile −1/−2.
 
 ## Prochaines étapes suggérées (2026-10-11)
 - FAIT : suivi des auras et aura state (« Rotation et combat » étape 1). FAIT aussi : « peut lancer ». SUITE : moteur de priorités en table, rotations Guerrier/Prêtre en tables ; tester le prêtre (Claudia) en jeu.

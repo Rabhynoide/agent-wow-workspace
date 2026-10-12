@@ -154,6 +154,7 @@ func (r *run) recover() error {
 	if !snap.Self.Dead {
 		return nil
 	}
+	r.j.Update(func(st *pb.AutoStatus) { st.Deaths++ })
 	send := func(op uint32, payload []byte) {
 		_, _ = r.s.sess.SendPacket(r.ctx, &modv1.SendPacketRequest{Opcode: op, Payload: payload})
 	}

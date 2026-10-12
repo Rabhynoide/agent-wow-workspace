@@ -521,6 +521,13 @@ func (s *Service) buff(ctx context.Context, me *statepb.SelfInfo) {
 // Priority: heal when low, shield, renew, Shadow Word: Pain once, Mind Blast, Smite;
 // out of mana: wand (Shoot) if one is equipped, else melee.
 func (s *Service) fight(ctx context.Context, j *job, guid uint64) (bool, string) {
+	rec := s.watchFight(ctx, guid)
+	dead, why := s.fightClass(ctx, j, guid)
+	rec.done(dead, why)
+	return dead, why
+}
+
+func (s *Service) fightClass(ctx context.Context, j *job, guid uint64) (bool, string) {
 	if b, err := s.api.Brief(ctx); err == nil && b.Self != nil && b.Self.ClassId == warrior.ClassID {
 		return s.fightWarrior(ctx, j, guid)
 	}

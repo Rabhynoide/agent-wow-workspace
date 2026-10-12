@@ -223,7 +223,9 @@ type AutoStatus struct {
 	Xp       uint32   `protobuf:"varint,7,opt,name=xp,proto3" json:"xp,omitempty"`
 	ElapsedS uint32   `protobuf:"varint,8,opt,name=elapsed_s,json=elapsedS,proto3" json:"elapsed_s,omitempty"`
 	// Gear, talents, training and reward choices made during the run (last 10).
-	Progress      []string `protobuf:"bytes,9,rep,name=progress,proto3" json:"progress,omitempty"`
+	Progress []string `protobuf:"bytes,9,rep,name=progress,proto3" json:"progress,omitempty"`
+	// Deaths this job recovered from (one more when it ends dead).
+	Deaths        uint32 `protobuf:"varint,10,opt,name=deaths,proto3" json:"deaths,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -319,6 +321,13 @@ func (x *AutoStatus) GetProgress() []string {
 		return x.Progress
 	}
 	return nil
+}
+
+func (x *AutoStatus) GetDeaths() uint32 {
+	if x != nil {
+		return x.Deaths
+	}
+	return 0
 }
 
 type GotoRequest struct {
@@ -421,7 +430,7 @@ const file_auto_proto_rawDesc = "" +
 	"\vuntil_level\x18\x02 \x01(\rR\n" +
 	"untilLevel\x12\x15\n" +
 	"\x06wait_s\x18\x03 \x01(\rR\x05waitS\x12\x13\n" +
-	"\x05max_s\x18\x04 \x01(\rR\x04maxS\"\xd7\x01\n" +
+	"\x05max_s\x18\x04 \x01(\rR\x04maxS\"\xef\x01\n" +
 	"\n" +
 	"AutoStatus\x12\x14\n" +
 	"\x05state\x18\x01 \x01(\tR\x05state\x12\x16\n" +
@@ -432,7 +441,9 @@ const file_auto_proto_rawDesc = "" +
 	"\x05level\x18\x06 \x01(\rR\x05level\x12\x0e\n" +
 	"\x02xp\x18\a \x01(\rR\x02xp\x12\x1b\n" +
 	"\telapsed_s\x18\b \x01(\rR\belapsedS\x12\x1a\n" +
-	"\bprogress\x18\t \x03(\tR\bprogress\"f\n" +
+	"\bprogress\x18\t \x03(\tR\bprogress\x12\x16\n" +
+	"\x06deaths\x18\n" +
+	" \x01(\rR\x06deaths\"f\n" +
 	"\vGotoRequest\x12\f\n" +
 	"\x01x\x18\x01 \x01(\x02R\x01x\x12\f\n" +
 	"\x01y\x18\x02 \x01(\x02R\x01y\x12\f\n" +

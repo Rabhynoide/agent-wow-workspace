@@ -31,8 +31,7 @@ EmptyProtoPZ.google.golang.org/protobuf/types/known/emptypbø¢GPBªGoogle.P
 SendPacket%.agentwow.module.v1.SendPacketRequest.google.protobuf.EmptyE
 GetClock.google.protobuf.Empty!.agentwow.module.v1.ClockResponsea
 InvokeModule'.agentwow.module.v1.InvokeModuleRequest(.agentwow.module.v1.InvokeModuleResponseB5Z3github.com/agent-wow/agent-wow/pkg/modules/v1;modv1bproto3
-í
-
+…
 
 auto.protowowagent.auto.v1api/module/v1/session.protogoogle/protobuf/empty.proto"Ý
 
@@ -52,7 +51,7 @@ noProgress
 until_level (R
 untilLevel
 wait_s (RwaitS
-max_s (RmaxS"×
+max_s (RmaxS"ï
 
 AutoStatus
 state (	Rstate
@@ -63,7 +62,9 @@ AutoStatus
 level (Rlevel
 xp (Rxp
 	elapsed_s (RelapsedS
-progress	 (	Rprogress"f
+progress	 (	Rprogress
+deaths
+ (Rdeaths"f
 GotoRequest
 x (Rx
 y (Ry

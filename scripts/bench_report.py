@@ -30,9 +30,11 @@ deaths = sum(1 for l in read("logs/state.log")[state_from - 1:] if "msg=teleport
 walk_fights = sum(1 for l in level_log if "attacked on the way" in l)
 vendor = sum(1 for l in level_log if "visiting a vendor" in l or "buying food" in l)
 grinds = sum(1 for l in level_log if " grind to " in l)
-stops = [l.split("] ", 1)[-1] for l in out if "STOP" in l or "time limit" in l or "route finished" in l]
+stops = [l.split("] ", 1)[-1] for l in out + level_log if "STOP" in l or "time limit" in l or "route finished" in l or re.search(r"level \d+ reached", l)]
 fails = collections.Counter(re.sub(r".*spell=(\d+) result=(\d+).*", r"\1/\2", l) for l in combat if "cast failed" in l)
 meals = sum(1 for l in combat if "consuming" in l)
+fights = [l for l in combat if 'msg=fight ' in l]
+lost = [re.sub(r'.*?(target=.*)', r'\1', l) for l in fights if "result=died" in l]
 gave_up = sum(1 for l in combat if "giving up target" in l)
 final_level = me.get("level", levels[-1][0] if levels else 1)
 reached = final_level >= int(target)
@@ -48,6 +50,7 @@ lines = [f"# Bench {name} — {race} {cls} 1 → {target} ({date})", "",
          f"- Grinds : {grinds} ; passages marchand/achat : {vendor} ; repas : {meals}",
          f"- Argent final : {me.get('money', '?')} cuivres ; durabilité : {state.get('durabilityPct', '?')} %",
          f"- Sorts refusés (sort/code) : {dict(fails.most_common(8))}",
+         f"- Combats : {len(fights)} ; perdus : {len(lost)}"] + [f"  - {l}" for l in lost] + [
          f"- Fin : {stops[-1] if stops else '?'}"]
 os.makedirs(os.path.join(root, "journal/bench"), exist_ok=True)
 fname = f"journal/bench/{datetime.datetime.fromtimestamp(start).strftime('%Y%m%d_%H%M')}_{name}.md"

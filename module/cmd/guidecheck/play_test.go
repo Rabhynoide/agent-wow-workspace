@@ -70,11 +70,3 @@ func TestGrayLevel(t *testing.T) {
 		}
 	}
 }
-
-func TestJobDeaths(t *testing.T) {
-	for reason, want := range map[string]int{"stopping: died 4 times": 4, "combat: dead": 1, "time limit": 0} {
-		if got := jobDeaths(reason); got != want {
-			t.Errorf("jobDeaths(%q) = %d, want %d", reason, got, want)
-		}
-	}
-}

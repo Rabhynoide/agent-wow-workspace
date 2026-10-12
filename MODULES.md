@@ -36,6 +36,7 @@ Appels : `scripts/rpc.sh <module.methode> '<json>' [chemin]` ; jobs async : `scr
 - « Peut lancer » (Spell.dbc + SpellRange.dbc) : recharges comptées côté client (sort, catégorie, globale) + SMSG_SPELL_COOLDOWN, coût, aura states, portée ; sorts à arme bloqués pendant un désarmement (UNIT_FLAG_DISARMED) ou si l'arme est absente/cassée (revérifiée chaque minute), sinon 3 s après un refus code 30.
 - Guerrier : liste ordonnée : Battle Shout (manque ou < 3 s), Victory Rush (aura state), Execute (cible < 20 % ou Sudden Death), Overpower (esquive ou Taste for Blood), Rend (manque ou < 2 s, cible > 50 %), Mortal Strike, Slam (41+), Thunder Clap (< 20) ; Charge à l'ouverture ; Heroic Strike au-delà de 30 rage (60 dès 41). Repos à 75 %.
 - Prêtre : soin < 40 %, Bouclier (sans Âme affaiblie) < 80 %, Rénovation < 65 %, Douleur et Attaque mentale vérifiées, Châtiment, baguette sans mana ; ligne de vue avant les sorts. Robustesse/Feu intérieur s'ils durent < 1 min. Repos à 55 %.
+- Journal : une ligne `fight` par combat (résultat, cible, PV début/min/fin, attaquants max et leurs entrées, durée) ; résumé des combats perdus dans le rapport de bench.
 - Repos : mange (catégorie 11) sous 80 % de PV, boit (59) sous 70 % de mana.
 - Limites : rotations prêtre/guerrier seulement ; pas de fuite ; rotation pas encore en table de priorités.
 
@@ -44,8 +45,9 @@ Appels : `scripts/rpc.sh <module.methode> '<json>' [chemin]` ; jobs async : `scr
 
 ## auto (orchestrateur, jobs)
 - `auto.run {quests, rewards, no_progress}` : par quête : donneur, objectifs (kill, objets, objets du décor, crédits par d'autres créatures, objet utilisé sur une cible, zone à explorer), rendu (place dans les sacs d'abord) ; entre les quêtes : équipement, talents, entraîneur à < 400 yards.
+- Statut des jobs : `deaths` = morts dont le job s'est relevé (level.sh les compte toutes).
 - `auto.grind {entries, until_level, max_s}` (points d'apparition triés distance + 40 yards par voisin à < 20 yards ; créature qui ne vit qu'en camps de 4+ sautée), `auto.goto {x, y, z, radius}` (marche qui riposte), `auto.recover`, `auto.status`, `auto.stop`.
-- Marches : riposte si un monstre nous cible (20 combats max par marche). Zones à explorer et objets du décor : nettoyage progressif du chemin (tronçons de 25 yards, monstres dont l'aggro touche le tronçon tués un par un, repos < 70 %, « path blocked » si trop fort).
+- Marches : riposte si un monstre nous cible (20 combats max par marche). Zones à explorer et objets du décor : nettoyage progressif du chemin (tronçons de 25 yards, monstres dont l'aggro touche le tronçon tués un par un, repos < 70 %, « path blocked » si trop fort ; gardien au-dessus de notre niveau → « too dangerous », quête reportée au niveau suivant).
 - Marchand : sacs presque pleins, durabilité < 60 % ou moins de 5 aliments → vente, réparation (avant la nourriture), achat de nourriture ; après un échec faute d'argent, pas de nouvel essai avant d'avoir gagné 1 pa.
 - Résurrection : toujours au corps, au point le plus sûr à < 37 yards (le serveur accepte 39) (attente si un monstre est à < 25 yards), puis repos ; esprit guérisseur seulement en secours avant le niveau 11.
 - Danger : monstres élites ou au-dessus de niveau + 1 (+ 2 pour prêtre/mage/démoniste) refusés. Garde : entre deux jobs, défense si attaqué.

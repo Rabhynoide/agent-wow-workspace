@@ -17,9 +17,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -204,6 +202,7 @@ type jobStatus struct {
 	Step   string   `json:"step"`
 	Done   []uint32 `json:"done"`
 	Level  uint32   `json:"level"`
+	Deaths uint32   `json:"deaths"`
 }
 
 // job starts an auto job and waits for its end, logging each new step. Past the deadline the job is
@@ -340,7 +339,7 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 			return 1
 		}
 		batch, need, blocker := nextBatch(c.entries, c.cache, c.manual, ps, race, class, raceName, className, me.Level, 2, 5)
-		levelBefore, xpBefore, deathsBefore := me.Level, me.XP, deaths
+		levelBefore, xpBefore := me.Level, me.XP
 		switch {
 		case len(batch) > 0:
 			var titles []string
@@ -353,6 +352,7 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 				say("auto.run: %v", err)
 				return 1
 			}
+			deaths += int(st.Deaths) // recovered inside the job (3 deaths in quest 62 were counted as 1)
 			for _, id := range st.Done {
 				ps.finished[id] = true
 			}
@@ -367,9 +367,8 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 					ps.retryAt[q] = me.Level + 1
 					say("  %d postponed to level %d: %s", q, me.Level+1, reason)
 				case strings.Contains(reason, "dead"):
-					deaths++
 					ps.retryAt[q] = me.Level + 1
-					say("  DEATH on %d (%d in this run), postponed to level %d: %s", q, deaths, me.Level+1, reason)
+					say("  DEATH on %d (%d in this run), postponed to level %d: %s", q, deaths+1, me.Level+1, reason)
 				case st.State == "stopped" && st.Reason == "time limit":
 					say("time limit (%d min) reached during a job", maxMin)
 					return 2
@@ -406,8 +405,8 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 				say("auto.grind: %v", err)
 				return 1
 			}
+			deaths += int(st.Deaths)
 			if st.State != "done" {
-				deaths += jobDeaths(st.Reason)
 				say("  grind ended: %s %s", st.State, st.Reason)
 			}
 		default:
@@ -416,9 +415,7 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 		}
 		if err := r.call("state.brief", map[string]any{}, &b); err == nil {
 			if b.Self.Dead {
-				if deaths == deathsBefore { // not counted yet by the job result
-					deaths++
-				}
+				deaths++ // the job ended dead: not in its count
 				say("  dead: recovering")
 				if st, err := r.job("auto.recover", map[string]any{}, detail); err != nil || st.State != "done" {
 					say("STOP: could not recover (%v)", err)
@@ -458,19 +455,4 @@ func (c *checker) rewardedOf(char string) map[uint32]bool {
 		}
 	}
 	return out
-}
-
-var diedTimes = regexp.MustCompile(`died (\d+) times`)
-
-// jobDeaths counts the deaths an auto job reports: "stopping: died 4 times" is four, not one (the
-// bench of 2026-10-12 counted 3 deaths for 11 and kept dying at the Fargodeep mine for 20 minutes).
-func jobDeaths(reason string) int {
-	if m := diedTimes.FindStringSubmatch(reason); m != nil {
-		n, _ := strconv.Atoi(m[1])
-		return n
-	}
-	if strings.Contains(reason, "dead") {
-		return 1
-	}
-	return 0
 }

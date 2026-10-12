@@ -84,6 +84,12 @@ func (r *run) clearWalk(x, y, z, radius float32) error {
 			if why := tooDangerous(sp, me.Level, me.ClassId); why != "" {
 				return fmt.Errorf("path blocked: %s", why)
 			}
+			// One fight at a time, but against a whole passage: a guard above our level wins too often
+			// (bench c8edda2: three deaths clearing the Fargodeep mine at level 5 against level-6 kobolds).
+			// "too dangerous" makes level.sh postpone the quest to the next level.
+			if t.Level > me.Level {
+				return fmt.Errorf("too dangerous for now: path guarded by monster %d (level %d, character %d)", t.Entry, t.Level, me.Level)
+			}
 			r.step("clearing the way: monster %d (level %d) %.0f yards away", t.Entry, t.Level, t.Dist)
 			if _, err := r.fightJob(&combatpb.KillRequest{Guid: t.Guid, Radius: 80, MaxS: 120, WaitS: 20}); err != nil &&
 				!strings.Contains(err.Error(), "no live entry") {
