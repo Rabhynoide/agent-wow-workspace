@@ -44,10 +44,10 @@ Appels : `scripts/rpc.sh <module.methode> '<json>' [chemin]` ; jobs async : `scr
 
 ## auto (orchestrateur, jobs)
 - `auto.run {quests, rewards, no_progress}` : par quête : donneur, objectifs (kill, objets, objets du décor, crédits par d'autres créatures, objet utilisé sur une cible, zone à explorer), rendu (place dans les sacs d'abord) ; entre les quêtes : équipement, talents, entraîneur à < 400 yards.
-- `auto.grind {entries, until_level, max_s}`, `auto.goto {x, y, z, radius}` (marche qui riposte), `auto.recover`, `auto.status`, `auto.stop`.
+- `auto.grind {entries, until_level, max_s}` (points d'apparition triés distance + 40 yards par voisin à < 20 yards ; créature qui ne vit qu'en camps de 4+ sautée), `auto.goto {x, y, z, radius}` (marche qui riposte), `auto.recover`, `auto.status`, `auto.stop`.
 - Marches : riposte si un monstre nous cible (20 combats max par marche). Zones à explorer et objets du décor : nettoyage progressif du chemin (tronçons de 25 yards, monstres dont l'aggro touche le tronçon tués un par un, repos < 70 %, « path blocked » si trop fort).
 - Marchand : sacs presque pleins, durabilité < 60 % ou moins de 5 aliments → vente, réparation (avant la nourriture), achat de nourriture ; après un échec faute d'argent, pas de nouvel essai avant d'avoir gagné 1 pa.
-- Résurrection : toujours au corps, au point le plus sûr à < 33 yards (attente si un monstre est à < 25 yards), puis repos ; esprit guérisseur seulement en secours avant le niveau 11.
+- Résurrection : toujours au corps, au point le plus sûr à < 37 yards (le serveur accepte 39) (attente si un monstre est à < 25 yards), puis repos ; esprit guérisseur seulement en secours avant le niveau 11.
 - Danger : monstres élites ou au-dessus de niveau + 1 (+ 2 pour prêtre/mage/démoniste) refusés. Garde : entre deux jobs, défense si attaqué.
 - Limites : une carte à la fois, pas de voyages (vols, bateaux), pas de quête de groupe/élite.
 

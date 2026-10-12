@@ -137,8 +137,8 @@ Icy Veins bloque ma lecture (403) : à chaque palier ci-dessous, prévenir l'uti
 ## Bench 9b66e71 (2026-10-12) : L5 en 59 min, 11 morts
 - [x] Régression : les cibles « trop entourées » étaient marquées abandonnées, donc ignorées par la défense ; attaqué par elles, le personnage mangeait sous les coups. Liste séparée (`crowded`).
 - [x] level.sh comptait « died 4 times » comme 1 mort (3 comptées pour 11) : compte réel.
-- [ ] Résurrection à l'entrée de la mine : point « sûr » à 16-19 yards des kobolds (aggro ~20) ; chercher plus loin (rayon 39) ou attendre plus longtemps.
-- [ ] Grind lancé au milieu des kobolds de la mine (toutes les cibles trop entourées) : préférer des apparitions isolées ou s'éloigner.
+- [x] Résurrection à l'entrée de la mine : point sûr cherché jusqu'à 37 yards du corps (au lieu de 33).
+- [x] Grind lancé au milieu des kobolds de la mine : apparitions triées par isolement, créature en camps seulement sautée par le grind.
 - [ ] Quête 62 au niveau 5 : mort pendant le nettoyage (kobolds 5-6) ; la porte de niveau 6 la reporte, à confirmer.
 
 ## Prochaines étapes suggérées (2026-10-11)

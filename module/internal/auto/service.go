@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -29,7 +30,9 @@ const (
 	// Death.SicknessLevel of the server (worldserver.conf): from this level the spirit healer
 	// applies resurrection sickness (level-10 minutes up to 10 min of reduced stats).
 	sicknessLevel = 11
-	maxWait       = 25
+	// The server reclaims a corpse within 39 yards (CORPSE_RECLAIM_RADIUS): keep a margin.
+	reclaimDist = 37
+	maxWait     = 25
 	// Do not walk further than this (yards) to a class trainer between quests: the walk does not
 	// avoid monsters yet.
 	maxTrainerDist = 400
@@ -199,7 +202,7 @@ func (r *run) corpseRez(send func(uint32, []byte)) error {
 	// The corpse often lies in the camp that killed us: come back to life at the edge of the
 	// reclaim radius (39 yards), as far as possible from the monsters (mod-playerbots does the same).
 	for wait := 0; ; wait++ {
-		sp, err := r.s.api.SafePoint(r.ctx, pos[1], pos[2], pos[3], 33, false)
+		sp, err := r.s.api.SafePoint(r.ctx, pos[1], pos[2], pos[3], reclaimDist, false)
 		if err != nil || !sp.Ok {
 			r.note("no safe point near the corpse: %v %s", err, sp.GetReason())
 			if err := r.walk(pos[1], pos[2], pos[3], 15); err != nil {
@@ -340,7 +343,7 @@ func (r *run) grind(req *pb.GrindRequest) error {
 		lastLevel = b.Self.Level
 		r.j.Update(func(st *pb.AutoStatus) { st.Level, st.Xp = b.Self.Level, b.Self.Xp })
 		entry := req.Entries[round%len(req.Entries)]
-		err = r.hunt(entry, fmt.Sprintf("creature %d", entry), 4, 0, 0)
+		err = r.huntAt(entry, fmt.Sprintf("creature %d", entry), 4, 0, 0, true)
 		switch {
 		case err == nil:
 			idle = 0
@@ -854,7 +857,42 @@ func tooDangerous(sp *worldpb.Spawn, level, class uint32) string {
 	return ""
 }
 
+// campSize: a spawn point with this many others of the same creature within campRadius is a camp
+// (the kobolds at the Fargodeep mine entrance: the grind went there and died three times in a row).
+const (
+	campSize   = 3
+	campRadius = 20
+)
+
+// neighbours counts the other spawn points within campRadius of p.
+func neighbours(p *worldpb.Spawn, all []*worldpb.Spawn) int {
+	n := 0
+	for _, o := range all {
+		if o != p && math.Hypot(float64(o.X-p.X), float64(o.Y-p.Y)) < campRadius {
+			n++
+		}
+	}
+	return n
+}
+
+// byIsolation sorts spawn points by distance plus 40 yards per neighbour: an isolated monster a bit
+// further away beats the edge of a camp.
+func byIsolation(sp []*worldpb.Spawn) []*worldpb.Spawn {
+	score := make(map[*worldpb.Spawn]float32, len(sp))
+	for _, p := range sp {
+		score[p] = p.Dist + 40*float32(neighbours(p, sp))
+	}
+	out := append([]*worldpb.Spawn(nil), sp...)
+	sort.SliceStable(out, func(i, j int) bool { return score[out[i]] < score[out[j]] })
+	return out
+}
+
 func (r *run) hunt(entry uint32, name string, count, itemEntry, itemCount uint32) error {
+	return r.huntAt(entry, name, count, itemEntry, itemCount, false)
+}
+
+// huntAt is hunt; when grinding, a creature that only lives in camps is skipped (a quest needs it).
+func (r *run) huntAt(entry uint32, name string, count, itemEntry, itemCount uint32, grinding bool) error {
 	snap, err := r.snapshot()
 	if err != nil {
 		return err
@@ -866,6 +904,10 @@ func (r *run) hunt(entry uint32, name string, count, itemEntry, itemCount uint32
 	}
 	if why := tooDangerous(sp[0], me.Level, me.ClassId); why != "" {
 		return fmt.Errorf("too dangerous for now: %s", why)
+	}
+	sp = byIsolation(sp)
+	if grinding && neighbours(sp[0], sp) >= campSize {
+		return fmt.Errorf("too dangerous for now: every %s spawn point is in a camp", name)
 	}
 	r.step("hunt %s x%d", name, count)
 	// Spawn points are sorted by distance. When every monster around one is dead (they respawn slowly),

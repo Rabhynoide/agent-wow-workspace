@@ -27,3 +27,15 @@ func TestTooDangerous(t *testing.T) {
 		}
 	}
 }
+
+func TestByIsolation(t *testing.T) {
+	camp := []*worldpb.Spawn{{X: 0, Y: 0, Dist: 30}, {X: 5, Y: 0, Dist: 32}, {X: 0, Y: 5, Dist: 33}, {X: 5, Y: 5, Dist: 35}}
+	lone := &worldpb.Spawn{X: 200, Y: 0, Dist: 120}
+	sp := byIsolation(append(camp, lone))
+	if sp[0] != lone {
+		t.Fatalf("an isolated spawn at 120 yards should beat a camp at 30: got %+v", sp[0])
+	}
+	if n := neighbours(camp[0], camp); n != 3 {
+		t.Fatalf("neighbours = %d, want 3", n)
+	}
+}
