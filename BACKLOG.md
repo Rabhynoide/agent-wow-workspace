@@ -129,7 +129,7 @@ Sources :
 
 Ordre proposé :
 1. [x] (fait et testé le 2026-10-11 ; utilisé par les rotations guerrier et prêtre) Aura state (UNIT_FIELD_AURASTATE) et auras (SMSG_AURA_UPDATE / _ALL : buffs, procs, DoT avec durée restante, « les miens »), pour le personnage et la cible. Conditions des sorts lues dans Spell.dbc : CasterAuraState (champ 20 ; Victory Rush = 10), TargetAuraState (champ 21 ; Execute = 2 « moins de 20 % »), Revenge = 1. Règle l'erreur 67 de Victory Rush (aura « Victorious » 32216).
-2. [ ] « Peut lancer » générique : sort connu, recharge, ressource, aura state, procs (comme `usable=1` d'Ovale et CAN_CAST de playerbots).
+2. [x] (fait le 2026-10-11 : recharges, coût, aura states, portée ; testé) « Peut lancer » générique : sort connu, recharge, ressource, aura state, procs (comme `usable=1` d'Ovale et CAN_CAST de playerbots).
 3. [ ] Rotation en TABLE DE PRIORITÉS par classe (modèle Ovale : la première ligne dont les conditions passent et dont le sort est lançable gagne), dans `journal/classes/<classe>.yaml`. Conditions utiles d'Ovale :
    - BuffExpires/Present(n s, stacks), TargetDebuffExpires(mine) ;
    - TargetLifePercent, Mana/rage, Stance, TalentPoints ;
@@ -194,13 +194,13 @@ Icy Veins bloque ma lecture (403) : à chaque palier ci-dessous, prévenir l'uti
 - [x] Repos après toute résurrection (esprit guérisseur compris).
 - [x] Étapes « reach this level N » de la route respectées.
 - [x] Réparation impossible (pas d'argent) non bloquante ; pas de nouvel essai avant d'avoir gagné 1 pa.
-- [ ] Quête 62 (mine de Fargodeep) mortelle au niveau 5 : kobolds en groupe sur le chemin → fuite quand les PV baissent / évitement des monstres sur le chemin.
-- [ ] Argent très juste au niveau 5 (nourriture + réparations) : budget nourriture selon l'argent, vendre plus.
-- [ ] Heroic Strike refusé souvent (code 30, puis 40 au run de référence) : comprendre. Rend tenté hors de portée (97) et Charge trop près (128) : vérifier les distances avant de lancer (« peut lancer »).
+- [~] Quête 62 (mine de Fargodeep) mortelle au niveau 5 : nettoyage progressif du chemin (idée utilisateur, fait le 2026-10-12, à mesurer au bench) ; reste la fuite quand les PV baissent.
+- [~] Argent très juste au niveau 5 : réparation avant nourriture et pas de trajets inutiles (fait) ; reste : vendre plus / meilleur butin.
+- [x] Sorts refusés (Rend hors de portée, Heroic Strike, Thunder Clap pas prêt, Charge trop près) : « peut lancer » (5 loups : 1 refus au lieu de 8).
 - [x] Quête dont les monstres sont morts/absents : reportée de 4 min (3 essais) au lieu d'être sautée (run de référence : quête 18).
 
 ## Prochaines étapes suggérées (2026-10-11)
-- FAIT : suivi des auras et aura state (« Rotation et combat » étape 1). SUITE : « peut lancer » générique, moteur de priorités, rotations Guerrier/Prêtre en tables ; tester le prêtre (Claudia) en jeu.
+- FAIT : suivi des auras et aura state (« Rotation et combat » étape 1). FAIT aussi : « peut lancer ». SUITE : moteur de priorités en table, rotations Guerrier/Prêtre en tables ; tester le prêtre (Claudia) en jeu.
 - Pull où l'on est susceptible de gagner (voir « Points à réfléchir ») et capacité qui apprend des combats.
 - Continuer Claudio avec `level.sh` (11 → 20) : quête 87, quête de classe 1638 (posture défensive), Westfall à partir de 13-14 (voyage à pied).
 - Gros test visuel du déplacement (escaliers, ponts, intérieurs).

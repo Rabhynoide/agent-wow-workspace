@@ -367,8 +367,11 @@ type Item struct {
 	Container uint64                 `protobuf:"varint,5,opt,name=container,proto3" json:"container,omitempty"`
 	// Position for item packets: bag 255 = backpack/equipment (bag_slot = inventory slot),
 	// 19..22 = equipped bag (bag_slot = index in that bag). Unset (0/0) for bank items.
-	Bag           uint32 `protobuf:"varint,6,opt,name=bag,proto3" json:"bag,omitempty"`
-	BagSlot       uint32 `protobuf:"varint,7,opt,name=bag_slot,json=bagSlot,proto3" json:"bag_slot,omitempty"`
+	Bag     uint32 `protobuf:"varint,6,opt,name=bag,proto3" json:"bag,omitempty"`
+	BagSlot uint32 `protobuf:"varint,7,opt,name=bag_slot,json=bagSlot,proto3" json:"bag_slot,omitempty"`
+	// Current and maximum durability (0/0 for items that do not wear).
+	Durability    uint32 `protobuf:"varint,8,opt,name=durability,proto3" json:"durability,omitempty"`
+	MaxDurability uint32 `protobuf:"varint,9,opt,name=max_durability,json=maxDurability,proto3" json:"max_durability,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -448,6 +451,20 @@ func (x *Item) GetBag() uint32 {
 func (x *Item) GetBagSlot() uint32 {
 	if x != nil {
 		return x.BagSlot
+	}
+	return 0
+}
+
+func (x *Item) GetDurability() uint32 {
+	if x != nil {
+		return x.Durability
+	}
+	return 0
+}
+
+func (x *Item) GetMaxDurability() uint32 {
+	if x != nil {
+		return x.MaxDurability
 	}
 	return 0
 }
@@ -1222,7 +1239,7 @@ const file_state_proto_rawDesc = "" +
 	"\rtalent_points\x18\x17 \x01(\rR\ftalentPoints\x12\x1d\n" +
 	"\n" +
 	"aura_state\x18\x18 \x01(\rR\tauraState\x12-\n" +
-	"\x05auras\x18\x19 \x03(\v2\x17.wowagent.state.v1.AuraR\x05auras\"\xa5\x01\n" +
+	"\x05auras\x18\x19 \x03(\v2\x17.wowagent.state.v1.AuraR\x05auras\"\xec\x01\n" +
 	"\x04Item\x12\x12\n" +
 	"\x04slot\x18\x01 \x01(\x05R\x04slot\x12\x14\n" +
 	"\x05entry\x18\x02 \x01(\rR\x05entry\x12\x14\n" +
@@ -1230,7 +1247,11 @@ const file_state_proto_rawDesc = "" +
 	"\x04guid\x18\x04 \x01(\x04R\x04guid\x12\x1c\n" +
 	"\tcontainer\x18\x05 \x01(\x04R\tcontainer\x12\x10\n" +
 	"\x03bag\x18\x06 \x01(\rR\x03bag\x12\x19\n" +
-	"\bbag_slot\x18\a \x01(\rR\abagSlot\"E\n" +
+	"\bbag_slot\x18\a \x01(\rR\abagSlot\x12\x1e\n" +
+	"\n" +
+	"durability\x18\b \x01(\rR\n" +
+	"durability\x12%\n" +
+	"\x0emax_durability\x18\t \x01(\rR\rmaxDurability\"E\n" +
 	"\x05Quest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\rR\x02id\x12\x14\n" +
 	"\x05state\x18\x02 \x01(\rR\x05state\x12\x16\n" +

@@ -34,7 +34,9 @@ import (
 const (
 	castRange  = 26
 	meleeRange = 4.5
-	maxWait    = 25
+	// SpellCastResult 30 (EQUIPPED_ITEM_CLASS): the spell needs a usable weapon (missing or broken).
+	castFailedNoWeapon = 30
+	maxWait            = 25
 	// UNIT_FLAG_IN_COMBAT: only units in combat can be attacking us.
 	unitInCombat = 0x00080000
 )
@@ -61,6 +63,7 @@ type Service struct {
 	melee      *meleeLog
 	abandoned  map[uint64]time.Time // targets given up (no damage dealt): not picked again for a while
 	items      map[uint32]*worldpb.ItemInfo
+	book       *spellBook
 }
 
 func Register(g grpc.ServiceRegistrar, s modv1.SessionClient) {
@@ -68,7 +71,7 @@ func Register(g grpc.ServiceRegistrar, s modv1.SessionClient) {
 	runner := jobs.NewRunner(&pb.CombatStatus{State: "idle"})
 	runner.Decorate = func(j *job, st *pb.CombatStatus) { st.ElapsedS = uint32(time.Since(j.Start).Seconds()) }
 	pb.RegisterCombatServer(g, &Service{s: s, api: api.C{S: s}, loot: loot.NewTracker(), guid: guid, jobs: runner, failures: map[uint8]castFailure{},
-		melee: newMeleeLog(), abandoned: map[uint64]time.Time{}, items: map[uint32]*worldpb.ItemInfo{}})
+		melee: newMeleeLog(), abandoned: map[uint64]time.Time{}, items: map[uint32]*worldpb.ItemInfo{}, book: &spellBook{ready: map[uint32]time.Time{}}})
 }
 
 func (s *Service) OnPacket(_ context.Context, p *modv1.WorldPacket) (*emptypb.Empty, error) {
@@ -81,6 +84,10 @@ func (s *Service) OnPacket(_ context.Context, p *modv1.WorldPacket) (*emptypb.Em
 		s.melee.refusedFacing()
 	case uint32(opcode.SMSGAttackerstateupdate):
 		s.melee.attackerState(s.guid, p.GetPayload())
+	case uint32(opcode.SMSGSpellCooldown):
+		s.book.onCooldown(p.GetPayload(), s.guid)
+	case uint32(opcode.SMSGClearCooldown):
+		s.book.onClear(p.GetPayload())
 	case uint32(opcode.SMSGCastFailed):
 		r := wire.NewReader(p.GetPayload())
 		cnt, spell, res := r.U8(), r.U32(), r.U8()
@@ -88,6 +95,9 @@ func (s *Service) OnPacket(_ context.Context, p *modv1.WorldPacket) (*emptypb.Em
 			break
 		}
 		slog.Info("cast failed", "count", cnt, "spell", spell, "result", res)
+		if res == castFailedNoWeapon {
+			s.book.weaponRefused()
+		}
 		s.mu.Lock()
 		s.failures[cnt] = castFailure{spell: spell, at: time.Now()}
 		s.mu.Unlock()
@@ -334,6 +344,9 @@ func (s *Service) kill(ctx context.Context, j *job, r *pb.KillRequest) (string, 
 		maxS = 600 * time.Second
 	}
 	deadline := time.Now().Add(maxS)
+	if r.Guid != 0 && r.Count == 0 {
+		r.Count = 1
+	}
 	var kills uint32
 	noTarget, unreachable := 0, 0
 	for time.Now().Before(deadline) {
@@ -438,7 +451,11 @@ func (s *Service) tryCast(ctx context.Context, spell uint32, target uint64) bool
 		return false
 	}
 	sleep(ctx, 400*time.Millisecond)
-	return !s.failedCast(cnt, spell)
+	if s.failedCast(cnt, spell) {
+		return false
+	}
+	s.book.started(spell)
+	return true
 }
 
 // failedCast tells whether the server rejected our cast number cnt of this spell.
@@ -617,9 +634,10 @@ func (s *Service) fight(ctx context.Context, j *job, guid uint64) (bool, string)
 				spell, target = renew, me.Guid
 				s.mark(&s.lastRenew)
 			case outOfMana:
-			case pain != 0 && mana >= 20 && pct(t.Hp, t.MaxHp) > 30 && needsRefresh(t.Auras, priest.Pain, 1000) && time.Since(painAt) > 3*time.Second:
+			case pain != 0 && mana >= 20 && pct(t.Hp, t.MaxHp) > 30 && needsRefresh(t.Auras, priest.Pain, 1000) && time.Since(painAt) > 3*time.Second &&
+				s.can(pain, me, t, dist):
 				spell, target, painAt = pain, guid, time.Now()
-			case blast != 0 && mana >= 30 && time.Since(lastBlast) > 8*time.Second:
+			case blast != 0 && mana >= 30 && time.Since(lastBlast) > time.Second && s.can(blast, me, t, dist): // cooldown from the server
 				spell, target, lastBlast = blast, guid, time.Now()
 			default:
 				spell, target, busy = smite, guid, 2600*time.Millisecond
@@ -804,7 +822,7 @@ func (s *Service) fightWarrior(ctx context.Context, j *job, guid uint64) (bool, 
 			return false, ""
 		}
 		// Open with Charge (out of combat only): the server moves us next to the target.
-		if charge != 0 && dist >= chargeMin+1 && dist <= chargeMax && me.UnitFlags&inCombatFlag == 0 && t.Target != me.Guid &&
+		if ok, _ := s.book.canCast(charge, me, t, dist3); charge != 0 && ok && dist >= chargeMin+1 && dist <= chargeMax && me.UnitFlags&inCombatFlag == 0 && t.Target != me.Guid &&
 			s.since(&s.lastCharge) > 15*time.Second && s.visible(ctx, t) {
 			s.packetU64(ctx, uint32(opcode.CMSGSetSelection), guid)
 			selected = true
@@ -842,31 +860,44 @@ func (s *Service) fightWarrior(ctx context.Context, j *job, guid uint64) (bool, 
 			s.packetU64(ctx, uint32(opcode.CMSGAttackswing), guid)
 			lastSwing = now
 		}
+		s.checkWeapon(ctx)
 		if now.After(gcdUntil) {
+			// Priority list: the first option whose condition holds and that the client-side check
+			// allows (cooldown, rage, aura state, range from Spell.dbc) is cast.
+			type option struct {
+				ok       bool
+				spell    uint32
+				mark     *time.Time
+				reactive bool // only usable after an event (dodge, kill): failures are expected
+				self     bool
+			}
+			opts := []option{
+				{ok: shout != 0 && needsRefresh(me.Auras, warrior.BattleShout, 3000), spell: shout, self: true},
+				{ok: vr != 0 && now.Sub(vrTry) > time.Second, spell: vr, mark: &vrTry, reactive: true},
+				{ok: exe != 0 && (auraState(t.AuraState, warrior.StateHealthBelow20) || targetPct < 20 || hasAura(me.Auras, warrior.SuddenDeath)), spell: exe},
+				{ok: op != 0 && (s.melee.dodged(guid, 4*time.Second) || hasAura(me.Auras, warrior.TasteForBlood)) && now.Sub(opTry) > time.Second,
+					spell: op, mark: &opTry, reactive: true},
+				{ok: rend != 0 && targetPct > 50 && needsRefresh(t.Auras, warrior.Rend, 2000) && now.Sub(rendAt) > 2*time.Second, spell: rend, mark: &rendAt},
+				{ok: ms != 0 && rage >= 30, spell: ms, mark: &msAt},
+				{ok: slam != 0 && me.Level >= 41, spell: slam},
+				{ok: tc != 0 && me.Level < 20 && now.Sub(tcAt) > time.Second, spell: tc, mark: &tcAt},
+			}
 			var spell uint32
 			var mark *time.Time
-			reactive := false // only usable after an event (dodge, kill): failures are expected
-			switch {
-			// Auras and aura states come from the server (SMSG_AURA_UPDATE, UNIT_FIELD_AURASTATE):
-			// no guessed timers.
-			case shout != 0 && rage >= 10 && needsRefresh(me.Auras, warrior.BattleShout, 3000):
-				spell = shout
-			case vr != 0 && auraState(me.AuraState, warrior.StateVictoryRush) && now.Sub(vrTry) > time.Second:
-				spell, mark, reactive = vr, &vrTry, true
-			case exe != 0 && rage >= 15 && (auraState(t.AuraState, warrior.StateHealthBelow20) || targetPct < 20 ||
-				hasAura(me.Auras, warrior.SuddenDeath)):
-				spell = exe
-			case op != 0 && rage >= 5 && (s.melee.dodged(guid, 4*time.Second) || hasAura(me.Auras, warrior.TasteForBlood)) &&
-				now.Sub(opTry) > time.Second:
-				spell, mark, reactive = op, &opTry, true
-			case rend != 0 && rage >= 10 && targetPct > 50 && needsRefresh(t.Auras, warrior.Rend, 2000) && now.Sub(rendAt) > 2*time.Second:
-				spell, mark = rend, &rendAt
-			case ms != 0 && rage >= 30 && now.Sub(msAt) > 6*time.Second:
-				spell, mark = ms, &msAt
-			case slam != 0 && me.Level >= 41 && rage >= 15:
-				spell = slam
-			case tc != 0 && me.Level < 20 && rage >= 20 && now.Sub(tcAt) > 6*time.Second:
-				spell, mark = tc, &tcAt
+			reactive := false
+			for _, o := range opts {
+				if !o.ok {
+					continue
+				}
+				var target *statepb.Obj
+				if !o.self {
+					target = t
+				}
+				if ok, _ := s.book.canCast(o.spell, me, target, dist3); !ok {
+					continue
+				}
+				spell, mark, reactive = o.spell, o.mark, o.reactive
+				break
 			}
 			if spell != 0 {
 				if mark != nil {
@@ -886,7 +917,7 @@ func (s *Service) fightWarrior(ctx context.Context, j *job, guid uint64) (bool, 
 		if me.Level >= 41 {
 			spare = 60 // Slam and Mortal Strike need the rage
 		}
-		if hs != 0 && rage >= spare && time.Since(hsAt) > 3500*time.Millisecond { // one per swing (2-3.6 s)
+		if ok, _ := s.book.canCast(hs, me, t, dist3); hs != 0 && ok && rage >= spare && time.Since(hsAt) > 3500*time.Millisecond { // one per swing (2-3.6 s)
 			_, _ = s.cast(ctx, hs, guid)
 			hsAt = time.Now()
 		}

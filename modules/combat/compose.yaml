@@ -6,3 +6,4 @@ services:
         CMD: combat
     volumes:
       - ../../logs:/logs
+      - ../../assets/dbc:/dbc:ro

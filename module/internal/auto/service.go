@@ -54,6 +54,8 @@ type Service struct {
 	items  sync.Map    // item entry -> *worldpb.ItemInfo (food checks)
 	// money when a repair failed (not enough): no new repair trip before we earn a silver more
 	repairFailedAt atomic.Uint32
+	// money when a food trip bought nothing (too poor): no new trip before we earn a silver more
+	foodFailedAt atomic.Uint32
 }
 
 func Register(g grpc.ServiceRegistrar, s modv1.SessionClient) {
@@ -735,7 +737,7 @@ func (r *run) explore(info *worldpb.QuestInfo) error {
 	}
 	r.step("explore %s (%.0f,%.0f)", best.Name, best.X, best.Y)
 	// Go well inside: the server checks the distance to the trigger center against its radius.
-	if err := r.walk(best.X, best.Y, best.Z, min(best.Radius/2, 5)); err != nil {
+	if err := r.clearWalk(best.X, best.Y, best.Z, min(best.Radius/2, 5)); err != nil {
 		return err
 	}
 	if res, err := r.s.api.Explore(r.ctx, best.Entry); err != nil || !res.Ok {
@@ -942,7 +944,11 @@ func (r *run) ensureSpace() error {
 	if failed := r.s.repairFailedAt.Load(); failed > 0 && me.Money < failed+100 {
 		needRepair = false
 	}
-	needFood := (food < suppliesLow || (wantDrink > 0 && drink < suppliesLow)) && me.Money >= minMoneyForFood
+	needFood := (food < suppliesLow || (wantDrink > 0 && drink < suppliesLow)) && me.Money >= minMoneyForFood &&
+		snap.DurabilityPct >= repairBelow // repairs first: a broken weapon is worse than no food
+	if failed := r.s.foodFailedAt.Load(); failed > 0 && me.Money < failed+100 {
+		needFood = false
+	}
 	if !needSell && !needRepair && !needFood {
 		return nil
 	}
@@ -1015,15 +1021,17 @@ func (r *run) ensureSpace() error {
 			return fmt.Errorf("bags still full after selling %d items: nothing else may be sold (see town.sell_junk with dry_run and show_kept)", res.Sold)
 		}
 	}
-	if npc.NpcFlags&vendorFlag != 0 && (food < foodWanted/2 || (wantDrink > 0 && drink < wantDrink/2)) {
+	if npc.NpcFlags&vendorFlag != 0 && snap.DurabilityPct >= repairBelow && (food < foodWanted/2 || (wantDrink > 0 && drink < wantDrink/2)) {
 		if res, err := r.s.api.Restock(r.ctx, foodWanted, wantDrink); err == nil && res.Ok && len(res.Bought) > 0 {
+			r.s.foodFailedAt.Store(0)
 			var what []string
 			for _, b := range res.Bought {
 				what = append(what, fmt.Sprintf("%d %s", b.Count, b.Name))
 			}
 			r.note("bought %s for %d copper", strings.Join(what, ", "), res.Copper)
-		} else if err != nil || !res.Ok {
-			r.note("restock: %v %s", err, res.GetReason())
+		} else {
+			r.note("restock: nothing bought %v %s", err, res.GetReason())
+			r.s.foodFailedAt.Store(max(me.Money, 1))
 		}
 	}
 	if npc.NpcFlags&repairFlag != 0 && snap.DurabilityPct < 100 {
@@ -1132,7 +1140,7 @@ func (r *run) useObject(entry uint32, name string, loot bool) error {
 		}
 		tx, ty, tz = sp[0].X, sp[0].Y, sp[0].Z
 	}
-	if err := r.walk(tx, ty, tz, 2.5); err != nil {
+	if err := r.clearWalk(tx, ty, tz, 2.5); err != nil {
 		return err
 	}
 	if res, err := r.s.api.UseObject(r.ctx, entry, loot); err != nil || !res.Ok {

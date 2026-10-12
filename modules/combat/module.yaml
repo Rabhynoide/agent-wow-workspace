@@ -22,5 +22,7 @@ packets:
   SMSG_ATTACKSWING_NOTINRANGE: /wowagent.combat.v1.Combat/OnPacket
   SMSG_ATTACKSWING_BADFACING: /wowagent.combat.v1.Combat/OnPacket
   SMSG_ATTACKERSTATEUPDATE: /wowagent.combat.v1.Combat/OnPacket
+  SMSG_SPELL_COOLDOWN: /wowagent.combat.v1.Combat/OnPacket
+  SMSG_CLEAR_COOLDOWN: /wowagent.combat.v1.Combat/OnPacket
 lifecycle:
   before_logout: /wowagent.combat.v1.Combat/BeforeLogout

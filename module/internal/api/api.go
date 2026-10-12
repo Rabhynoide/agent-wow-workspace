@@ -81,6 +81,13 @@ func (c C) LineOfSight(ctx context.Context, x, y, z float32) (bool, error) {
 	return r.Visible, err
 }
 
+// PathPoints is the walking path to (x, y, z), every 2 yards.
+func (c C) PathPoints(ctx context.Context, x, y, z float32) (*movepb.PathResponse, error) {
+	var r movepb.PathResponse
+	err := invoke.Call(ctx, c.S, "move", "path", &movepb.PathRequest{X: x, Y: y, Z: z, WithPoints: true}, &r)
+	return &r, err
+}
+
 // SafePoint asks move for the point near (x, y, z) farthest from hostile monsters.
 func (c C) SafePoint(ctx context.Context, x, y, z, maxDist float32, pathClear bool) (*movepb.SafePointResult, error) {
 	var r movepb.SafePointResult

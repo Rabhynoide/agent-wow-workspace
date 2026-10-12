@@ -362,7 +362,13 @@ func (s *Service) Path(ctx context.Context, r *pb.PathRequest) (*pb.PathResponse
 	if err != nil {
 		return &pb.PathResponse{Error: err.Error()}, nil
 	}
-	return &pb.PathResponse{Points: uint32(len(pts)), Length: l}, nil
+	out := &pb.PathResponse{Points: uint32(len(pts)), Length: l}
+	if r.WithPoints {
+		for _, p := range pts {
+			out.Pts = append(out.Pts, &pb.PathPoint{X: p[0], Y: p[1], Z: p[2]})
+		}
+	}
+	return out, nil
 }
 
 func (s *Service) Stop(ctx context.Context, _ *emptypb.Empty) (*pb.MoveStatus, error) {

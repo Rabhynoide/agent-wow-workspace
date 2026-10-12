@@ -8,6 +8,13 @@ import (
 	"sort"
 )
 
+// AggroRange approximates Creature::GetAggroRange: 20 yards at the same level, one yard less per level
+// the player is above the creature (more when below), between 5 and 45.
+func AggroRange(player, creature uint32) float32 {
+	r := 20 - (float32(player) - float32(creature))
+	return min(max(r, 5), 45)
+}
+
 // Point is a candidate with its clearance.
 type Point struct {
 	X, Y      float32

@@ -8,6 +8,7 @@ import (
 
 	pb "wowagent/gen/combatv1"
 	statepb "wowagent/gen/statev1"
+	"wowagent/internal/safe"
 )
 
 // Pulling a single monster. A monster attacks on sight within its aggro range; the ones around our
@@ -15,12 +16,7 @@ import (
 // is chosen so that it and its adds fit in our capacity; failing that we body pull it: stand where
 // only it sees us, wait until it comes, back off to a safe spot, then fight.
 
-// aggroRange approximates Creature::GetAggroRange: 20 yards at the same level, one yard less per level
-// we are above it (more when below), between 5 and 45.
-func aggroRange(player, creature uint32) float32 {
-	r := 20 - (float32(player) - float32(creature))
-	return min(max(r, 5), 45)
-}
+func aggroRange(player, creature uint32) float32 { return safe.AggroRange(player, creature) }
 
 // assistRange: a monster attacked calls for help within this distance (CreatureFamilyAssistanceRadius).
 const assistRange = 10
@@ -114,6 +110,13 @@ func pullSpot(me, t *statepb.Obj, others []*statepb.Obj, level uint32) (x, y flo
 // choosePull returns the target to fight, after a body pull when needed; nil when no monster of the
 // entry can be engaged safely for now (they are marked as given up for a while).
 func (s *Service) choosePull(ctx context.Context, j *job, me *statepb.SelfInfo, r *pb.KillRequest, radius float32) (*statepb.Obj, error) {
+	if r.Guid != 0 { // a given unit (clearing a path)
+		o, err := s.api.Obj(ctx, r.Guid)
+		if err != nil || (o.Hp == 0 && o.MaxHp > 0) {
+			return nil, nil
+		}
+		return o, nil
+	}
 	cands, err := s.api.Nearby(ctx, &statepb.NearbyRequest{Kind: "unit", Entry: r.Entry, Radius: radius, Max: 8, AliveOnly: true})
 	if err != nil {
 		return nil, err

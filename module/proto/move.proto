@@ -40,12 +40,21 @@ message PathRequest {
   float x = 1;
   float y = 2;
   float z = 3;
+  // Also return the points (every 2 yards).
+  bool with_points = 4;
+}
+
+message PathPoint {
+  float x = 1;
+  float y = 2;
+  float z = 3;
 }
 
 message PathResponse {
   uint32 points = 1;
   float length = 2;
   string error = 3;
+  repeated PathPoint pts = 4;
 }
 
 message LosRequest {

@@ -27,6 +27,8 @@ message KillRequest {
   // Try to body pull a crowded target alone (experimental: see BACKLOG); otherwise crowded targets
   // are skipped for a while.
   bool body_pull = 10;
+  // Fight this very unit (count 1) instead of picking one of the entry.
+  uint64 guid = 11;
 }
 
 message RestRequest {

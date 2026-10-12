@@ -61,6 +61,9 @@ message Item {
   // 19..22 = equipped bag (bag_slot = index in that bag). Unset (0/0) for bank items.
   uint32 bag = 6;
   uint32 bag_slot = 7;
+  // Current and maximum durability (0/0 for items that do not wear).
+  uint32 durability = 8;
+  uint32 max_durability = 9;
 }
 
 message Quest {

@@ -44,7 +44,9 @@ type KillRequest struct {
 	MaxPull float32 `protobuf:"fixed32,9,opt,name=max_pull,json=maxPull,proto3" json:"max_pull,omitempty"`
 	// Try to body pull a crowded target alone (experimental: see BACKLOG); otherwise crowded targets
 	// are skipped for a while.
-	BodyPull      bool `protobuf:"varint,10,opt,name=body_pull,json=bodyPull,proto3" json:"body_pull,omitempty"`
+	BodyPull bool `protobuf:"varint,10,opt,name=body_pull,json=bodyPull,proto3" json:"body_pull,omitempty"`
+	// Fight this very unit (count 1) instead of picking one of the entry.
+	Guid          uint64 `protobuf:"varint,11,opt,name=guid,proto3" json:"guid,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -147,6 +149,13 @@ func (x *KillRequest) GetBodyPull() bool {
 		return x.BodyPull
 	}
 	return false
+}
+
+func (x *KillRequest) GetGuid() uint64 {
+	if x != nil {
+		return x.Guid
+	}
+	return 0
 }
 
 type RestRequest struct {
@@ -350,7 +359,7 @@ var File_combat_proto protoreflect.FileDescriptor
 
 const file_combat_proto_rawDesc = "" +
 	"\n" +
-	"\fcombat.proto\x12\x12wowagent.combat.v1\x1a\x1bapi/module/v1/session.proto\x1a\x1bgoogle/protobuf/empty.proto\"\x8c\x02\n" +
+	"\fcombat.proto\x12\x12wowagent.combat.v1\x1a\x1bapi/module/v1/session.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xa0\x02\n" +
 	"\vKillRequest\x12\x14\n" +
 	"\x05entry\x18\x01 \x01(\rR\x05entry\x12\x14\n" +
 	"\x05count\x18\x02 \x01(\rR\x05count\x12\x1d\n" +
@@ -364,7 +373,8 @@ const file_combat_proto_rawDesc = "" +
 	"\ano_loot\x18\b \x01(\bR\x06noLoot\x12\x19\n" +
 	"\bmax_pull\x18\t \x01(\x02R\amaxPull\x12\x1b\n" +
 	"\tbody_pull\x18\n" +
-	" \x01(\bR\bbodyPull\"$\n" +
+	" \x01(\bR\bbodyPull\x12\x12\n" +
+	"\x04guid\x18\v \x01(\x04R\x04guid\"$\n" +
 	"\vRestRequest\x12\x15\n" +
 	"\x06wait_s\x18\x01 \x01(\rR\x05waitS\"&\n" +
 	"\rStatusRequest\x12\x15\n" +

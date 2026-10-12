@@ -6,8 +6,13 @@
 set -u
 cd "$(dirname "$0")/.."
 target=${1:-6}; maxmin=${2:-60}; race=${3:-human}; class=${4:-warrior}
-# WoW names are letters only: Bench + the time in letters.
-name=Bench$(date +%d%H%M | tr '0123456789' 'abcdefghij')
+# WoW names are letters only, no letter three times in a row: Bench + 6 random letters.
+name=Bench$(python3 -Ic 'import random,string
+s=""
+while len(s)<6:
+    c=random.choice(string.ascii_lowercase)
+    if s[-2:]!=c*2: s+=c
+print(s)')
 commit=$(git rev-parse --short HEAD)$(git diff --quiet HEAD -- module modules scripts || echo "+dirty")
 scripts/rpc.sh session.logout '{}' >/dev/null 2>&1; sleep 5
 agent-wow char create --name "$name" --race "$race" --class "$class" --gender male >/dev/null || { echo "create failed"; exit 1; }

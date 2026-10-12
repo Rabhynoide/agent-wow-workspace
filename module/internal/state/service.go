@@ -95,7 +95,8 @@ func (s *Service) Snapshot(context.Context, *emptypb.Empty) (*pb.SnapshotRespons
 		if o.Type != TypeItem && o.Type != TypeContainer {
 			continue
 		}
-		it := &pb.Item{Guid: o.Guid, Entry: o.u(fEntry), Count: o.u(fItemCount), Slot: -1, Container: o.guid(fItemHolder)}
+		it := &pb.Item{Guid: o.Guid, Entry: o.u(fEntry), Count: o.u(fItemCount), Slot: -1, Container: o.guid(fItemHolder),
+			Durability: o.u(fItemDur), MaxDurability: o.u(fItemMaxDur)}
 		if sl, ok := slotOf[o.Guid]; ok {
 			it.Slot, it.Bag, it.BagSlot = sl, 255, uint32(sl)
 		} else if pos, ok := inBag[o.Guid]; ok {
