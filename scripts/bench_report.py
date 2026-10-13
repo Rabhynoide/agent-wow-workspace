@@ -38,6 +38,9 @@ lost = [re.sub(r'.*?(target=.*)', r'\1', l) for l in fights if "result=died" in 
 # Flights (combat/flee.go): the "fleeing" line (health, loss expected, attackers), then "fled" (safe).
 fled = [re.sub(r'.*?(hp=.*)', r'\1', l) for l in combat if "msg=fleeing " in l]
 escaped = sum(1 for l in combat if "msg=fled " in l)
+# Fled zones (combat/zones.go): spawn points the grind skipped, pull choices that left monsters there.
+zone_spawns = sum(1 for l in level_log if "near where we fled from" in l)
+zone_pulls = sum(1 for l in combat if "msg=\"pull choice\"" in l and "in_fled_zone=" in l and not re.search(r"in_fled_zone=0\b", l))
 gave_up = sum(1 for l in combat if "giving up target" in l)
 final_level = me.get("level", levels[-1][0] if levels else 1)
 reached = final_level >= int(target)
@@ -55,6 +58,7 @@ lines = [f"# Bench {name} — {race} {cls} 1 → {target} ({date})", "",
          f"- Sorts refusés (sort/code) : {dict(fails.most_common(8))}",
          f"- Combats : {len(fights)} ; perdus : {len(lost)}"] + [f"  - {l}" for l in lost] + [
          f"- Fuites : {len(fled)} ; semées : {escaped}"] + [f"  - {l}" for l in fled] + [
+         f"- Zones fuies évitées : points d'apparition {zone_spawns} ; choix de pull {zone_pulls}",
          f"- Fin : {stops[-1] if stops else '?'}"]
 os.makedirs(os.path.join(root, "journal/bench"), exist_ok=True)
 fname = f"journal/bench/{datetime.datetime.fromtimestamp(start).strftime('%Y%m%d_%H%M')}_{name}.md"

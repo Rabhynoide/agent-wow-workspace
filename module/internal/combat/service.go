@@ -65,6 +65,7 @@ type Service struct {
 	abandoned map[uint64]time.Time // targets given up (no damage dealt): not picked again for a while
 	crowded   map[uint64]time.Time // targets skipped for their adds: not pulled for a while, still fought back
 	fledAt    time.Time            // last flight (flee.go)
+	zones     []fledZone           // places we fled from (zones.go)
 	items     map[uint32]*worldpb.ItemInfo
 	book      *spellBook
 }
@@ -116,11 +117,11 @@ func (s *Service) BeforeLogout(context.Context, *emptypb.Empty) (*emptypb.Empty,
 
 func (s *Service) Stop(context.Context, *emptypb.Empty) (*pb.CombatStatus, error) {
 	s.jobs.Stop()
-	return s.jobs.Current(), nil
+	return s.withZones(s.jobs.Current()), nil
 }
 
 func (s *Service) Status(ctx context.Context, r *pb.StatusRequest) (*pb.CombatStatus, error) {
-	return s.jobs.Wait(ctx, r.WaitS, 0, maxWait), nil
+	return s.withZones(s.jobs.Wait(ctx, r.WaitS, 0, maxWait)), nil
 }
 
 func (s *Service) start(ctx context.Context, waitS uint32, body func(ctx context.Context, j *job) (string, string)) *pb.CombatStatus {
@@ -134,7 +135,7 @@ func (s *Service) start(ctx context.Context, waitS uint32, body func(ctx context
 			st.ElapsedS = uint32(time.Since(j.Start).Seconds())
 		})
 	})
-	return s.jobs.Wait(ctx, waitS, 20, maxWait)
+	return s.withZones(s.jobs.Wait(ctx, waitS, 20, maxWait))
 }
 
 // ---- helpers -------------------------------------------------------------

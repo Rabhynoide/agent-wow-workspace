@@ -51,6 +51,17 @@ message CombatStatus {
   uint32 elapsed_s = 7;
   string doing = 8;
   uint64 coin = 9;
+  // Places we fled from a short while ago (flee.go): grind and hunts keep away from them.
+  repeated Zone avoid = 10;
+}
+
+message Zone {
+  uint32 map = 1;
+  float x = 2;
+  float y = 3;
+  float radius = 4;
+  // Seconds before the zone is forgotten.
+  uint32 left_s = 5;
 }
 
 service Combat {

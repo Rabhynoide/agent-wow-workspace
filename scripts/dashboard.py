@@ -11,7 +11,9 @@ import glob
 import json
 import os
 import re
+import struct
 import sys
+import time
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -123,9 +125,63 @@ def benches():
         return []
 
 
+ICONS = None  # ItemDisplayInfo.dbc id -> icon name (assets/dbc, copied from the server)
+ITEMS = {}  # item entry -> (world.item_info, time read)
+
+
+def icons():
+    global ICONS
+    if ICONS is None:
+        ICONS = {}
+        try:
+            with open(path("assets", "dbc", "ItemDisplayInfo.dbc"), "rb") as f:
+                b = f.read()
+            _, n, fields, size, _ = struct.unpack("<4s4I", b[:20])
+            strings = 20 + n * size
+            for i in range(n):
+                rec = struct.unpack_from("<%dI" % fields, b, 20 + i * size)
+                end = b.index(b"\0", strings + rec[5])  # field 5: InventoryIcon[0]
+                if end > strings + rec[5]:
+                    ICONS[rec[0]] = b[strings + rec[5]:end].decode("ascii", "replace").lower()
+        except (OSError, ValueError, struct.error):
+            pass
+    return ICONS
+
+
+def item(entry):
+    """world.item_info, kept; read again after 10 min when the icon is missing (old world module)."""
+    it, at = ITEMS.get(entry, (None, 0))
+    if it is None or (not it.get("displayId") and time.time() - at > 600):
+        r = rpc("world.item_info", {"entry": entry})
+        if r and r.get("items"):
+            it = r["items"][0]
+            it["icon"] = icons().get(it.get("displayId", 0), "")
+            ITEMS[entry] = (it, time.time())
+    return it
+
+
+def gear():
+    """Equipment and bags (state.snapshot: slot 0-18 worn, 19-22 bags, 23-38 backpack; bag 19-22 =
+    inside an equipped bag), with each item's sheet for the tooltips."""
+    snap = rpc("state.snapshot")
+    if not snap:
+        return None
+    out = []
+    for i in snap.get("items", []):
+        bag, slot = i.get("bag", 0), i.get("bagSlot", 0)
+        if bag == 0 and slot == 0 and not i.get("slot"):
+            continue  # bank
+        info = item(i["entry"]) or {"entry": i["entry"], "name": "objet %d" % i["entry"]}
+        out.append({"bag": bag, "slot": slot, "count": i.get("count", 1), "dur": i.get("durability", 0),
+                    "maxDur": i.get("maxDurability", 0), "info": info})
+    return {"items": out}
+
+
 def data():
     brief = rpc("state.brief")
-    return {"live": brief, "run": current_run(), "fights": fights(), "learned": learned(), "benches": benches()}
+    combat = rpc("combat.status") or {}  # places fled from (combat/zones.go), avoided for 5 min
+    return {"live": brief, "zones": combat.get("avoid", []), "gear": gear(), "doing": combat.get("doing", ""), "run": current_run(),
+            "fights": fights(), "learned": learned(), "benches": benches()}
 
 
 class Handler(BaseHTTPRequestHandler):

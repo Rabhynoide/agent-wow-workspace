@@ -917,8 +917,20 @@ func (r *run) huntAt(entry uint32, name string, count, itemEntry, itemCount uint
 	// Spawn points are sorted by distance. When every monster around one is dead (they respawn slowly),
 	// go to the next point instead of waiting there; kills already made count.
 	var err2 error
-	for i := 0; i < len(sp) && i < 5; i++ {
-		if i > 0 || sp[0].Dist > 30 {
+	tried, avoided := 0, 0
+	for i := 0; i < len(sp) && tried < 5; i++ {
+		// Re-read each time: a flight during this hunt adds a zone.
+		if b, err := r.s.api.Brief(r.ctx); err == nil && b.Self != nil {
+			if z := fledOn(r.fledZones(), b.Self.Map, b.Self.X, b.Self.Y, sp[i].X, sp[i].Y); z != nil {
+				if avoided++; avoided == 1 {
+					slog.Info("spawn point near a fled zone", "entry", entry, "zone", [2]int{int(z.X), int(z.Y)}, "left_s", z.LeftS)
+					r.step("skipping %s spawn points near where we fled from (%d s left)", name, z.LeftS)
+				}
+				continue
+			}
+		}
+		tried++
+		if tried > 1 || sp[i].Dist > 30 {
 			if err := r.walk(sp[i].X, sp[i].Y, sp[i].Z, 10); err != nil {
 				// A spawn point off the navmesh (water, cliff) or unreachable: try the next one.
 				r.step("cannot reach a %s spawn point (%v), trying another", name, err)
@@ -943,7 +955,48 @@ func (r *run) huntAt(entry uint32, name string, count, itemEntry, itemCount uint
 		}
 		r.step("no %s left here, trying another spawn point", name)
 	}
+	if tried == 0 && avoided > 0 {
+		return fmt.Errorf("no live entry away from fled places: the %d nearest %s spawn points are near places we fled from", avoided, name)
+	}
 	return err2
+}
+
+// fledZones asks combat for the places we fled from a short while ago (combat/zones.go).
+func (r *run) fledZones() []*combatpb.Zone {
+	st, err := r.s.api.CombatStatus(r.ctx, 0)
+	if err != nil {
+		return nil
+	}
+	return st.Avoid
+}
+
+// fledOn returns the fled zone that a spawn point (x, y) lies in, or that the straight way to it from
+// (fx, fy) crosses, nil when none. Starting inside a zone is fine as long as the way leads out of it
+// (right after a flight we are often still close). The walk follows the navmesh, not a straight line:
+// a bend can still go through a zone.
+func fledOn(zs []*combatpb.Zone, m uint32, fx, fy, x, y float32) *combatpb.Zone {
+	for _, z := range zs {
+		if z.Map != m {
+			continue
+		}
+		if math.Hypot(float64(x-z.X), float64(y-z.Y)) < float64(z.Radius) {
+			return z
+		}
+		dx, dy := float64(x-fx), float64(y-fy)
+		l2 := dx*dx + dy*dy
+		if l2 == 0 {
+			continue
+		}
+		t := (float64(z.X-fx)*dx + float64(z.Y-fy)*dy) / l2
+		if t <= 0 {
+			continue // the way leads away from the zone
+		}
+		t = math.Min(t, 1)
+		if math.Hypot(float64(fx)+t*dx-float64(z.X), float64(fy)+t*dy-float64(z.Y)) < float64(z.Radius) {
+			return z
+		}
+	}
+	return nil
 }
 
 // Food and drink kept in the bags (20 of each; below 5 a vendor within 500 yards is visited).

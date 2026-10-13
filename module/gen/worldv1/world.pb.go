@@ -1288,9 +1288,16 @@ type ItemInfo struct {
 	// 0 none, 1 bind on pickup, 2 bind on equip, 3 bind on use, 4+ quest.
 	Bonding uint32 `protobuf:"varint,18,opt,name=bonding,proto3" json:"bonding,omitempty"`
 	// On-use spell (spellid_1 when spelltrigger_1 = 0), sent with CMSG_USE_ITEM.
-	UseSpell      uint32 `protobuf:"varint,19,opt,name=use_spell,json=useSpell,proto3" json:"use_spell,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	UseSpell uint32 `protobuf:"varint,19,opt,name=use_spell,json=useSpell,proto3" json:"use_spell,omitempty"`
+	// ItemDisplayInfo.dbc id (icon), first damage range and weapon speed (tooltips).
+	DisplayId uint32  `protobuf:"varint,20,opt,name=display_id,json=displayId,proto3" json:"display_id,omitempty"`
+	DmgMin    float32 `protobuf:"fixed32,21,opt,name=dmg_min,json=dmgMin,proto3" json:"dmg_min,omitempty"`
+	DmgMax    float32 `protobuf:"fixed32,22,opt,name=dmg_max,json=dmgMax,proto3" json:"dmg_max,omitempty"`
+	DelayMs   uint32  `protobuf:"varint,23,opt,name=delay_ms,json=delayMs,proto3" json:"delay_ms,omitempty"`
+	// Slots of a bag (0 for other items).
+	ContainerSlots uint32 `protobuf:"varint,24,opt,name=container_slots,json=containerSlots,proto3" json:"container_slots,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *ItemInfo) Reset() {
@@ -1452,6 +1459,41 @@ func (x *ItemInfo) GetBonding() uint32 {
 func (x *ItemInfo) GetUseSpell() uint32 {
 	if x != nil {
 		return x.UseSpell
+	}
+	return 0
+}
+
+func (x *ItemInfo) GetDisplayId() uint32 {
+	if x != nil {
+		return x.DisplayId
+	}
+	return 0
+}
+
+func (x *ItemInfo) GetDmgMin() float32 {
+	if x != nil {
+		return x.DmgMin
+	}
+	return 0
+}
+
+func (x *ItemInfo) GetDmgMax() float32 {
+	if x != nil {
+		return x.DmgMax
+	}
+	return 0
+}
+
+func (x *ItemInfo) GetDelayMs() uint32 {
+	if x != nil {
+		return x.DelayMs
+	}
+	return 0
+}
+
+func (x *ItemInfo) GetContainerSlots() uint32 {
+	if x != nil {
+		return x.ContainerSlots
 	}
 	return 0
 }
@@ -2248,7 +2290,7 @@ const file_world_proto_rawDesc = "" +
 	"\x06spawns\x18\x01 \x03(\v2\x18.wowagent.world.v1.SpawnR\x06spawns\";\n" +
 	"\x0fItemInfoRequest\x12\x14\n" +
 	"\x05entry\x18\x01 \x01(\rR\x05entry\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\"\xd0\x04\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"\xe5\x05\n" +
 	"\bItemInfo\x12\x14\n" +
 	"\x05entry\x18\x01 \x01(\rR\x05entry\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
@@ -2271,7 +2313,13 @@ const file_world_proto_rawDesc = "" +
 	"\x0eallowable_race\x18\x10 \x01(\x05R\rallowableRace\x12%\n" +
 	"\x0espell_category\x18\x11 \x01(\rR\rspellCategory\x12\x18\n" +
 	"\abonding\x18\x12 \x01(\rR\abonding\x12\x1b\n" +
-	"\tuse_spell\x18\x13 \x01(\rR\buseSpell\"E\n" +
+	"\tuse_spell\x18\x13 \x01(\rR\buseSpell\x12\x1d\n" +
+	"\n" +
+	"display_id\x18\x14 \x01(\rR\tdisplayId\x12\x17\n" +
+	"\admg_min\x18\x15 \x01(\x02R\x06dmgMin\x12\x17\n" +
+	"\admg_max\x18\x16 \x01(\x02R\x06dmgMax\x12\x19\n" +
+	"\bdelay_ms\x18\x17 \x01(\rR\adelayMs\x12'\n" +
+	"\x0fcontainer_slots\x18\x18 \x01(\rR\x0econtainerSlots\"E\n" +
 	"\x10ItemInfoResponse\x121\n" +
 	"\x05items\x18\x01 \x03(\v2\x1b.wowagent.world.v1.ItemInfoR\x05items\"+\n" +
 	"\x13CreatureInfoRequest\x12\x14\n" +

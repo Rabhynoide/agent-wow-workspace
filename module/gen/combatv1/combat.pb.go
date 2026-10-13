@@ -250,15 +250,17 @@ func (x *StatusRequest) GetWaitS() uint32 {
 type CombatStatus struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// idle | running | done | failed | stopped
-	State         string `protobuf:"bytes,1,opt,name=state,proto3" json:"state,omitempty"`
-	Reason        string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
-	Kills         uint32 `protobuf:"varint,3,opt,name=kills,proto3" json:"kills,omitempty"`
-	Items         uint32 `protobuf:"varint,4,opt,name=items,proto3" json:"items,omitempty"`
-	HpPct         uint32 `protobuf:"varint,5,opt,name=hp_pct,json=hpPct,proto3" json:"hp_pct,omitempty"`
-	ManaPct       uint32 `protobuf:"varint,6,opt,name=mana_pct,json=manaPct,proto3" json:"mana_pct,omitempty"`
-	ElapsedS      uint32 `protobuf:"varint,7,opt,name=elapsed_s,json=elapsedS,proto3" json:"elapsed_s,omitempty"`
-	Doing         string `protobuf:"bytes,8,opt,name=doing,proto3" json:"doing,omitempty"`
-	Coin          uint64 `protobuf:"varint,9,opt,name=coin,proto3" json:"coin,omitempty"`
+	State    string `protobuf:"bytes,1,opt,name=state,proto3" json:"state,omitempty"`
+	Reason   string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	Kills    uint32 `protobuf:"varint,3,opt,name=kills,proto3" json:"kills,omitempty"`
+	Items    uint32 `protobuf:"varint,4,opt,name=items,proto3" json:"items,omitempty"`
+	HpPct    uint32 `protobuf:"varint,5,opt,name=hp_pct,json=hpPct,proto3" json:"hp_pct,omitempty"`
+	ManaPct  uint32 `protobuf:"varint,6,opt,name=mana_pct,json=manaPct,proto3" json:"mana_pct,omitempty"`
+	ElapsedS uint32 `protobuf:"varint,7,opt,name=elapsed_s,json=elapsedS,proto3" json:"elapsed_s,omitempty"`
+	Doing    string `protobuf:"bytes,8,opt,name=doing,proto3" json:"doing,omitempty"`
+	Coin     uint64 `protobuf:"varint,9,opt,name=coin,proto3" json:"coin,omitempty"`
+	// Places we fled from a short while ago (flee.go): grind and hunts keep away from them.
+	Avoid         []*Zone `protobuf:"bytes,10,rep,name=avoid,proto3" json:"avoid,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -356,6 +358,90 @@ func (x *CombatStatus) GetCoin() uint64 {
 	return 0
 }
 
+func (x *CombatStatus) GetAvoid() []*Zone {
+	if x != nil {
+		return x.Avoid
+	}
+	return nil
+}
+
+type Zone struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Map    uint32                 `protobuf:"varint,1,opt,name=map,proto3" json:"map,omitempty"`
+	X      float32                `protobuf:"fixed32,2,opt,name=x,proto3" json:"x,omitempty"`
+	Y      float32                `protobuf:"fixed32,3,opt,name=y,proto3" json:"y,omitempty"`
+	Radius float32                `protobuf:"fixed32,4,opt,name=radius,proto3" json:"radius,omitempty"`
+	// Seconds before the zone is forgotten.
+	LeftS         uint32 `protobuf:"varint,5,opt,name=left_s,json=leftS,proto3" json:"left_s,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Zone) Reset() {
+	*x = Zone{}
+	mi := &file_combat_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Zone) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Zone) ProtoMessage() {}
+
+func (x *Zone) ProtoReflect() protoreflect.Message {
+	mi := &file_combat_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Zone.ProtoReflect.Descriptor instead.
+func (*Zone) Descriptor() ([]byte, []int) {
+	return file_combat_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *Zone) GetMap() uint32 {
+	if x != nil {
+		return x.Map
+	}
+	return 0
+}
+
+func (x *Zone) GetX() float32 {
+	if x != nil {
+		return x.X
+	}
+	return 0
+}
+
+func (x *Zone) GetY() float32 {
+	if x != nil {
+		return x.Y
+	}
+	return 0
+}
+
+func (x *Zone) GetRadius() float32 {
+	if x != nil {
+		return x.Radius
+	}
+	return 0
+}
+
+func (x *Zone) GetLeftS() uint32 {
+	if x != nil {
+		return x.LeftS
+	}
+	return 0
+}
+
 var File_combat_proto protoreflect.FileDescriptor
 
 const file_combat_proto_rawDesc = "" +
@@ -379,7 +465,7 @@ const file_combat_proto_rawDesc = "" +
 	"\vRestRequest\x12\x15\n" +
 	"\x06wait_s\x18\x01 \x01(\rR\x05waitS\"&\n" +
 	"\rStatusRequest\x12\x15\n" +
-	"\x06wait_s\x18\x01 \x01(\rR\x05waitS\"\xe1\x01\n" +
+	"\x06wait_s\x18\x01 \x01(\rR\x05waitS\"\x91\x02\n" +
 	"\fCombatStatus\x12\x14\n" +
 	"\x05state\x18\x01 \x01(\tR\x05state\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x14\n" +
@@ -389,7 +475,15 @@ const file_combat_proto_rawDesc = "" +
 	"\bmana_pct\x18\x06 \x01(\rR\amanaPct\x12\x1b\n" +
 	"\telapsed_s\x18\a \x01(\rR\belapsedS\x12\x14\n" +
 	"\x05doing\x18\b \x01(\tR\x05doing\x12\x12\n" +
-	"\x04coin\x18\t \x01(\x04R\x04coin2\x83\x04\n" +
+	"\x04coin\x18\t \x01(\x04R\x04coin\x12.\n" +
+	"\x05avoid\x18\n" +
+	" \x03(\v2\x18.wowagent.combat.v1.ZoneR\x05avoid\"c\n" +
+	"\x04Zone\x12\x10\n" +
+	"\x03map\x18\x01 \x01(\rR\x03map\x12\f\n" +
+	"\x01x\x18\x02 \x01(\x02R\x01x\x12\f\n" +
+	"\x01y\x18\x03 \x01(\x02R\x01y\x12\x16\n" +
+	"\x06radius\x18\x04 \x01(\x02R\x06radius\x12\x15\n" +
+	"\x06left_s\x18\x05 \x01(\rR\x05leftS2\x83\x04\n" +
 	"\x06Combat\x12I\n" +
 	"\x04Kill\x12\x1f.wowagent.combat.v1.KillRequest\x1a .wowagent.combat.v1.CombatStatus\x12I\n" +
 	"\x04Rest\x12\x1f.wowagent.combat.v1.RestRequest\x1a .wowagent.combat.v1.CombatStatus\x12M\n" +
@@ -411,35 +505,37 @@ func file_combat_proto_rawDescGZIP() []byte {
 	return file_combat_proto_rawDescData
 }
 
-var file_combat_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_combat_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_combat_proto_goTypes = []any{
 	(*KillRequest)(nil),    // 0: wowagent.combat.v1.KillRequest
 	(*RestRequest)(nil),    // 1: wowagent.combat.v1.RestRequest
 	(*StatusRequest)(nil),  // 2: wowagent.combat.v1.StatusRequest
 	(*CombatStatus)(nil),   // 3: wowagent.combat.v1.CombatStatus
-	(*emptypb.Empty)(nil),  // 4: google.protobuf.Empty
-	(*v1.WorldPacket)(nil), // 5: agentwow.module.v1.WorldPacket
+	(*Zone)(nil),           // 4: wowagent.combat.v1.Zone
+	(*emptypb.Empty)(nil),  // 5: google.protobuf.Empty
+	(*v1.WorldPacket)(nil), // 6: agentwow.module.v1.WorldPacket
 }
 var file_combat_proto_depIdxs = []int32{
-	0, // 0: wowagent.combat.v1.Combat.Kill:input_type -> wowagent.combat.v1.KillRequest
-	1, // 1: wowagent.combat.v1.Combat.Rest:input_type -> wowagent.combat.v1.RestRequest
-	2, // 2: wowagent.combat.v1.Combat.Status:input_type -> wowagent.combat.v1.StatusRequest
-	4, // 3: wowagent.combat.v1.Combat.Stop:input_type -> google.protobuf.Empty
-	2, // 4: wowagent.combat.v1.Combat.Defend:input_type -> wowagent.combat.v1.StatusRequest
-	5, // 5: wowagent.combat.v1.Combat.OnPacket:input_type -> agentwow.module.v1.WorldPacket
-	4, // 6: wowagent.combat.v1.Combat.BeforeLogout:input_type -> google.protobuf.Empty
-	3, // 7: wowagent.combat.v1.Combat.Kill:output_type -> wowagent.combat.v1.CombatStatus
-	3, // 8: wowagent.combat.v1.Combat.Rest:output_type -> wowagent.combat.v1.CombatStatus
-	3, // 9: wowagent.combat.v1.Combat.Status:output_type -> wowagent.combat.v1.CombatStatus
-	3, // 10: wowagent.combat.v1.Combat.Stop:output_type -> wowagent.combat.v1.CombatStatus
-	3, // 11: wowagent.combat.v1.Combat.Defend:output_type -> wowagent.combat.v1.CombatStatus
-	4, // 12: wowagent.combat.v1.Combat.OnPacket:output_type -> google.protobuf.Empty
-	4, // 13: wowagent.combat.v1.Combat.BeforeLogout:output_type -> google.protobuf.Empty
-	7, // [7:14] is the sub-list for method output_type
-	0, // [0:7] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	4, // 0: wowagent.combat.v1.CombatStatus.avoid:type_name -> wowagent.combat.v1.Zone
+	0, // 1: wowagent.combat.v1.Combat.Kill:input_type -> wowagent.combat.v1.KillRequest
+	1, // 2: wowagent.combat.v1.Combat.Rest:input_type -> wowagent.combat.v1.RestRequest
+	2, // 3: wowagent.combat.v1.Combat.Status:input_type -> wowagent.combat.v1.StatusRequest
+	5, // 4: wowagent.combat.v1.Combat.Stop:input_type -> google.protobuf.Empty
+	2, // 5: wowagent.combat.v1.Combat.Defend:input_type -> wowagent.combat.v1.StatusRequest
+	6, // 6: wowagent.combat.v1.Combat.OnPacket:input_type -> agentwow.module.v1.WorldPacket
+	5, // 7: wowagent.combat.v1.Combat.BeforeLogout:input_type -> google.protobuf.Empty
+	3, // 8: wowagent.combat.v1.Combat.Kill:output_type -> wowagent.combat.v1.CombatStatus
+	3, // 9: wowagent.combat.v1.Combat.Rest:output_type -> wowagent.combat.v1.CombatStatus
+	3, // 10: wowagent.combat.v1.Combat.Status:output_type -> wowagent.combat.v1.CombatStatus
+	3, // 11: wowagent.combat.v1.Combat.Stop:output_type -> wowagent.combat.v1.CombatStatus
+	3, // 12: wowagent.combat.v1.Combat.Defend:output_type -> wowagent.combat.v1.CombatStatus
+	5, // 13: wowagent.combat.v1.Combat.OnPacket:output_type -> google.protobuf.Empty
+	5, // 14: wowagent.combat.v1.Combat.BeforeLogout:output_type -> google.protobuf.Empty
+	8, // [8:15] is the sub-list for method output_type
+	1, // [1:8] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_combat_proto_init() }
@@ -453,7 +549,7 @@ func file_combat_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_combat_proto_rawDesc), len(file_combat_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

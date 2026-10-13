@@ -143,12 +143,17 @@ func (s *Service) choosePull(ctx context.Context, j *job, me *statepb.SelfInfo, 
 	fits := s.pullFits(me, r.MaxPull)
 	self := &statepb.Obj{Guid: me.Guid, X: me.X, Y: me.Y, Z: me.Z}
 	var crowded, taken []*statepb.Obj
+	zones, now, fled := s.fledZones(), time.Now(), 0
 	for _, c := range cands.Objs {
 		if s.wasAbandoned(c.Guid) || s.wasCrowded(c.Guid) {
 			continue
 		}
 		if c.Target == me.Guid {
 			return c, nil // already on us
+		}
+		if inFledZone(zones, me.Map, c.X, c.Y, now) {
+			fled++
+			continue
 		}
 		if c.Target != 0 {
 			taken = append(taken, c)
@@ -168,8 +173,8 @@ func (s *Service) choosePull(ctx context.Context, j *job, me *statepb.SelfInfo, 
 		}
 		s.skipCrowded(c.Guid)
 	}
-	if len(crowded) > 0 {
-		slog.Info("pull choice", "candidates", len(cands.Objs), "crowded", len(crowded), "taken", len(taken))
+	if len(crowded) > 0 || fled > 0 {
+		slog.Info("pull choice", "candidates", len(cands.Objs), "crowded", len(crowded), "taken", len(taken), "in_fled_zone", fled)
 	}
 	if len(crowded) == 0 && len(taken) > 0 {
 		return taken[0], nil // the old behaviour: share a monster someone else fights

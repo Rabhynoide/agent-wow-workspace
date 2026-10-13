@@ -45,6 +45,30 @@ pre { margin: 0; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; 
 .step { border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px; font-size: 12px; }
 .step b { font-size: 14px; }
 svg text { fill: var(--muted); font-size: 11px; }
+/* Armory: equipment and bags, always dark like the game */
+.armory { background: radial-gradient(ellipse at 50% 30%, #2a2418 0%, #120f0a 70%); color: #e8dcc0; border-radius: 8px; padding: 14px; display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+@media (max-width: 860px) { .armory { grid-template-columns: minmax(0, 1fr); } }
+.doll { display: grid; grid-template-columns: 46px minmax(0, 1fr) 46px; gap: 10px; }
+.col { display: flex; flex-direction: column; gap: 6px; }
+.mid { display: flex; flex-direction: column; justify-content: space-between; align-items: center; text-align: center; min-width: 0; }
+.mid .nm { font-size: 22px; font-weight: 700; color: #ffd100; font-family: Georgia, serif; }
+.mid .sub { color: #c9b98f; font-size: 13px; }
+.stats { display: grid; grid-template-columns: auto auto; gap: 2px 12px; font-size: 12px; margin: 10px 0; text-align: left; }
+.stats span:nth-child(odd) { color: #c9b98f; } .stats span:nth-child(even) { color: #fff; text-align: right; font-variant-numeric: tabular-nums; }
+.weapons { display: flex; gap: 6px; justify-content: center; }
+.slot { width: 44px; height: 44px; border: 2px solid #3b3426; border-radius: 6px; background: #1b1710 center/cover no-repeat; position: relative; cursor: default; box-shadow: inset 0 0 6px #000; flex: none; }
+.slot.empty { opacity: .45; }
+.slot .ini { position: absolute; inset: 0; display: grid; place-items: center; font-weight: 700; font-size: 16px; }
+.slot .cnt { position: absolute; right: 2px; bottom: 0; font-size: 12px; font-weight: 700; color: #fff; text-shadow: 0 0 2px #000, 0 0 2px #000; }
+.slot .wear { position: absolute; left: 2px; right: 2px; bottom: 2px; height: 3px; background: #000a; border-radius: 2px; }
+.slot .wear > div { height: 100%; border-radius: 2px; }
+.bags h3 { font-size: 12px; color: #c9b98f; margin: 0 0 6px; font-weight: 600; }
+.bag { display: grid; grid-template-columns: repeat(auto-fill, 44px); gap: 4px; margin-bottom: 12px; }
+.purse { color: #fff; font-size: 13px; margin-bottom: 10px; }
+.purse b { color: #ffd100; } .purse i { color: #c0c0c0; font-style: normal; font-weight: 700; } .purse u { color: #c47a3a; text-decoration: none; font-weight: 700; }
+#tip { position: fixed; z-index: 10; pointer-events: none; display: none; max-width: 300px; background: #070b1ef0; border: 1px solid #5a6a8a; border-radius: 5px; padding: 8px 10px; color: #fff; font-size: 13px; line-height: 1.4; box-shadow: 0 4px 14px #0008; }
+#tip .n { font-size: 14px; font-weight: 600; } #tip .row { display: flex; justify-content: space-between; gap: 16px; }
+#tip .g { color: #1eff00; } #tip .y { color: #ffd100; } #tip .m { color: #9d9d9d; } #tip .r { color: #ff2020; }
 </style>
 </head>
 <body>
@@ -63,6 +87,10 @@ svg text { fill: var(--muted); font-size: 11px; }
       <div id="levels" class="steps"></div>
       <pre id="log" style="margin-top:10px"></pre>
     </section>
+    <section class="card s12">
+      <h2>Équipement et sacs</h2>
+      <div id="armory" class="muted">Session non joignable.</div>
+    </section>
     <section class="card s7">
       <h2>Derniers combats</h2>
       <div class="scroll"><table id="fights"></table></div>
@@ -80,6 +108,7 @@ svg text { fill: var(--muted); font-size: 11px; }
     </section>
   </div>
 </main>
+<div id="tip"></div>
 <script>
 const $ = id => document.getElementById(id);
 const el = (tag, text, cls) => { const e = document.createElement(tag); if (text !== undefined) e.textContent = text; if (cls) e.className = cls; return e; };
@@ -115,7 +144,9 @@ function live(d) {
    ['Durabilité', d.live.durabilityPct !== undefined ? d.live.durabilityPct + ' %' : '—'],
    ['Sacs libres', d.live.freeSlots == null ? '—' : d.live.freeSlots],
    ['Position', `${Math.round(s.x)}, ${Math.round(s.y)} (carte ${s.map || 0})`],
-   ['Quêtes en cours', (d.live.quests || []).length]].forEach(([k, v]) => kv.append(el('span', k, 'muted'), el('span', String(v))));
+   ['Quêtes en cours', (d.live.quests || []).length],
+   ['Combat', d.doing || '—'],
+   ['Zones fuies', (d.zones || []).length ? d.zones.map(z => `${Math.round(z.x)}, ${Math.round(z.y)} (${Math.ceil((z.leftS || 0) / 60)} min)`).join(' ; ') : 'aucune']].forEach(([k, v]) => kv.append(el('span', k, 'muted'), el('span', String(v))));
   box.append(kv);
 }
 
@@ -134,11 +165,115 @@ function run(d) {
   $('log').scrollTop = $('log').scrollHeight;
 }
 
+
+// ---- Armory (state.snapshot + world.item_info read by dashboard.py) ----
+const QUALITY = ['#9d9d9d', '#ffffff', '#1eff00', '#0070dd', '#a335ee', '#ff8000', '#e6cc80', '#e6cc80'];
+const CLASSES = { 1: 'Guerrier', 2: 'Paladin', 3: 'Chasseur', 4: 'Voleur', 5: 'Prêtre', 6: 'Chevalier de la mort', 7: 'Chaman', 8: 'Mage', 9: 'Démoniste', 11: 'Druide' };
+const RACES = { 1: 'Humain', 2: 'Orc', 3: 'Nain', 4: 'Elfe de la nuit', 5: 'Mort-vivant', 6: 'Tauren', 7: 'Gnome', 8: 'Troll', 10: 'Elfe de sang', 11: 'Draeneï' };
+const SLOTS = { 0: 'Tête', 1: 'Cou', 2: 'Épaules', 3: 'Chemise', 4: 'Torse', 5: 'Taille', 6: 'Jambes', 7: 'Pieds', 8: 'Poignets', 9: 'Mains',
+  10: 'Doigt', 11: 'Doigt', 12: 'Bijou', 13: 'Bijou', 14: 'Dos', 15: 'Main droite', 16: 'Main gauche', 17: 'À distance', 18: 'Tabard' };
+const INVTYPE = { 1: 'Tête', 2: 'Cou', 3: 'Épaules', 4: 'Chemise', 5: 'Torse', 6: 'Taille', 7: 'Jambes', 8: 'Pieds', 9: 'Poignets', 10: 'Mains', 11: 'Doigt',
+  12: 'Bijou', 13: 'À une main', 14: 'Main gauche', 15: 'À distance', 16: 'Dos', 17: 'Deux mains', 18: 'Sac', 19: 'Tabard', 20: 'Torse', 21: 'Main droite',
+  22: 'Main gauche', 23: 'Tenu en main gauche', 25: 'Armes de jet', 26: 'À distance', 28: 'Relique' };
+const ARMOR = { 1: 'Tissu', 2: 'Cuir', 3: 'Mailles', 4: 'Plaques', 6: 'Bouclier' };
+const WEAPON = { 0: 'Hache', 1: 'Hache', 2: 'Arc', 3: 'Arme à feu', 4: 'Masse', 5: 'Masse', 6: 'Arme d’hast', 7: 'Épée', 8: 'Épée', 10: 'Bâton',
+  13: 'Arme de pugilat', 14: 'Divers', 15: 'Dague', 16: 'Armes de jet', 18: 'Arbalète', 19: 'Baguette', 20: 'Canne à pêche' };
+const STAT = { 3: 'Agilité', 4: 'Force', 5: 'Intelligence', 6: 'Esprit', 7: 'Endurance' };
+const RATING = { 12: 'le score de défense', 13: 'le score d’esquive', 14: 'le score de parade', 15: 'le score de blocage', 31: 'le score de toucher',
+  32: 'le score de coup critique', 35: 'la résilience', 36: 'le score de hâte', 37: 'l’expertise', 38: 'la puissance d’attaque',
+  43: 'la régénération de mana (5 s)', 44: 'la pénétration d’armure', 45: 'la puissance des sorts', 47: 'la pénétration des sorts', 48: 'la valeur de blocage' };
+const BIND = { 1: 'Lié quand ramassé', 2: 'Lié quand équipé', 3: 'Lié quand utilisé', 4: 'Objet de quête' };
+const ICON = n => `https://wow.zamimg.com/images/wow/icons/large/${n}.jpg`;
+const coins = c => { const p = el('span'); p.innerHTML = `<b>${Math.floor(c / 10000)}</b> po <i>${Math.floor(c / 100) % 100}</i> pa <u>${c % 100}</u> pc`; return p; };
+
+function tipFor(it, x) {
+  const i = it.info, t = $('tip'); t.replaceChildren();
+  const line = (text, cls, right) => { const r = el('div', undefined, right !== undefined ? 'row ' + (cls || '') : cls); if (right !== undefined) { r.append(el('span', text), el('span', right)); } else r.textContent = text; t.append(r); };
+  const n = el('div', i.name, 'n'); n.style.color = QUALITY[i.quality || 0]; t.append(n);
+  if (i.bonding) line(BIND[i.bonding] || '');
+  if (i.containerSlots) line(`Sac de ${i.containerSlots} emplacements`);
+  const kind = i['class'] === 2 ? WEAPON[i.subclass] : i['class'] === 4 ? ARMOR[i.subclass] : '';
+  if (INVTYPE[i.inventoryType]) line(INVTYPE[i.inventoryType], '', kind || '');
+  if (i.dmgMax) { line(`Dégâts : ${Math.round(i.dmgMin)} - ${Math.round(i.dmgMax)}`, '', `Vitesse ${(i.delayMs / 1000).toFixed(2)}`); line(`(${(i.dps || 0).toFixed(1)} dégâts par seconde)`); }
+  if (i.armor) line(`Armure : ${i.armor}`);
+  (i.stats || []).filter(s => STAT[s.type]).forEach(s => line(`${s.value > 0 ? '+' : ''}${s.value} ${STAT[s.type]}`));
+  if (x.maxDur) line(`Durabilité ${x.dur} / ${x.maxDur}`, x.dur === 0 ? 'r' : '');
+  if (i.requiredLevel > 1) line(`Niveau ${i.requiredLevel} requis`);
+  if (i.itemLevel) line(`Niveau d’objet ${i.itemLevel}`, 'y');
+  (i.stats || []).filter(s => RATING[s.type]).forEach(s => line(`Équipé : Augmente ${RATING[s.type]} de ${s.value}.`, 'g'));
+  if (i.useSpell && i.spellCategory === 11) line('Utiliser : nourriture (rend des points de vie).', 'g');
+  else if (i.useSpell && i.spellCategory === 59) line('Utiliser : boisson (rend du mana).', 'g');
+  else if (i.useSpell) line(`Utiliser : sort ${i.useSpell}`, 'g');
+  if (i.sellPrice) { const r = el('div', 'Prix de vente : ', 'm'); r.append(coins(i.sellPrice * (x.count || 1))); t.append(r); }
+  t.append(el('div', `#${i.entry}`, 'm'));
+}
+
+function slotBox(x, label) {
+  const b = el('div', undefined, 'slot');
+  const show = e => { const t = $('tip'); t.style.display = 'block'; const w = t.offsetWidth, h = t.offsetHeight;
+    t.style.left = Math.max(4, Math.min(e.clientX + 14, innerWidth - w - 4)) + 'px'; t.style.top = Math.max(4, Math.min(e.clientY + 14, innerHeight - h - 4)) + 'px'; };
+  if (!x) {
+    b.classList.add('empty');
+    b.addEventListener('mouseenter', () => { $('tip').replaceChildren(el('div', label + ' (vide)', 'm')); });
+  } else {
+    const i = x.info, q = QUALITY[i.quality || 0];
+    b.style.borderColor = q;
+    if (i.icon) {
+      const img = new Image(); img.onload = () => { b.style.backgroundImage = `url(${img.src})`; ini.remove(); }; img.src = ICON(i.icon);
+    }
+    const ini = el('span', (i.name || '?')[0], 'ini'); ini.style.color = q; b.append(ini);
+    if (x.count > 1) b.append(el('span', x.count, 'cnt'));
+    if (x.maxDur) {
+      const w = el('div', undefined, 'wear'), f = el('div'); const p = x.dur / x.maxDur;
+      f.style.width = (100 * p) + '%'; f.style.background = p > .5 ? '#5cc28a' : p > .2 ? '#e6b04a' : '#ef6f5c'; w.append(f); b.append(w);
+    }
+    b.addEventListener('mouseenter', () => tipFor(x, x));
+  }
+  b.addEventListener('mousemove', show);
+  b.addEventListener('mouseleave', () => { $('tip').style.display = 'none'; });
+  return b;
+}
+
+function armory(d) {
+  const box = $('armory'), g = d.gear, s = d.live && d.live.self;
+  if (!g || !s) { box.className = 'muted'; box.textContent = 'Session non joignable (bot arrêté ?).'; return; }
+  box.className = 'armory'; box.replaceChildren();
+  const worn = {}, inBag = {};
+  g.items.forEach(x => { if (x.bag === 255) worn[x.slot] = x; else (inBag[x.bag] = inBag[x.bag] || {})[x.slot] = x; });
+  // Paper doll
+  const doll = el('div', undefined, 'doll');
+  const col = ids => { const c = el('div', undefined, 'col'); ids.forEach(i => c.append(slotBox(worn[i], SLOTS[i]))); return c; };
+  const mid = el('div', undefined, 'mid'), top = el('div');
+  top.append(el('div', d.run ? d.run.name : 'Personnage', 'nm'), el('div', `Niveau ${s.level} ${RACES[s.race] || ''} ${CLASSES[s.classId] || ''}`, 'sub'));
+  const tot = {}; let armor = 0, ilvl = 0, n = 0, dps = 0;
+  for (let i = 0; i < 19; i++) { const x = worn[i]; if (!x) continue;
+    (x.info.stats || []).forEach(st => { tot[st.type] = (tot[st.type] || 0) + st.value; });
+    armor += x.info.armor || 0; if (i !== 3 && i !== 18) { ilvl += x.info.itemLevel || 0; n++; } if (i === 15) dps = x.info.dps || 0; }
+  const st = el('div', undefined, 'stats');
+  [['Points de vie', `${s.hp} / ${s.maxHp}`], ...[4, 3, 7, 5, 6].map(k => [STAT[k], tot[k] ? '+' + tot[k] : '0']), ['Armure', armor],
+   ['DPS de l’arme', dps ? dps.toFixed(1) : '—'], ['Niveau d’objet moyen', n ? (ilvl / n).toFixed(1) : '—'],
+   ['Durabilité', d.live.durabilityPct !== undefined ? d.live.durabilityPct + ' %' : '—']].forEach(([k, v]) => st.append(el('span', k), el('span', String(v))));
+  top.append(st);
+  const weapons = el('div', undefined, 'weapons'); [15, 16, 17].forEach(i => weapons.append(slotBox(worn[i], SLOTS[i])));
+  mid.append(top, weapons);
+  doll.append(col([0, 1, 2, 14, 4, 3, 18, 8]), mid, col([9, 5, 6, 7, 10, 11, 12, 13]));
+  // Bags: backpack (inventory slots 23-38) then the equipped bags (19-22)
+  const bags = el('div', undefined, 'bags'), purse = el('div', 'Argent : ', 'purse'); purse.append(coins(s.money || 0)); bags.append(purse);
+  let free = 0;
+  const bagGrid = (title, size, get) => { bags.append(el('h3', title)); const grid = el('div', undefined, 'bag');
+    for (let i = 0; i < size; i++) { const x = get(i); if (!x) free++; grid.append(slotBox(x, 'Emplacement')); } bags.append(grid); };
+  bagGrid('Sac à dos (16)', 16, i => worn[23 + i]);
+  for (let b = 19; b <= 22; b++) { const bag = worn[b]; if (!bag) continue;
+    bagGrid(`${bag.info.name} (${bag.info.containerSlots || '?'})`, bag.info.containerSlots || Object.keys(inBag[b] || {}).length, i => (inBag[b] || {})[i]); }
+  purse.append(document.createTextNode(` · ${free} emplacements libres`));
+  box.append(doll, bags);
+}
+
 const RESULT = { died: 'mort', won: 'gagné', fled: 'fuite', left: 'perdu de vue' };
 const mob = e => names[e] ? `${names[e]} (${e})` : e;
 
 function render(d) {
-  live(d); run(d);
+  live(d); run(d); armory(d);
   table('fights', ['Heure', 'Résultat', 'Cible', 'Niv.', 'Écart', 'PV début', 'PV min', 'Attaquants', 'Durée'],
     d.fights.map(f => ({ died: f.result === 'died', fled: f.result === 'fled', cells: [f.time, RESULT[f.result] || f.result, mob(f.target), f.level, (f.gap > 0 ? '+' : '') + f.gap, f.hp_start + ' %', f.hp_min + ' %', f.attackers, f.s + ' s'] })),
     r => r.died ? 'died' : r.fled ? 'fled' : '');

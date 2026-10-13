@@ -2,7 +2,7 @@
 
 Code : `module/` (un go.mod, un binaire par module `module/cmd/<nom>`). Manifestes : `modules/<nom>/` (module.yaml, compose.yaml, module.pb). Protos : `cd module && make generate`. Images reconstruites au `char play`. Tests : `cd module && go test ./...` (utilisent `assets/` s'il existe).
 Appels : `scripts/rpc.sh <module.methode> '<json>' [chemin]` ; jobs async : `scripts/job.sh <module.methode> '<json>' [max_s]` (une ligne par étape, chaque événement `progress` une fois). Logs : `logs/<module>.log`.
-`assets/` (hors git) : mmaps, maps, vmaps, dbc (Spell, SpellRange, Talent, TalentTab, SkillLineAbility, Lock, FactionTemplate), zygor/repo, routes, sources (Ovale, WeakAuras, playerbots).
+`assets/` (hors git) : mmaps, maps, vmaps, dbc (Spell, SpellRange, Talent, TalentTab, SkillLineAbility, Lock, FactionTemplate, ItemDisplayInfo pour les icônes du tableau de bord), zygor/repo, routes, sources (Ovale, WeakAuras, playerbots).
 
 ## Outils hors jeu
 - `zygor2route` : guides Zygor (`assets/zygor/repo`, jamais dans git) → `assets/routes/*.json` (25 routes Alliance, avec ids et variantes race/classe).
@@ -26,7 +26,7 @@ Appels : `scripts/rpc.sh <module.methode> '<json>' [chemin]` ; jobs async : `scr
 ## world (MySQL acore_world, lecture seule)
 - `world.find_npc {name|entry, map_filter, map, x, y, radius, npc_flags, sells_spell_category, sells_max_level, max}` (ignore les « [DND] »). npc_flags : vendeur 128, réparateur 4096, aubergiste 65536.
 - `world.quest_info {id|title}` : niveaux, objectifs (kill/item/gameobject, `counter`), `explore` (zones), `credit_from` (KillCredit), `use_item/use_spell/use_on` (crédit par sort), starters/enders (créature ou objet), reward_choices, special_flags.
-- `world.spawns {entry, map, x, y, radius, kind}` (avec rank, health_mod, damage_mod, attack_ms), `world.item_info {entry|name}` (stats, dps, use_spell, spell_category, stackable), `world.item_sources {entry}`, `world.quests_for_npc`, `world.creature`, `world.class_trainers`.
+- `world.spawns {entry, map, x, y, radius, kind}` (avec rank, health_mod, damage_mod, attack_ms), `world.item_info {entry|name}` (stats, dps, dégâts min/max, vitesse, use_spell, spell_category, stackable, display_id pour l'icône, container_slots), `world.item_sources {entry}`, `world.quests_for_npc`, `world.creature`, `world.class_trainers`.
 
 ## quest
 - `quest.accept`/`quest.turnin {npc_entry, quest_id, reward}` : PNJ (ou objet) à ≤ 5 yards 3D.
@@ -41,7 +41,7 @@ Appels : `scripts/rpc.sh <module.methode> '<json>' [chemin]` ; jobs async : `scr
 - Prêtre (table) : Desperate Prayer < 30 %, Psychic Scream < 50 % et 2 attaquants, soin < 40 %, Bouclier (sans Âme affaiblie) < 80 %, Rénovation < 65 %, Douleur (cible qui vit encore 6 s), Attaque mentale, Châtiment ; Robustesse/Feu intérieur hors combat. Le code garde la distance, la ligne de vue et la baguette ou la mêlée sans mana. Repos à 55 %.
 - Journal : une ligne `fight` par combat (résultat, cible, PV début/min/fin, attaquants max et leurs entrées, durée) ; résumé des combats perdus dans le rapport de bench.
 - Repos : mange (catégorie 11) sous 80 % de PV, boit (59) sous 70 % de mana.
-- Fuite (`combat/flee.go`) : pendant un combat, chaque seconde, perte restante attendue = `xpscore.LossLeft` (combat seul appris de chaque attaquant × part de PV qui lui reste, ×(1 + 1,5 par add)) ; si elle dépasse nos PV − 15 %, course de point sûr en point sûr (`move.safe_point` 35 yards, 40 s max) jusqu'à ce que plus rien ne nous cible. Repos à 90 % après une fuite ; pas de nouvelle fuite pendant 15 s ; les attaquants sont évités par le choix de pull 2 min (mais combattus s'ils attaquent). Ligne `fight` result=fled, lignes `fleeing` / `fled` ; compteur `fled` par monstre dans `fights.json`. Base : monstres d'Elwynn à 0,86 × notre vitesse, leash 30 yards (CreatureLeashRadius).
+- Fuite (`combat/flee.go`) : pendant un combat, chaque seconde, perte restante attendue = `xpscore.LossLeft` (combat seul appris de chaque attaquant × part de PV qui lui reste, ×(1 + 1,5 par add)) ; si elle dépasse nos PV − 15 %, course de point sûr en point sûr (`move.safe_point` 35 yards, 40 s max) jusqu'à ce que plus rien ne nous cible. Repos à 90 % après une fuite ; pas de nouvelle fuite pendant 15 s ; les attaquants sont évités par le choix de pull 2 min (mais combattus s'ils attaquent). Ligne `fight` result=fled, lignes `fleeing` / `fled` ; compteur `fled` par monstre dans `fights.json`. Zone fuie (`combat/zones.go`) : centre des attaquants, 40 yards, 5 min ; ses monstres ne sont pas pullés (`pull choice … in_fled_zone`), et elle est renvoyée dans chaque `CombatStatus.avoid` : `auto` saute les points d'apparition dedans ou dont la ligne droite la traverse (« skipping … near where we fled from » ; tous écartés = « no live entry … », quête reportée 4 min). Base : monstres d'Elwynn à 0,86 × notre vitesse, leash 30 yards (CreatureLeashRadius).
 - Limites : tables prêtre/guerrier seulement ; pas de postures ; fuite sans tenir compte des monstres plus rapides ni des ralentissements.
 
 ## town

@@ -421,7 +421,7 @@ var statCols = func() string {
 
 func (s *Service) ItemInfo(ctx context.Context, r *pb.ItemInfoRequest) (*pb.ItemInfoResponse, error) {
 	q := "SELECT entry, name, Quality, ItemLevel, RequiredLevel, class, subclass, InventoryType, SellPrice, BuyPrice, stackable, " +
-		"armor, dmg_min1, dmg_max1, delay, AllowableClass, AllowableRace, spellcategory_1, bonding, IF(spelltrigger_1=0, spellid_1, 0)" + statCols + " FROM item_template WHERE "
+		"armor, dmg_min1, dmg_max1, delay, AllowableClass, AllowableRace, spellcategory_1, bonding, IF(spelltrigger_1=0, spellid_1, 0), displayid, ContainerSlots" + statCols + " FROM item_template WHERE "
 	var arg any
 	if r.Entry != 0 {
 		q += "entry=?"
@@ -444,7 +444,7 @@ func (s *Service) ItemInfo(ctx context.Context, r *pb.ItemInfoRequest) (*pb.Item
 		var delay uint32
 		var st [20]int32
 		dest := []any{&it.Entry, &it.Name, &it.Quality, &it.ItemLevel, &it.RequiredLevel, &it.Class, &it.Subclass, &it.InventoryType, &it.SellPrice, &it.BuyPrice, &it.Stackable,
-			&it.Armor, &dmin, &dmax, &delay, &it.AllowableClass, &it.AllowableRace, &it.SpellCategory, &it.Bonding, &it.UseSpell}
+			&it.Armor, &dmin, &dmax, &delay, &it.AllowableClass, &it.AllowableRace, &it.SpellCategory, &it.Bonding, &it.UseSpell, &it.DisplayId, &it.ContainerSlots}
 		for i := range st {
 			dest = append(dest, &st[i])
 		}
@@ -454,6 +454,7 @@ func (s *Service) ItemInfo(ctx context.Context, r *pb.ItemInfoRequest) (*pb.Item
 		if delay > 0 {
 			it.Dps = (dmin + dmax) / 2 / (float32(delay) / 1000)
 		}
+		it.DmgMin, it.DmgMax, it.DelayMs = dmin, dmax, delay
 		for i := 0; i < 10; i++ {
 			if st[2*i] != 0 && st[2*i+1] != 0 {
 				it.Stats = append(it.Stats, &pb.ItemStat{Type: uint32(st[2*i]), Value: st[2*i+1]})

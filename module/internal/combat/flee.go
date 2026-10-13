@@ -82,12 +82,14 @@ func (s *Service) losing(me *statepb.SelfInfo, att []*statepb.Obj) (bool, float6
 // still fight them back if they catch us.
 func (s *Service) flee(ctx context.Context, j *job, me *statepb.SelfInfo, att []*statepb.Obj, loss float64) bool {
 	s.mark(&s.fledAt)
+	z := zoneOf(me.Map, att, time.Now())
+	s.addZone(z)
 	entries := make([]uint32, len(att))
 	for i, a := range att {
 		entries[i] = a.Entry
 		s.skipCrowded(a.Guid)
 	}
-	slog.Info("fleeing", "hp", pct(me.Hp, me.MaxHp), "loss_left", int(loss), "attackers", entries)
+	slog.Info("fleeing", "hp", pct(me.Hp, me.MaxHp), "loss_left", int(loss), "attackers", entries, "zone", [2]int{int(z.x), int(z.y)})
 	j.Update(func(st *pb.CombatStatus) { st.Doing = "fleeing" })
 	started := time.Now()
 	for time.Since(started) < fleeMaxS*time.Second {

@@ -4,7 +4,7 @@
 EmptyB}
 com.google.protobufB
 EmptyProtoPZ.google.golang.org/protobuf/types/known/emptypbø¢GPBªGoogle.Protobuf.WellKnownTypesbproto3
-­(
+Â)
 world.protowowagent.world.v1google/protobuf/empty.proto"¨
 FindNpcRequest
 name (	Rname
@@ -119,7 +119,7 @@ objectives7
 spawns (2.wowagent.world.v1.SpawnRspawns";
 ItemInfoRequest
 entry (Rentry
-name (	Rname"Ð
+name (	Rname"å
 ItemInfo
 entry (Rentry
 name (	Rname
@@ -142,7 +142,13 @@ sell_price	 (R	sellPrice
 allowable_race (RallowableRace%
 spell_category (RspellCategory
 bonding (Rbonding
-	use_spell (RuseSpell"E
+	use_spell (RuseSpell
+
+display_id (R	displayId
+dmg_min (RdmgMin
+dmg_max (RdmgMax
+delay_ms (RdelayMs'
+container_slots (RcontainerSlots"E
 ItemInfoResponse1
 items (2.wowagent.world.v1.ItemInfoRitems"+
 CreatureInfoRequest

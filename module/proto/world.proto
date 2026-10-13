@@ -181,6 +181,13 @@ message ItemInfo {
   uint32 bonding = 18;
   // On-use spell (spellid_1 when spelltrigger_1 = 0), sent with CMSG_USE_ITEM.
   uint32 use_spell = 19;
+  // ItemDisplayInfo.dbc id (icon), first damage range and weapon speed (tooltips).
+  uint32 display_id = 20;
+  float dmg_min = 21;
+  float dmg_max = 22;
+  uint32 delay_ms = 23;
+  // Slots of a bag (0 for other items).
+  uint32 container_slots = 24;
 }
 
 message ItemInfoResponse {
