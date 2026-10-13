@@ -1,6 +1,7 @@
 package xpscore
 
 import (
+	"math"
 	"strings"
 	"testing"
 )
@@ -73,5 +74,25 @@ func TestLearnMobsAfterUpgrade(t *testing.T) {
 	}
 	if c := tb.Measured(1, 2, 0); c.N != 2 || c.Deaths != 2 {
 		t.Fatalf("monster 2: %+v", c)
+	}
+}
+
+// Past keepFights, the old fights are scaled down: 100 fights with 10 deaths, then one won fight,
+// keep the death rate but weigh 40 fights.
+func TestForget(t *testing.T) {
+	c := &MobCell{N: 101, Deaths: 10, Chained: 20, ChainedDeaths: 5, Fled: 4}
+	c.forget()
+	if c.N != keepFights || math.Abs(c.Deaths-10*40.0/101) > 1e-9 || math.Abs(c.Fled-4*40.0/101) > 1e-9 {
+		t.Errorf("after forget: %+v", c)
+	}
+	f := &Cell{N: 30, LossSum: 300, SecSum: 360}
+	f.forget()
+	if f.N != 30 || f.LossSum != 300 {
+		t.Errorf("under keepFights, unchanged: %+v", f)
+	}
+	g := &Cell{N: 80, LossSum: 1200, SecSum: 960}
+	g.forget()
+	if g.N != 40 || g.LossSum/g.N != 15 || g.SecSum/g.N != 12 {
+		t.Errorf("averages kept: %+v", g)
 	}
 }

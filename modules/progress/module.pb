@@ -31,8 +31,8 @@ EmptyProtoPZ.google.golang.org/protobuf/types/known/emptypbø¢GPBªGoogle.P
 SendPacket%.agentwow.module.v1.SendPacketRequest.google.protobuf.EmptyE
 GetClock.google.protobuf.Empty!.agentwow.module.v1.ClockResponsea
 InvokeModule'.agentwow.module.v1.InvokeModuleRequest(.agentwow.module.v1.InvokeModuleResponseB5Z3github.com/agent-wow/agent-wow/pkg/modules/v1;modv1bproto3
-Ã
-progress.protowowagent.progress.v1api/module/v1/session.protogoogle/protobuf/empty.proto"á
+í
+progress.protowowagent.progress.v1api/module/v1/session.protogoogle/protobuf/empty.proto"‹
 TrainCheckResult
 count (Rcount
 cost (Rcost
@@ -41,7 +41,11 @@ SendPacket%.agentwow.module.v1.SendPacketRequest.google.protobuf.EmptyE
 trainer_name (	RtrainerName
 dist (Rdist"
 unaffordable (Runaffordable
-reason (	Rreason"%
+reason (	Rreason
+x	 (Rx
+y
+ (Ry
+z (Rz"%
 TrainRequest
 wait_s (RwaitS"&
 StatusRequest

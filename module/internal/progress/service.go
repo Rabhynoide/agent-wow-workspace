@@ -260,7 +260,8 @@ func (s *Service) TrainCheck(ctx context.Context, _ *emptypb.Empty) (*pb.TrainCh
 		return &pb.TrainCheckResult{Reason: "no class trainer on this map"}, nil
 	}
 	t := p.trainers[0]
-	res := &pb.TrainCheckResult{Count: uint32(len(p.spells)), Cost: p.cost, Trainer: t.Entry, TrainerName: t.Name, Dist: t.Dist, Unaffordable: p.unaffordable}
+	res := &pb.TrainCheckResult{Count: uint32(len(p.spells)), Cost: p.cost, Trainer: t.Entry, TrainerName: t.Name, Dist: t.Dist, Unaffordable: p.unaffordable,
+		X: t.X, Y: t.Y, Z: t.Z}
 	for _, ts := range p.spells {
 		res.Spells = append(res.Spells, s.spellName(ts.Spell))
 	}
@@ -592,7 +593,66 @@ func (s *Service) Gear(ctx context.Context, r *pb.GearRequest) (*pb.GearResult, 
 			break
 		}
 	}
+	if !r.DryRun && res.Ok {
+		if name, err := s.equipBag(ctx); err != nil {
+			res.Ok, res.Reason = false, err.Error()
+		} else if name != "" {
+			res.Equipped = append(res.Equipped, name+" (bag)")
+		}
+	}
 	return res, nil
+}
+
+// equipBag puts the largest plain bag we carry into a free bag slot (19-22), one per call: a bag
+// looted at level 6 stayed in the backpack (2026-10-13) while vendor trips came every 15 minutes for
+// lack of room. Bags in our bags are empty (the server forbids a bag with items inside another).
+func (s *Service) equipBag(ctx context.Context) (string, error) {
+	snap, err := s.api.Snapshot(ctx)
+	if err != nil {
+		return "", err
+	}
+	free := 4
+	var best *statepb.Item
+	var bestInfo *worldpb.ItemInfo
+	for _, it := range snap.Items {
+		if it.Bag == 255 && it.BagSlot >= 19 && it.BagSlot <= 22 {
+			free--
+			continue
+		}
+		if !(it.Bag == 255 && it.BagSlot >= 23 && it.BagSlot <= 38) && !(it.Bag >= 19 && it.Bag <= 22) {
+			continue
+		}
+		info := s.itemInfo(ctx, it.Entry)
+		// Class 1 subclass 0: a plain container (not a soul, herb or enchanting bag).
+		if info == nil || info.Class != 1 || info.Subclass != 0 || info.ContainerSlots == 0 {
+			continue
+		}
+		if bestInfo == nil || info.ContainerSlots > bestInfo.ContainerSlots {
+			best, bestInfo = it, info
+		}
+	}
+	if free == 0 || best == nil {
+		return "", nil
+	}
+	if err := moveio.Packet(ctx, s.s, uint32(opcode.CMSGAutoequipItem), []byte{byte(best.Bag), byte(best.BagSlot)}); err != nil {
+		return "", err
+	}
+	for i := 0; i < 20; i++ {
+		if !jobs.Sleep(ctx, 100*time.Millisecond) {
+			return "", ctx.Err()
+		}
+		snap, err := s.api.Snapshot(ctx)
+		if err != nil {
+			continue
+		}
+		for _, it := range snap.Items {
+			if it.Guid == best.Guid && it.Bag == 255 && it.BagSlot >= 19 && it.BagSlot <= 22 {
+				slog.Info("bag equipped", "item", bestInfo.Name, "slots", bestInfo.ContainerSlots, "slot", it.BagSlot)
+				return bestInfo.Name, nil
+			}
+		}
+	}
+	return "", fmt.Errorf("server did not equip the bag %s", bestInfo.Name)
 }
 
 // equip moves the item to its slot (explicit slot for rings/trinkets) and waits for the server.

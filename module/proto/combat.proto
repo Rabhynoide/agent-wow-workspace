@@ -53,6 +53,8 @@ message CombatStatus {
   uint64 coin = 9;
   // Places we fled from a short while ago (flee.go): grind and hunts keep away from them.
   repeated Zone avoid = 10;
+  // Flights during this job: a kill job ends at the first one (too dangerous for now), a defend goes on.
+  uint32 fled = 11;
 }
 
 message Zone {

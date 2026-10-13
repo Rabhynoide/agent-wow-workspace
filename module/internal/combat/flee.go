@@ -28,6 +28,18 @@ const (
 	fleeEvery = 15 * time.Second
 	fleeMaxS  = 40 // running time before fighting again
 	fleeDist  = 35 // yards per leg of the run (safe point search radius)
+	// crowdFlee: this many attackers with more than half their health and we run whatever our health.
+	// The flight only works while few monsters chase us: with 5-6 kobolds of a pack (Fargodeep mine,
+	// 6 → 10 bench of 2026-10-13) the ones still on us at the start of the run killed us twice.
+	crowdFlee = 3
+	// crowdLoss: ... as long as they are expected to cost this much (percent). Three kobolds two levels
+	// below (19 %) made us flee at 92 % health and postponed the mine quest level after level (bench of
+	// 2026-10-13: 0 quests in 100 minutes).
+	crowdLoss = 30.0
+	// highMargin: added to fleeMargin per attacker at least 2 levels above us: its hits in the first
+	// seconds of the run cost more (two deaths to a level-10 Riverpaw Outrunner at level 8, flights
+	// started at 44 and 20 %).
+	highMargin = 10.0
 )
 
 // onMe lists the units in combat that target us within 30 yards.
@@ -75,11 +87,28 @@ func (s *Service) losing(me *statepb.SelfInfo, att []*statepb.Obj) (bool, float6
 		return false, 0
 	}
 	loss := s.lossLeft(me, att)
-	return loss > float64(pct(me.Hp, me.MaxHp))-fleeMargin, loss
+	margin := fleeMargin
+	for _, a := range att {
+		if a.Level >= me.Level+2 {
+			margin += highMargin
+		}
+	}
+	return (crowd(att) && loss > crowdLoss) || loss > float64(pct(me.Hp, me.MaxHp))-margin, loss
 }
 
-// flee runs from safe spot to safe spot until nothing targets us (or fleeMaxS), and reports whether
-// we died on the way. The attackers are skipped by the pull choice for a while, not given up: we
+// crowd tells whether at least crowdFlee attackers have more than half their health.
+func crowd(att []*statepb.Obj) bool {
+	n := 0
+	for _, a := range att {
+		if a.MaxHp > 0 && 2*a.Hp > a.MaxHp {
+			n++
+		}
+	}
+	return n >= crowdFlee
+}
+
+// flee runs back along our trail (trail.go), then from safe spot to safe spot, until nothing targets
+// us (or fleeMaxS), and reports whether we died on the way. The attackers are skipped by the pull choice for a while, not given up: we
 // still fight them back if they catch us.
 func (s *Service) flee(ctx context.Context, j *job, me *statepb.SelfInfo, att []*statepb.Obj, loss float64) bool {
 	s.mark(&s.fledAt)
@@ -90,9 +119,23 @@ func (s *Service) flee(ctx context.Context, j *job, me *statepb.SelfInfo, att []
 		entries[i] = a.Entry
 		s.skipCrowded(a.Guid)
 	}
-	slog.Info("fleeing", "hp", pct(me.Hp, me.MaxHp), "loss_left", int(loss), "attackers", entries, "zone", [2]int{int(z.x), int(z.y)})
+	// Back along the trail unless its first leg leads towards the attackers (they came from behind).
+	legs, idx := s.trail.back(me.Map, me.X, me.Y)
+	if len(legs) > 0 && dist2(legs[0].x, legs[0].y, z.x, z.y) < dist2(me.X, me.Y, z.x, z.y) {
+		legs = nil
+	}
+	way := "safe_point"
+	if len(legs) > 0 {
+		way = "trail"
+	}
+	slog.Info("fleeing", "hp", pct(me.Hp, me.MaxHp), "loss_left", int(loss), "attackers", entries, "crowd", crowd(att),
+		"zone", [2]int{int(z.x), int(z.y)}, "way", way, "legs", len(legs))
 	j.Update(func(st *pb.CombatStatus) { st.Doing = "fleeing" })
+	s.trail.pause(true)
+	end := -1
+	defer func() { s.trail.cut(end) }()
 	started := time.Now()
+	leg, clear := 0, 0
 	for time.Since(started) < fleeMaxS*time.Second {
 		b, err := s.api.Brief(ctx)
 		if err != nil || b.Self == nil {
@@ -106,9 +149,22 @@ func (s *Service) flee(ctx context.Context, j *job, me *statepb.SelfInfo, att []
 			s.forgetBuffs()
 			return true
 		}
-		if len(s.onMe(ctx, me)) == 0 {
-			slog.Info("fled", "hp", pct(me.Hp, me.MaxHp), "s", int(time.Since(started).Seconds()))
+		// Twice in a row, running on in between: the chasers lost us for a moment and caught up again
+		// right after "fled" (Fargodeep mine, 2026-10-13).
+		if len(s.onMe(ctx, me)) > 0 {
+			clear = 0
+		} else if clear++; clear >= 2 {
+			slog.Info("fled", "hp", pct(me.Hp, me.MaxHp), "s", int(time.Since(started).Seconds()), "legs", leg)
 			return false
+		}
+		if leg < len(legs) {
+			p := legs[leg]
+			if _, err := s.api.GotoWait(ctx, p.x, p.y, p.z, 3, 8); err != nil && ctx.Err() != nil {
+				return false
+			}
+			end = idx[leg]
+			leg++
+			continue
 		}
 		// The attackers are threats too: the point is away from them and from the other monsters
 		// (not path_clear: our own spot, next to them, would rule out every path).

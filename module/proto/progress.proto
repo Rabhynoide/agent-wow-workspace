@@ -17,6 +17,10 @@ message TrainCheckResult {
   // Spells learnable at this level but too expensive.
   uint32 unaffordable = 7;
   string reason = 8;
+  // Where the trainer stands: auto walks there itself (fighting back on the way) before train.
+  float x = 9;
+  float y = 10;
+  float z = 11;
 }
 
 message TrainRequest {

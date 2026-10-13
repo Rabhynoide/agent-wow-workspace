@@ -31,8 +31,7 @@ EmptyProtoPZ.google.golang.org/protobuf/types/known/emptypbø¢GPBªGoogle.P
 SendPacket%.agentwow.module.v1.SendPacketRequest.google.protobuf.EmptyE
 GetClock.google.protobuf.Empty!.agentwow.module.v1.ClockResponsea
 InvokeModule'.agentwow.module.v1.InvokeModuleRequest(.agentwow.module.v1.InvokeModuleResponseB5Z3github.com/agent-wow/agent-wow/pkg/modules/v1;modv1bproto3
-ö
-
+Š
 combat.protowowagent.combat.v1api/module/v1/session.protogoogle/protobuf/empty.proto" 
 KillRequest
 entry (Rentry
@@ -52,7 +51,7 @@ item_count (R	itemCount
 RestRequest
 wait_s (RwaitS"&
 StatusRequest
-wait_s (RwaitS"‘
+wait_s (RwaitS"¥
 CombatStatus
 state (	Rstate
 reason (	Rreason
@@ -64,7 +63,8 @@ item_count (R	itemCount
 doing (	Rdoing
 coin	 (Rcoin.
 avoid
- (2.wowagent.combat.v1.ZoneRavoid"c
+ (2.wowagent.combat.v1.ZoneRavoid
+fled (Rfled"c
 Zone
 map (Rmap
 x (Rx

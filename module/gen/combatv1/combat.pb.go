@@ -260,7 +260,9 @@ type CombatStatus struct {
 	Doing    string `protobuf:"bytes,8,opt,name=doing,proto3" json:"doing,omitempty"`
 	Coin     uint64 `protobuf:"varint,9,opt,name=coin,proto3" json:"coin,omitempty"`
 	// Places we fled from a short while ago (flee.go): grind and hunts keep away from them.
-	Avoid         []*Zone `protobuf:"bytes,10,rep,name=avoid,proto3" json:"avoid,omitempty"`
+	Avoid []*Zone `protobuf:"bytes,10,rep,name=avoid,proto3" json:"avoid,omitempty"`
+	// Flights during this job: a kill job ends at the first one (too dangerous for now), a defend goes on.
+	Fled          uint32 `protobuf:"varint,11,opt,name=fled,proto3" json:"fled,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -365,6 +367,13 @@ func (x *CombatStatus) GetAvoid() []*Zone {
 	return nil
 }
 
+func (x *CombatStatus) GetFled() uint32 {
+	if x != nil {
+		return x.Fled
+	}
+	return 0
+}
+
 type Zone struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Map    uint32                 `protobuf:"varint,1,opt,name=map,proto3" json:"map,omitempty"`
@@ -465,7 +474,7 @@ const file_combat_proto_rawDesc = "" +
 	"\vRestRequest\x12\x15\n" +
 	"\x06wait_s\x18\x01 \x01(\rR\x05waitS\"&\n" +
 	"\rStatusRequest\x12\x15\n" +
-	"\x06wait_s\x18\x01 \x01(\rR\x05waitS\"\x91\x02\n" +
+	"\x06wait_s\x18\x01 \x01(\rR\x05waitS\"\xa5\x02\n" +
 	"\fCombatStatus\x12\x14\n" +
 	"\x05state\x18\x01 \x01(\tR\x05state\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x14\n" +
@@ -477,7 +486,8 @@ const file_combat_proto_rawDesc = "" +
 	"\x05doing\x18\b \x01(\tR\x05doing\x12\x12\n" +
 	"\x04coin\x18\t \x01(\x04R\x04coin\x12.\n" +
 	"\x05avoid\x18\n" +
-	" \x03(\v2\x18.wowagent.combat.v1.ZoneR\x05avoid\"c\n" +
+	" \x03(\v2\x18.wowagent.combat.v1.ZoneR\x05avoid\x12\x12\n" +
+	"\x04fled\x18\v \x01(\rR\x04fled\"c\n" +
 	"\x04Zone\x12\x10\n" +
 	"\x03map\x18\x01 \x01(\rR\x03map\x12\f\n" +
 	"\x01x\x18\x02 \x01(\x02R\x01x\x12\f\n" +

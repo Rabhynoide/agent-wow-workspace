@@ -58,25 +58,30 @@ type Service struct {
 	castCount uint8
 	// failures by cast count (our CMSG_CAST_SPELL counter): SMSG_CAST_FAILED of other casts
 	// (server-side or item spells, count 0) must not be taken for ours.
-	failures  map[uint8]castFailure
-	rotations map[uint32]*classTables // class -> priority tables (journal/classes), nil = none
-	fights    *xpscore.File           // learned fights (journal/learn): the pull capacity
-	melee     *meleeLog
-	abandoned map[uint64]time.Time // targets given up (no damage dealt): not picked again for a while
-	crowded   map[uint64]time.Time // targets skipped for their adds: not pulled for a while, still fought back
-	fledAt    time.Time            // last flight (flee.go)
-	zones     []fledZone           // places we fled from (zones.go)
-	items     map[uint32]*worldpb.ItemInfo
-	book      *spellBook
+	failures    map[uint8]castFailure
+	rotations   map[uint32]*classTables // class -> priority tables (journal/classes), nil = none
+	fights      *xpscore.File           // learned fights (journal/learn): the pull capacity
+	melee       *meleeLog
+	abandoned   map[uint64]time.Time // targets given up (no damage dealt): not picked again for a while
+	crowded     map[uint64]time.Time // targets skipped for their adds: not pulled for a while, still fought back
+	fledAt      time.Time            // last flight (flee.go)
+	zones       []fledZone           // places we fled from (zones.go)
+	trail       *trail               // our recent positions, run back along when fleeing (trail.go)
+	items       map[uint32]*worldpb.ItemInfo
+	scrollTried map[uint32]time.Time
+	gearDue     bool // a weapon, armor or bag was looted since the last gear check // scroll spell -> last use (scrolls.go)
+	book        *spellBook
 }
 
 func Register(g grpc.ServiceRegistrar, s modv1.SessionClient) {
 	guid, _ := strconv.ParseUint(os.Getenv("AGENT_WOW_CHARACTER_GUID"), 10, 64)
 	runner := jobs.NewRunner(&pb.CombatStatus{State: "idle"})
+	tr := &trail{}
 	runner.Decorate = func(j *job, st *pb.CombatStatus) { st.ElapsedS = uint32(time.Since(j.Start).Seconds()) }
 	pb.RegisterCombatServer(g, &Service{s: s, api: api.C{S: s}, loot: loot.NewTracker(), guid: guid, jobs: runner, failures: map[uint8]castFailure{},
 		rotations: map[uint32]*classTables{}, melee: newMeleeLog(), abandoned: map[uint64]time.Time{}, crowded: map[uint64]time.Time{}, items: map[uint32]*worldpb.ItemInfo{}, book: &spellBook{ready: map[uint32]time.Time{}},
-		fights: xpscore.LearnedFile()})
+		fights: xpscore.LearnedFile(), trail: tr})
+	go tr.follow(api.C{S: s})
 }
 
 func (s *Service) OnPacket(_ context.Context, p *modv1.WorldPacket) (*emptypb.Empty, error) {
@@ -257,7 +262,7 @@ func (s *Service) defend(ctx context.Context, j *job) (string, string) {
 		}
 		j.Update(func(st *pb.CombatStatus) { st.Doing = fmt.Sprintf("defending vs %d", a.Entry) })
 		dead, why := s.fight(ctx, j, a.Guid)
-		if why != "" {
+		if why != "" && why != "fled" { // after a flight, fight them back if they catch up
 			return "failed", why
 		}
 		if dead {
@@ -294,7 +299,7 @@ func (s *Service) refresh(ctx context.Context, j *job) (*statepb.BriefResponse, 
 func (s *Service) rest(ctx context.Context, j *job, hpTarget, manaTarget uint32, maxS int) (string, string) {
 	j.Update(func(st *pb.CombatStatus) { st.Doing = "resting" })
 	defer s.stand(context.Background(), 0)
-	startHP := uint32(0)
+	startHP, reached := uint32(0), 0
 	for i := 0; i < maxS; i++ {
 		snap, err := s.refresh(ctx, j)
 		if err != nil || snap.Self == nil {
@@ -314,12 +319,18 @@ func (s *Service) rest(ctx context.Context, j *job, hpTarget, manaTarget uint32,
 				s.stand(ctx, 1)
 			}
 		}
-		if hp+5 < startHP {
+		if hp+5 < startHP && me.UnitFlags&unitInCombat != 0 { // in combat: not a false high reading
 			return "done", "attacked while resting"
 		}
 		startHP = max(startHP, hp)
+		// Held for 3 readings: right after a flight our health read 100 % once while it was 80 %
+		// (2026-10-13), and the rest stopped at once (state logs "self health jump" to find out why).
 		if hp >= hpTarget && (me.PowerType != 0 || pct(me.Power, me.MaxPower) >= manaTarget) {
-			return "done", ""
+			if reached++; reached >= 3 {
+				return "done", ""
+			}
+		} else {
+			reached = 0
 		}
 		if !sleep(ctx, time.Second) {
 			return "stopped", "cancelled"
@@ -338,11 +349,47 @@ func (s *Service) aggressor(ctx context.Context, me *statepb.SelfInfo) *statepb.
 		// Friendly NPCs may face/target us (gossip): only units in combat are attackers. A target given
 		// up (unreachable: another level of a mine) is skipped, or defend fought it forever (bench of
 		// 2026-10-12: 40 minutes against one kobold).
-		if o.Target == me.Guid && o.UnitFlags&unitInCombat != 0 && !s.wasAbandoned(o.Guid) {
+		// Unless it stands at melee range: then it reaches us, so we reach it (a kobold given up for
+		// "not on the navmesh" killed us while we ate, 6 → 10 bench of 2026-10-13).
+		if o.Target == me.Guid && o.UnitFlags&unitInCombat != 0 && (!s.wasAbandoned(o.Guid) || atMelee(me, o)) {
 			att = append(att, o)
 		}
 	}
 	return pickAttacker(att) // the weakest within reach first (focus.go)
+}
+
+// fledReason ends a kill job after a flight: going on sent us back into the monsters we ran from (three
+// flights in a minute then a death in the Fargodeep mine, 6 → 10 bench of 2026-10-13). "too dangerous"
+// makes level.sh postpone the quest to the next level, auto's grind try another monster.
+func fledReason(entry uint32) string {
+	return fmt.Sprintf("too dangerous for now: fled from monsters (fighting %d)", entry)
+}
+
+// gearIfLooted equips the upgrades looted since the last check (progress.gear), before the next pull:
+// pieces found in the grind waited for the end of the round in the bags (user remark, 2026-10-13). The
+// server refuses gear changes in combat: then the check waits for the next pull.
+func (s *Service) gearIfLooted(ctx context.Context) {
+	s.mu.Lock()
+	due := s.gearDue
+	s.mu.Unlock()
+	if !due {
+		return
+	}
+	g, err := s.api.Gear(ctx)
+	if err != nil || strings.HasPrefix(g.Reason, "in combat") {
+		return
+	}
+	s.mu.Lock()
+	s.gearDue = false
+	s.mu.Unlock()
+	if len(g.Equipped) > 0 {
+		slog.Info("equipped after loot", "items", g.Equipped)
+	}
+}
+
+// atMelee tells whether a unit stands within melee range of us, on our level (not a floor below).
+func atMelee(me *statepb.SelfInfo, o *statepb.Obj) bool {
+	return math.Hypot(float64(o.X-me.X), float64(o.Y-me.Y)) <= meleeRange+1 && math.Abs(float64(o.Z-me.Z)) <= 3
 }
 
 func (s *Service) kill(ctx context.Context, j *job, r *pb.KillRequest) (string, string) {
@@ -388,6 +435,9 @@ func (s *Service) kill(ctx context.Context, j *job, r *pb.KillRequest) (string, 
 		if a := s.aggressor(ctx, snap.Self); a != nil {
 			j.Update(func(st *pb.CombatStatus) { st.Doing = fmt.Sprintf("defending vs %d", a.Entry) })
 			dead, why := s.fight(ctx, j, a.Guid)
+			if why == "fled" {
+				return "failed", fledReason(a.Entry)
+			}
 			if why != "" {
 				return "failed", why
 			}
@@ -416,6 +466,7 @@ func (s *Service) kill(ctx context.Context, j *job, r *pb.KillRequest) (string, 
 			}
 			continue
 		}
+		s.gearIfLooted(ctx)
 		s.buff(ctx, me)
 		t, err := s.choosePull(ctx, j, snap.Self, r, radius)
 		if err != nil {
@@ -442,6 +493,9 @@ func (s *Service) kill(ctx context.Context, j *job, r *pb.KillRequest) (string, 
 			continue
 		}
 		unreachable = 0
+		if why == "fled" {
+			return "failed", fledReason(t.Entry)
+		}
 		if why != "" {
 			return "failed", why
 		}
@@ -509,6 +563,11 @@ func (s *Service) forgetBuffs() {
 // buff casts the buffs table of the class out of combat (Battle Shout, Fortitude, Inner Fire...),
 // up to three spells in a row.
 func (s *Service) buff(ctx context.Context, me *statepb.SelfInfo) {
+	if s.readScrolls(ctx, me) {
+		if b, err := s.api.Brief(ctx); err == nil && b.Self != nil {
+			me = b.Self
+		}
+	}
 	tab := s.tables(me.ClassId)
 	if tab == nil || len(tab.buffs.lines) == 0 {
 		return
@@ -539,8 +598,11 @@ func (s *Service) fight(ctx context.Context, j *job, guid uint64) (bool, string)
 	rec := s.watchFight(ctx, guid)
 	dead, why := s.fightClass(ctx, j, guid)
 	rec.done(dead, why)
-	if why == "fled" || why == "switched" { // not a failure: the caller picks a target again
+	if why == "switched" { // not a failure: the caller picks a target again
 		return false, ""
+	}
+	if why == "fled" {
+		j.Update(func(st *pb.CombatStatus) { st.Fled++ })
 	}
 	return dead, why
 }
@@ -732,6 +794,14 @@ func (s *Service) lootCorpse(ctx context.Context, j *job, guid uint64) {
 		res, err := s.loot.Take(ctx, s.s, guid, true, loot.DefaultWait)
 		if err == nil {
 			slog.Info("looted", "entry", t.Entry, "gold", res.Gold, "items", res.Items)
+			for _, e := range res.Items {
+				// Weapon, armor or bag: checked before the next pull (gearIfLooted).
+				if in := s.itemInfo(ctx, e); in != nil && (in.Class == 2 || in.Class == 4 || in.Class == 1) {
+					s.mu.Lock()
+					s.gearDue = true
+					s.mu.Unlock()
+				}
+			}
 			return
 		}
 		slog.Info("loot failed", "entry", t.Entry, "err", err)

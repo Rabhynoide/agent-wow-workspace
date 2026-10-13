@@ -9,14 +9,16 @@ cd "$(dirname "$0")/.."
 maxdeaths=${1:-2}; stall=$(( ${2:-10} * 60 ))
 state_from=$(($(wc -l < logs/state.log 2>/dev/null || echo 0) + 1))
 started=$(date +%s)
-# The bench's level log: the newest one written after we started (wait up to 5 min for it).
+# The bench's level log: the newest one written after we started (wait up to 10 min for it: start.sh rebuilds the modules).
 log=""
 while [ -z "$log" ]; do
   for f in $(ls -t logs/level_Bench*.log 2>/dev/null); do
-    [ "$(stat -c %Y "$f")" -ge $((started - 120)) ] && log=$f
+    n=$(basename "$f" .log); n=${n#level_}
+    # Not a bench that already ended or was stopped by hand: its character must be playing.
+    [ "$(stat -c %Y "$f")" -ge $((started - 120)) ] && [ ! -f "logs/bench_$n.state.json" ] && pgrep -f "char [p]lay $n " >/dev/null && log=$f
     break
   done
-  [ -z "$log" ] && { [ $(( $(date +%s) - started )) -gt 300 ] && { echo "watch: no bench level log after 5 min"; exit 1; }; sleep 15; }
+  [ -z "$log" ] && { [ $(( $(date +%s) - started )) -gt 600 ] && { echo "watch: no bench level log after 10 min"; exit 1; }; sleep 15; }
 done
 name=$(basename "$log" .log); name=${name#level_}
 while true; do

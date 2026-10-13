@@ -430,6 +430,14 @@ func (r *run) quests(req *pb.RunRequest) error {
 	return nil
 }
 
+// gearUp equips the upgrades (and bags) among our bags.
+func (r *run) gearUp() {
+	if g, err := r.s.api.Gear(r.ctx); err == nil && len(g.Equipped) > 0 {
+		r.note("equipped %v", g.Equipped)
+		r.step("equipped %v", g.Equipped)
+	}
+}
+
 // progress equips upgrades, spends talent points and visits the class trainer when it has
 // something to teach. Failures are reported in the step but never stop the quest chain.
 func (r *run) progress() {
@@ -452,6 +460,12 @@ func (r *run) progress() {
 		return
 	}
 	r.step("training at %s: %v", chk.TrainerName, chk.Spells)
+	// Our own walk, which fights back: train's approach does not, and a snapshot started at the
+	// Fargodeep mine died on the way to Goldshire (bench of 2026-10-13).
+	if err := r.walk(chk.X, chk.Y, chk.Z, 5); err != nil {
+		r.note("training: %v", err)
+		return
+	}
 	st, err := r.s.api.Train(r.ctx, 20)
 	for err == nil && st.State == "running" && r.ctx.Err() == nil {
 		st, err = r.s.api.TrainStatus(r.ctx, 20)
@@ -546,8 +560,14 @@ func (r *run) walk(x, y, z, radius float32) error {
 			return fmt.Errorf("walk to (%.0f,%.0f): attacked %d times on the way", x, y, fights)
 		}
 		r.step("attacked on the way to (%.0f,%.0f): fighting back", x, y)
-		if err := r.defend(); err != nil {
+		fled, err := r.defend()
+		if err != nil {
 			return err
+		}
+		if fled > 0 {
+			// Going on led back into the monsters we ran from (Narg the Taskmaster and kobolds: three
+			// flights then a death, 6 → 10 bench of 2026-10-13). "too dangerous" postpones the quest.
+			return fmt.Errorf("walk to (%.0f,%.0f): too dangerous for now: fled from monsters on the way", x, y)
 		}
 		deadline = deadline.Add(60 * time.Second)
 	}
@@ -573,19 +593,19 @@ func (r *run) inCombat() bool {
 	return false
 }
 
-// defend fights whatever attacks us until things are calm.
-func (r *run) defend() error {
+// defend fights whatever attacks us until things are calm, and tells how many times we fled.
+func (r *run) defend() (uint32, error) {
 	st, err := r.s.api.CombatDefend(r.ctx, 20)
 	for err == nil && st.State == "running" {
 		st, err = r.s.api.CombatStatus(r.ctx, 20)
 	}
 	if err != nil {
-		return err
+		return 0, err
 	}
 	if b, e := r.s.api.Brief(r.ctx); e == nil && b.Self != nil && b.Self.Dead {
-		return fmt.Errorf("character is dead")
+		return st.Fled, fmt.Errorf("character is dead")
 	}
-	return nil
+	return st.Fled, nil
 }
 
 // approachNpc walks to the spawn point, then follows the NPC if it wandered off.
@@ -897,6 +917,7 @@ func (r *run) hunt(entry uint32, name string, count, itemEntry, itemCount uint32
 
 // huntAt is hunt; when grinding, a creature that only lives in camps is skipped (a quest needs it).
 func (r *run) huntAt(entry uint32, name string, count, itemEntry, itemCount uint32, grinding bool) error {
+	defer r.gearUp() // the loot of the round: progress only came at quests and levels (100 min of grind in mail-less gear, 2026-10-13)
 	snap, err := r.snapshot()
 	if err != nil {
 		return err

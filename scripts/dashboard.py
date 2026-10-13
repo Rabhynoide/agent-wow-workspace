@@ -103,7 +103,7 @@ def learned():
             t = json.load(f)
     except (OSError, ValueError):
         return {"gaps": {}, "mobs": []}
-    gaps = {g: {"n": c["n"], "loss": round(c["loss_sum"] / c["n"]), "s": round(c["sec_sum"] / c["n"])}
+    gaps = {g: {"n": round(c["n"]), "loss": round(c["loss_sum"] / c["n"]), "s": round(c["sec_sum"] / c["n"])}
             for g, c in t.get("classes", {}).get("1", {}).items() if c.get("n")}
     mobs = []
     for cls, entries in t.get("mobs", {}).items():
@@ -112,6 +112,10 @@ def learned():
             for c in by_gap.values():
                 for k in ("n", "deaths", "chained", "chained_deaths", "fled"):
                     tot[k] += c.get(k, 0)
+            for k in ("n", "chained"):  # counts are scaled down past 40 fights (xpscore forget)
+                tot[k] = round(tot[k])
+            for k in ("deaths", "chained_deaths", "fled"):
+                tot[k] = round(tot[k], 1)
             mobs.append(tot)
     mobs.sort(key=lambda m: (-m["deaths"], -m["n"]))
     return {"gaps": gaps, "mobs": mobs}
@@ -160,10 +164,9 @@ def item(entry):
     return it
 
 
-def gear():
+def gear(snap):
     """Equipment and bags (state.snapshot: slot 0-18 worn, 19-22 bags, 23-38 backpack; bag 19-22 =
     inside an equipped bag), with each item's sheet for the tooltips."""
-    snap = rpc("state.snapshot")
     if not snap:
         return None
     out = []
@@ -177,11 +180,99 @@ def gear():
     return {"items": out}
 
 
+QUESTS = {}
+QLINE = re.compile(r"\[([\dhms]+)\] (.*)")
+
+
+def quest(qid):
+    """world.quest_info, kept (titles and objectives do not change)."""
+    if qid not in QUESTS:
+        r = rpc("world.quest_info", {"id": qid})
+        if not r or not r.get("quests"):
+            return {"id": qid, "title": "quête %d" % qid}
+        QUESTS[qid] = r["quests"][0]
+    return QUESTS[qid]
+
+
+def route(log):
+    """The quests of the run in the order met in the level log, each with its last event: planned
+    ("L5 quests: 62 Title | ..."), done, postponed (to a level, or 4 min), skipped, death."""
+    out, order = {}, []
+
+    def ev(qid, status, detail, at, title=None):
+        if qid not in out:
+            out[qid] = {"id": qid, "title": title or "", "status": status, "detail": detail, "at": at}
+            order.append(qid)
+        else:
+            out[qid].update({"status": status, "detail": detail, "at": at})
+            if title:
+                out[qid]["title"] = title
+    try:
+        with open(log, encoding="utf-8", errors="replace") as f:
+            lines = f.readlines()
+    except OSError:
+        return []
+    for line in lines:
+        m = QLINE.search(line)
+        if not m:
+            continue
+        at, msg = m.group(1), m.group(2).strip()
+        if re.match(r"L\d+ quests: ", msg):
+            for part in msg.split(": ", 1)[1].split(" | "):
+                q = re.match(r"(\d+) (.*)", part.strip())
+                if q and (int(q.group(1)) not in out or out[int(q.group(1))]["status"] == "planned"):
+                    ev(int(q.group(1)), "planned", "", at, q.group(2))
+        elif msg.startswith("done ["):
+            for qid in re.findall(r"\d+", msg):
+                ev(int(qid), "done", "", at)
+        elif (q := re.match(r"DEATH on (\d+) .*?postponed to level (\d+): (.*)", msg)):
+            ev(int(q.group(1)), "death", "mort, reportée au niveau %s : %s" % (q.group(2), q.group(3)), at)
+        elif (q := re.match(r"(\d+) postponed to level (\d+): (.*)", msg)):
+            ev(int(q.group(1)), "postponed", "niveau %s : %s" % (q.group(2), q.group(3)), at)
+        elif (q := re.match(r"(\d+) .* postponed 4 min \((.*)\)", msg)):
+            ev(int(q.group(1)), "waiting", "4 min (%s)" % q.group(2), at)
+        elif (q := re.match(r"SKIP (\d+) (.*?): (.*)", msg)):
+            ev(int(q.group(1)), "skipped", q.group(3), at, q.group(2))
+    return [out[q] for q in order]
+
+
+def quests(snap, run):
+    """Quest log (state.snapshot) with each objective's progress (kill/object counters of the log,
+    items counted in the bags), the quest auto works on, and the route history of the run."""
+    auto = rpc("auto.status") or {}
+    have = {}
+    for i in (snap or {}).get("items", []):
+        have[i["entry"]] = have.get(i["entry"], 0) + i.get("count", 1)
+    log = []
+    for q in (snap or {}).get("quests", []):
+        info = quest(q["id"])
+        counts = q.get("counts", [])
+        objs = []
+        for o in info.get("objectives", []):
+            kind, need = o.get("kind", ""), o.get("count", 1) or 1
+            if kind == "item":
+                done = have.get(o.get("entry"), 0)
+            elif kind in ("kill", "gameobject"):
+                c = o.get("counter", 0)
+                done = counts[c] if c < len(counts) else 0
+            else:
+                done = need if q.get("state") == 1 else 0
+            objs.append({"kind": kind, "name": o.get("name") or kind, "done": min(done, need), "count": need})
+        log.append({"id": q["id"], "title": info.get("title", ""), "level": info.get("level", 0),
+                    "complete": q.get("state") == 1, "failed": q.get("state") == 2, "objectives": objs,
+                    "text": info.get("objectivesText", "")})
+    hist = route(path("logs", "level_%s.log" % run["name"])) if run else []
+    return {"current": {"quest": auto.get("quest", 0), "step": auto.get("step", ""), "state": auto.get("state", "")},
+            "log": log, "route": hist}
+
+
 def data():
     brief = rpc("state.brief")
     combat = rpc("combat.status") or {}  # places fled from (combat/zones.go), avoided for 5 min
-    return {"live": brief, "zones": combat.get("avoid", []), "gear": gear(), "doing": combat.get("doing", ""), "run": current_run(),
-            "fights": fights(), "learned": learned(), "benches": benches()}
+    snap = rpc("state.snapshot")
+    run = current_run()
+    return {"live": brief, "zones": combat.get("avoid", []), "gear": gear(snap), "doing": combat.get("doing", ""), "run": run,
+            "quests": quests(snap, run), "fights": fights(), "learned": learned(), "benches": benches()}
 
 
 class Handler(BaseHTTPRequestHandler):

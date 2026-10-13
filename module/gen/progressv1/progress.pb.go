@@ -33,8 +33,12 @@ type TrainCheckResult struct {
 	TrainerName string   `protobuf:"bytes,5,opt,name=trainer_name,json=trainerName,proto3" json:"trainer_name,omitempty"`
 	Dist        float32  `protobuf:"fixed32,6,opt,name=dist,proto3" json:"dist,omitempty"`
 	// Spells learnable at this level but too expensive.
-	Unaffordable  uint32 `protobuf:"varint,7,opt,name=unaffordable,proto3" json:"unaffordable,omitempty"`
-	Reason        string `protobuf:"bytes,8,opt,name=reason,proto3" json:"reason,omitempty"`
+	Unaffordable uint32 `protobuf:"varint,7,opt,name=unaffordable,proto3" json:"unaffordable,omitempty"`
+	Reason       string `protobuf:"bytes,8,opt,name=reason,proto3" json:"reason,omitempty"`
+	// Where the trainer stands: auto walks there itself (fighting back on the way) before train.
+	X             float32 `protobuf:"fixed32,9,opt,name=x,proto3" json:"x,omitempty"`
+	Y             float32 `protobuf:"fixed32,10,opt,name=y,proto3" json:"y,omitempty"`
+	Z             float32 `protobuf:"fixed32,11,opt,name=z,proto3" json:"z,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -123,6 +127,27 @@ func (x *TrainCheckResult) GetReason() string {
 		return x.Reason
 	}
 	return ""
+}
+
+func (x *TrainCheckResult) GetX() float32 {
+	if x != nil {
+		return x.X
+	}
+	return 0
+}
+
+func (x *TrainCheckResult) GetY() float32 {
+	if x != nil {
+		return x.Y
+	}
+	return 0
+}
+
+func (x *TrainCheckResult) GetZ() float32 {
+	if x != nil {
+		return x.Z
+	}
+	return 0
 }
 
 type TrainRequest struct {
@@ -624,7 +649,7 @@ var File_progress_proto protoreflect.FileDescriptor
 
 const file_progress_proto_rawDesc = "" +
 	"\n" +
-	"\x0eprogress.proto\x12\x14wowagent.progress.v1\x1a\x1bapi/module/v1/session.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xe1\x01\n" +
+	"\x0eprogress.proto\x12\x14wowagent.progress.v1\x1a\x1bapi/module/v1/session.proto\x1a\x1bgoogle/protobuf/empty.proto\"\x8b\x02\n" +
 	"\x10TrainCheckResult\x12\x14\n" +
 	"\x05count\x18\x01 \x01(\rR\x05count\x12\x12\n" +
 	"\x04cost\x18\x02 \x01(\rR\x04cost\x12\x16\n" +
@@ -633,7 +658,11 @@ const file_progress_proto_rawDesc = "" +
 	"\ftrainer_name\x18\x05 \x01(\tR\vtrainerName\x12\x12\n" +
 	"\x04dist\x18\x06 \x01(\x02R\x04dist\x12\"\n" +
 	"\funaffordable\x18\a \x01(\rR\funaffordable\x12\x16\n" +
-	"\x06reason\x18\b \x01(\tR\x06reason\"%\n" +
+	"\x06reason\x18\b \x01(\tR\x06reason\x12\f\n" +
+	"\x01x\x18\t \x01(\x02R\x01x\x12\f\n" +
+	"\x01y\x18\n" +
+	" \x01(\x02R\x01y\x12\f\n" +
+	"\x01z\x18\v \x01(\x02R\x01z\"%\n" +
 	"\fTrainRequest\x12\x15\n" +
 	"\x06wait_s\x18\x01 \x01(\rR\x05waitS\"&\n" +
 	"\rStatusRequest\x12\x15\n" +

@@ -79,7 +79,7 @@ type Score struct {
 	PDeath  float64 // model blended with the measured deaths (Table.DeathRisk)
 	// Measured fights against this monster at its level gaps: fights, deaths, chained fights and
 	// deaths in them.
-	Fights, Deaths, Chained, ChainedDeaths int
+	Fights, Deaths, Chained, ChainedDeaths float64 // measured (old fights scaled down: table.go forget)
 	XPMin                                  float64
 }
 

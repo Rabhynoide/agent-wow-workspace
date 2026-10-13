@@ -18,7 +18,7 @@ import (
 // Cell sums the fights won against one monster, started with at least 90 % health, for one class and
 // level gap (monster level - ours).
 type Cell struct {
-	N       int     `json:"n"`
+	N       float64 `json:"n"`        // fights, scaled down past keepFights (forget)
 	LossSum float64 `json:"loss_sum"` // percent of our health
 	SecSum  float64 `json:"sec_sum"`
 }
@@ -26,13 +26,13 @@ type Cell struct {
 // MobCell counts every fight against one monster type (the fight's target) at one level gap, won or
 // lost, whatever the health at the start: the measured death risk, chained fights included.
 type MobCell struct {
-	N      int `json:"n"`
-	Deaths int `json:"deaths"`
+	N      float64 `json:"n"`
+	Deaths float64 `json:"deaths"`
 	// Chained fights: started below chainedBelow % health (attacked again before resting).
-	Chained       int `json:"chained"`
-	ChainedDeaths int `json:"chained_deaths"`
+	Chained       float64 `json:"chained"`
+	ChainedDeaths float64 `json:"chained_deaths"`
 	// Fled: fights we ran away from (combat flees when the loss to come exceeds our health).
-	Fled int `json:"fled,omitempty"`
+	Fled float64 `json:"fled,omitempty"`
 }
 
 // Table is the measured side of the model, kept in journal/learn/fights.json.
@@ -49,6 +49,27 @@ type Table struct {
 
 // chainedBelow: a fight started below this health (percent) is a chained one.
 const chainedBelow = 60
+
+// keepFights: past this many fights in a cell, all its counts are scaled down to it, so the old
+// fights weigh less and less (each new one counts 1, the past keepFights-1). The learning adds up runs
+// of code that keeps changing: deaths from before the flights (7 Mangy Wolf deaths in 58 fights) still
+// made the grind avoid wolves (user question, 2026-10-13).
+const keepFights = 40
+
+// forget scales the counts of the cells down to keepFights fights.
+func (c *Cell) forget() {
+	if c.N > keepFights {
+		k := keepFights / c.N
+		c.N, c.LossSum, c.SecSum = keepFights, c.LossSum*k, c.SecSum*k
+	}
+}
+
+func (c *MobCell) forget() {
+	if c.N > keepFights {
+		k := keepFights / c.N
+		c.N, c.Deaths, c.Chained, c.ChainedDeaths, c.Fled = keepFights, c.Deaths*k, c.Chained*k, c.ChainedDeaths*k, c.Fled*k
+	}
+}
 
 // priorFights: weight of the model's death risk, in fights, against the measured deaths.
 const priorFights = 10
@@ -84,6 +105,19 @@ func Load(path string) (*Table, error) {
 	}
 	if t.Mobs == nil {
 		t.Mobs = map[string]map[string]map[string]*MobCell{}
+	}
+	// Tables learned before forget, or cells of an old run: scaled down at once.
+	for _, cells := range t.Classes {
+		for _, c := range cells {
+			c.forget()
+		}
+	}
+	for _, entries := range t.Mobs {
+		for _, gaps := range entries {
+			for _, c := range gaps {
+				c.forget()
+			}
+		}
 	}
 	return t, nil
 }
@@ -177,6 +211,7 @@ func (t *Table) Learn(r io.Reader) int {
 					c.ChainedDeaths++
 				}
 			}
+			c.forget()
 			counted = true
 		}
 		if newFight {
@@ -195,6 +230,7 @@ func (t *Table) Learn(r io.Reader) int {
 				c.N++
 				c.LossSum += float64(max(start-end, 0))
 				c.SecSum += float64(secs)
+				c.forget()
 				counted = true
 			}
 		}
@@ -257,7 +293,7 @@ func (t *Table) Summary(class uint32) []string {
 	var out []string
 	for _, g := range gaps {
 		c := cells[strconv.Itoa(g)]
-		out = append(out, strconv.Itoa(g)+": "+strconv.Itoa(c.N)+" fights, "+
+		out = append(out, strconv.Itoa(g)+": "+strconv.FormatFloat(c.N, 'f', 0, 64)+" fights, "+
 			strconv.FormatFloat(c.LossSum/float64(c.N), 'f', 0, 64)+" % health, "+
 			strconv.FormatFloat(c.SecSum/float64(c.N), 'f', 0, 64)+" s")
 	}

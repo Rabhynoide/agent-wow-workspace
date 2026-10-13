@@ -40,10 +40,18 @@ type playState struct {
 
 // nextBatch walks the route in order. It returns the first quests doable now (up to n, stopping at the
 // first one that needs a higher level, so the order is kept), or, when the very first pending quest is
-// too high, the level it needs and its id.
+// too high, the level it needs and its id. A quest postponed after a death or a flight (retryAt) is
+// passed over instead: it stopped the whole route, 100 minutes of grind behind the Fargodeep mine
+// quest (bench of 2026-10-13). It is the blocker only when nothing else can be done.
 func nextBatch(entries []routeQuest, cache map[uint32]*quest, manual map[uint32]string, ps *playState,
 	race, class uint32, raceName, className string, level uint32, above, n int) (batch []uint32, need, blocker uint32) {
 	seen := map[uint32]bool{}
+	var laterNeed, laterID uint32 // the first postponed quest passed over
+	defer func() {
+		if len(batch) == 0 && laterID != 0 && (need == 0 || laterNeed < need) {
+			need, blocker = laterNeed, laterID
+		}
+	}()
 	for _, e := range entries {
 		if e.gate > 0 {
 			if len(e.only) > 0 && !onlyMatches(e.only, race, class) {
@@ -79,7 +87,12 @@ func nextBatch(entries []routeQuest, cache map[uint32]*quest, manual map[uint32]
 		if q.Level-above > int(req) {
 			req = uint32(q.Level - above)
 		}
-		req = max(req, ps.retryAt[e.id])
+		if r := ps.retryAt[e.id]; r > level && r > req {
+			if laterID == 0 {
+				laterNeed, laterID = r, e.id
+			}
+			continue
+		}
 		if req > level {
 			if len(batch) == 0 {
 				return nil, req, e.id
@@ -262,7 +275,7 @@ func (c *checker) grindTargets(mapID uint32, x, y, radius float64, level, class 
 		if keep {
 			out = append(out, r.m.Entry)
 		}
-		report = append(report, fmt.Sprintf("%-5d %-22s L%d-%d spawns %2d near %.1f: %3.0f xp/min (xp %.0f, kill %.0fs, rest %.0fs, search %.0fs, loss %.0f%%, death %.0f%%; measured %d fights, %d deaths, chained %d/%d)%s",
+		report = append(report, fmt.Sprintf("%-5d %-22s L%d-%d spawns %2d near %.1f: %3.0f xp/min (xp %.0f, kill %.0fs, rest %.0fs, search %.0fs, loss %.0f%%, death %.0f%%; measured %.0f fights, %.1f deaths, chained %.1f/%.0f)%s",
 			r.m.Entry, r.m.Name, r.m.MinLevel, r.m.MaxLevel, r.m.Spawns, r.m.Neighbours, r.s.XPMin, r.s.XP, r.s.KillS, r.s.RestS, r.s.SearchS,
 			r.s.Loss, 100*r.s.PDeath, r.s.Fights, r.s.Deaths, r.s.ChainedDeaths, r.s.Chained, map[bool]string{true: " <-", false: ""}[keep]))
 		if risky != "" {

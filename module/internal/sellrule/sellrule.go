@@ -105,7 +105,7 @@ func decide(s Stack, c Ctx) Decision {
 	}
 	switch it.Class {
 	case classContainer:
-		return keep(s, "bag (equipping bags is not automated yet)")
+		return keep(s, "bag (progress.gear equips it into a free bag slot)")
 	case classKey:
 		return keep(s, "key")
 	case classConsumable:

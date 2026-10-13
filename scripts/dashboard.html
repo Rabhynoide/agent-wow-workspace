@@ -45,6 +45,19 @@ pre { margin: 0; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; 
 .step { border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px; font-size: 12px; }
 .step b { font-size: 14px; }
 svg text { fill: var(--muted); font-size: 11px; }
+/* Quest tracker */
+.qgrid { display: grid; gap: 14px; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+@media (max-width: 860px) { .qgrid { grid-template-columns: minmax(0, 1fr); } }
+.qlog { display: flex; flex-direction: column; gap: 8px; }
+.quest { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.quest.cur { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.quest .qt { font-weight: 600; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.quest .qtext { font-size: 12px; margin: 2px 0 4px; }
+.obj { font-size: 12px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 8px; }
+.obj .meter { grid-column: 1 / -1; height: 5px; margin: 2px 0 4px; }
+.pill.warn { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+.pill.cur { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
+td.wrap { white-space: normal; min-width: 220px; }
 /* Armory: equipment and bags, always dark like the game */
 .armory { background: radial-gradient(ellipse at 50% 30%, #2a2418 0%, #120f0a 70%); color: #e8dcc0; border-radius: 8px; padding: 14px; display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 @media (max-width: 860px) { .armory { grid-template-columns: minmax(0, 1fr); } }
@@ -86,6 +99,13 @@ svg text { fill: var(--muted); font-size: 11px; }
       <h2>Run en cours</h2>
       <div id="levels" class="steps"></div>
       <pre id="log" style="margin-top:10px"></pre>
+    </section>
+    <section class="card s12">
+      <h2>Quêtes</h2>
+      <div class="qgrid">
+        <div><div class="muted" id="qcur" style="margin-bottom:8px"></div><div id="qlog" class="qlog"></div></div>
+        <div class="scroll" style="max-height:420px; overflow-y:auto"><table id="route"></table></div>
+      </div>
     </section>
     <section class="card s12">
       <h2>Équipement et sacs</h2>
@@ -272,8 +292,47 @@ function armory(d) {
 const RESULT = { died: 'mort', won: 'gagné', fled: 'fuite', left: 'perdu de vue', switched: 'cible changée' };
 const mob = e => names[e] ? `${names[e]} (${e})` : e;
 
+const QSTATUS = { done: ['faite', 'ok'], planned: ['prévue', 'idle'], postponed: ['reportée', 'warn'], waiting: ['en attente', 'warn'],
+  skipped: ['sautée', 'bad'], death: ['mort', 'bad'] };
+const OBJ = { kill: 'tuer', item: 'ramener', gameobject: 'utiliser', explore: 'explorer' };
+
+function questTracker(d) {
+  const q = d.quests || { log: [], route: [], current: {} }, cur = q.current || {};
+  const curTitle = (q.log.find(x => x.id === cur.quest) || q.route.find(x => x.id === cur.quest) || {}).title;
+  $('qcur').textContent = cur.quest ? `En cours : ${curTitle || 'quête ' + cur.quest} — ${cur.step || ''}` : (cur.state ? `auto : ${cur.state}` : 'Aucune quête en cours.');
+  const box = $('qlog'); box.replaceChildren();
+  if (!q.log.length) box.append(el('div', 'Journal de quêtes vide (ou session non joignable).', 'muted'));
+  q.log.forEach(x => {
+    const c = el('div', undefined, 'quest' + (x.id === cur.quest ? ' cur' : ''));
+    const t = el('div', undefined, 'qt'); t.append(el('span', x.title || 'quête ' + x.id), el('span', `niv. ${x.level}`, 'muted'));
+    if (x.complete) t.append(el('span', 'à rendre', 'pill ok'));
+    else if (x.failed) t.append(el('span', 'échouée', 'pill bad'));
+    else if (x.id === cur.quest) t.append(el('span', 'en cours', 'pill cur'));
+    c.append(t);
+    if (x.text) c.append(el('div', x.text, 'qtext muted'));
+    x.objectives.forEach(o => {
+      const r = el('div', undefined, 'obj');
+      const name = o.kind === 'explore' ? 'explorer la zone' : `${OBJ[o.kind] || o.kind} : ${o.name}`;
+      r.append(el('span', name), el('span', `${o.done} / ${o.count}`, 'muted'));
+      const m = el('div', undefined, 'meter'); const f = el('div'); f.style.width = (100 * o.done / (o.count || 1)) + '%';
+      f.style.background = o.done >= o.count ? 'var(--good)' : 'var(--accent)'; m.append(f); r.append(m);
+      c.append(r);
+    });
+    box.append(c);
+  });
+  const t = $('route'); t.replaceChildren();
+  const h = el('tr'); ['Quête', 'État', 'Détail', 'Temps'].forEach(x => h.append(el('th', x))); t.append(h);
+  q.route.slice().reverse().forEach(x => {
+    const tr = el('tr'); const [label, cls] = QSTATUS[x.status] || [x.status, 'idle'];
+    const st = el('td'); st.append(el('span', x.id === cur.quest ? 'en cours' : label, 'pill ' + (x.id === cur.quest ? 'cur' : cls)));
+    tr.append(el('td', `${x.title || ''} (${x.id})`), st, el('td', x.detail, 'wrap muted'), el('td', x.at));
+    t.append(tr);
+  });
+  if (!q.route.length) { const tr = el('tr'); const td = el('td', 'pas encore de quête dans ce run', 'muted'); td.colSpan = 4; tr.append(td); t.append(tr); }
+}
+
 function render(d) {
-  live(d); run(d); armory(d);
+  live(d); run(d); questTracker(d); armory(d);
   table('fights', ['Heure', 'Résultat', 'Cible', 'Niv.', 'Écart', 'PV début', 'PV min', 'Attaquants', 'Durée'],
     d.fights.map(f => ({ died: f.result === 'died', fled: f.result === 'fled', cells: [f.time, RESULT[f.result] || f.result, mob(f.target), f.level, (f.gap > 0 ? '+' : '') + f.gap, f.hp_start + ' %', f.hp_min + ' %', f.attackers, f.s + ' s'] })),
     r => r.died ? 'died' : r.fled ? 'fled' : '');

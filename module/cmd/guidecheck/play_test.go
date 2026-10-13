@@ -27,10 +27,15 @@ func TestNextBatchKeepsRouteOrder(t *testing.T) {
 	if batch != nil || need != 7 || blocker != 3 {
 		t.Fatalf("batch %v need %d blocker %d, want grind to 7 for quest 3", batch, need, blocker)
 	}
-	// A quest found too dangerous waits for the next level even when its minimum is reached.
+	// A quest found too dangerous waits for the next level even when its minimum is reached; the
+	// quests after it go first, and it is the grind's blocker once they are done.
 	ps.retryAt[3] = 8
-	if _, need, _ := nextBatch(entries, cache, nil, ps, human, warrior, "human", "warrior", 7, 2, 5); need != 8 {
-		t.Fatalf("need %d, want 8 after a postponement", need)
+	if batch, need, _ := nextBatch(entries, cache, nil, ps, human, warrior, "human", "warrior", 7, 2, 5); !reflect.DeepEqual(batch, []uint32{4}) || need != 0 {
+		t.Fatalf("batch %v need %d, want [4]: postponed quest 3 passed over", batch, need)
+	}
+	ps.finished[4] = true
+	if batch, need, blocker := nextBatch(entries, cache, nil, ps, human, warrior, "human", "warrior", 7, 2, 5); batch != nil || need != 8 || blocker != 3 {
+		t.Fatalf("batch %v need %d blocker %d, want grind to 8 for postponed quest 3", batch, need, blocker)
 	}
 }
 
