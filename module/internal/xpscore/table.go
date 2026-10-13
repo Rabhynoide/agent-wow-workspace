@@ -31,6 +31,8 @@ type MobCell struct {
 	// Chained fights: started below chainedBelow % health (attacked again before resting).
 	Chained       int `json:"chained"`
 	ChainedDeaths int `json:"chained_deaths"`
+	// Fled: fights we ran away from (combat flees when the loss to come exceeds our health).
+	Fled int `json:"fled,omitempty"`
 }
 
 // Table is the measured side of the model, kept in journal/learn/fights.json.
@@ -164,6 +166,9 @@ func (t *Table) Learn(r io.Reader) int {
 			died := f["result"] == "died"
 			if died {
 				c.Deaths++
+			}
+			if f["result"] == "fled" {
+				c.Fled++
 			}
 			if start < chainedBelow {
 				c.Chained++

@@ -155,6 +155,21 @@ func PullLoss(levels []uint32, level, class uint32, t *Table) float64 {
 	return sum / float64(len(levels)) * (1 + addCost*float64(len(levels)-1))
 }
 
+// LossLeft is the expected health loss (percent) still to come in a fight against these attackers,
+// each with the part of its health it has left (0-1): PullLoss with every single fight weighted by
+// what remains of it.
+func LossLeft(levels []uint32, left []float64, level, class uint32, t *Table) float64 {
+	if len(levels) == 0 {
+		return 0
+	}
+	sum := 0.0
+	for i, lv := range levels {
+		l, _ := t.Fight(class, int(lv)-int(level))
+		sum += l * left[i]
+	}
+	return sum / float64(len(levels)) * (1 + addCost*float64(len(levels)-1))
+}
+
 // Of scores a monster type for a character of this class and level.
 func Of(m Mob, level, class uint32, t *Table) Score {
 	if m.MaxLevel < m.MinLevel {

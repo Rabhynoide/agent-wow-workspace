@@ -1,26 +1,26 @@
 {
-  "until": "2026-10-12T21:29:04.012Z",
+  "until": "2026-10-12T23:47:38.598Z",
   "classes": {
     "1": {
       "-1": {
-        "n": 86,
-        "loss_sum": 433,
-        "sec_sum": 914
+        "n": 125,
+        "loss_sum": 682,
+        "sec_sum": 1343
       },
       "-2": {
-        "n": 4,
-        "loss_sum": 22,
-        "sec_sum": 53
+        "n": 6,
+        "loss_sum": 32,
+        "sec_sum": 67
       },
       "0": {
-        "n": 99,
-        "loss_sum": 1456,
-        "sec_sum": 1245
+        "n": 148,
+        "loss_sum": 2231,
+        "sec_sum": 1880
       },
       "1": {
-        "n": 97,
-        "loss_sum": 2626,
-        "sec_sum": 1492
+        "n": 138,
+        "loss_sum": 3850,
+        "sec_sum": 2134
       },
       "2": {
         "n": 2,
@@ -34,12 +34,18 @@
       }
     }
   },
-  "mobs_until": "2026-10-12T21:29:04.012Z",
+  "mobs_until": "2026-10-12T23:47:38.598Z",
   "mobs": {
     "1": {
       "103": {
+        "0": {
+          "n": 1,
+          "deaths": 0,
+          "chained": 0,
+          "chained_deaths": 0
+        },
         "1": {
-          "n": 4,
+          "n": 5,
           "deaths": 0,
           "chained": 0,
           "chained_deaths": 0
@@ -47,13 +53,13 @@
       },
       "113": {
         "0": {
-          "n": 8,
+          "n": 15,
           "deaths": 0,
           "chained": 0,
           "chained_deaths": 0
         },
         "1": {
-          "n": 8,
+          "n": 25,
           "deaths": 0,
           "chained": 0,
           "chained_deaths": 0
@@ -61,21 +67,27 @@
       },
       "299": {
         "-1": {
-          "n": 43,
+          "n": 64,
           "deaths": 0,
           "chained": 0,
           "chained_deaths": 0
         }
       },
       "30": {
-        "0": {
-          "n": 4,
+        "-1": {
+          "n": 2,
           "deaths": 0,
           "chained": 0,
           "chained_deaths": 0
         },
+        "0": {
+          "n": 16,
+          "deaths": 0,
+          "chained": 1,
+          "chained_deaths": 0
+        },
         "1": {
-          "n": 18,
+          "n": 26,
           "deaths": 0,
           "chained": 0,
           "chained_deaths": 0
@@ -83,25 +95,25 @@
       },
       "38": {
         "-1": {
-          "n": 40,
+          "n": 67,
           "deaths": 0,
           "chained": 0,
           "chained_deaths": 0
         },
         "-2": {
-          "n": 4,
+          "n": 6,
           "deaths": 0,
           "chained": 0,
           "chained_deaths": 0
         },
         "0": {
-          "n": 63,
+          "n": 95,
           "deaths": 0,
           "chained": 0,
           "chained_deaths": 0
         },
         "1": {
-          "n": 37,
+          "n": 55,
           "deaths": 0,
           "chained": 0,
           "chained_deaths": 0
@@ -113,21 +125,21 @@
           "chained_deaths": 0
         }
       },
-      "525": {
+      "475": {
         "0": {
-          "n": 22,
-          "deaths": 4,
-          "chained": 7,
-          "chained_deaths": 3
+          "n": 3,
+          "deaths": 0,
+          "chained": 0,
+          "chained_deaths": 0
         },
         "1": {
-          "n": 23,
+          "n": 3,
           "deaths": 0,
-          "chained": 4,
+          "chained": 0,
           "chained_deaths": 0
         }
       },
-      "6": {
+      "525": {
         "-1": {
           "n": 1,
           "deaths": 0,
@@ -135,13 +147,35 @@
           "chained_deaths": 0
         },
         "0": {
-          "n": 23,
+          "n": 35,
+          "deaths": 7,
+          "chained": 11,
+          "chained_deaths": 5,
+          "fled": 2
+        },
+        "1": {
+          "n": 36,
+          "deaths": 1,
+          "chained": 7,
+          "chained_deaths": 1,
+          "fled": 1
+        }
+      },
+      "6": {
+        "-1": {
+          "n": 2,
+          "deaths": 0,
+          "chained": 0,
+          "chained_deaths": 0
+        },
+        "0": {
+          "n": 30,
           "deaths": 0,
           "chained": 0,
           "chained_deaths": 0
         },
         "1": {
-          "n": 16,
+          "n": 24,
           "deaths": 0,
           "chained": 0,
           "chained_deaths": 0
@@ -155,16 +189,17 @@
           "chained_deaths": 0
         },
         "0": {
-          "n": 12,
+          "n": 13,
           "deaths": 0,
           "chained": 2,
           "chained_deaths": 0
         },
         "1": {
-          "n": 17,
+          "n": 19,
           "deaths": 3,
-          "chained": 5,
-          "chained_deaths": 3
+          "chained": 6,
+          "chained_deaths": 3,
+          "fled": 1
         }
       }
     }

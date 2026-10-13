@@ -41,7 +41,8 @@ Appels : `scripts/rpc.sh <module.methode> '<json>' [chemin]` ; jobs async : `scr
 - Prêtre (table) : Desperate Prayer < 30 %, Psychic Scream < 50 % et 2 attaquants, soin < 40 %, Bouclier (sans Âme affaiblie) < 80 %, Rénovation < 65 %, Douleur (cible qui vit encore 6 s), Attaque mentale, Châtiment ; Robustesse/Feu intérieur hors combat. Le code garde la distance, la ligne de vue et la baguette ou la mêlée sans mana. Repos à 55 %.
 - Journal : une ligne `fight` par combat (résultat, cible, PV début/min/fin, attaquants max et leurs entrées, durée) ; résumé des combats perdus dans le rapport de bench.
 - Repos : mange (catégorie 11) sous 80 % de PV, boit (59) sous 70 % de mana.
-- Limites : tables prêtre/guerrier seulement ; pas de postures ; pas de fuite.
+- Fuite (`combat/flee.go`) : pendant un combat, chaque seconde, perte restante attendue = `xpscore.LossLeft` (combat seul appris de chaque attaquant × part de PV qui lui reste, ×(1 + 1,5 par add)) ; si elle dépasse nos PV − 15 %, course de point sûr en point sûr (`move.safe_point` 35 yards, 40 s max) jusqu'à ce que plus rien ne nous cible. Repos à 90 % après une fuite ; pas de nouvelle fuite pendant 15 s ; les attaquants sont évités par le choix de pull 2 min (mais combattus s'ils attaquent). Ligne `fight` result=fled, lignes `fleeing` / `fled` ; compteur `fled` par monstre dans `fights.json`. Base : monstres d'Elwynn à 0,86 × notre vitesse, leash 30 yards (CreatureLeashRadius).
+- Limites : tables prêtre/guerrier seulement ; pas de postures ; fuite sans tenir compte des monstres plus rapides ni des ralentissements.
 
 ## town
 - `town.sell_junk {dry_run, min_free, show_kept}` (règles `internal/sellrule`), `town.repair {}`, `town.restock {food, drink, max_copper}` (meilleure nourriture/boisson de notre niveau, budget = 1/3 de l'argent) : PNJ à ≤ 5 yards.

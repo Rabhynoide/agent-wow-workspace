@@ -35,6 +35,9 @@ fails = collections.Counter(re.sub(r".*spell=(\d+) result=(\d+).*", r"\1/\2", l)
 meals = sum(1 for l in combat if "consuming" in l)
 fights = [l for l in combat if 'msg=fight ' in l]
 lost = [re.sub(r'.*?(target=.*)', r'\1', l) for l in fights if "result=died" in l]
+# Flights (combat/flee.go): the "fleeing" line (health, loss expected, attackers), then "fled" (safe).
+fled = [re.sub(r'.*?(hp=.*)', r'\1', l) for l in combat if "msg=fleeing " in l]
+escaped = sum(1 for l in combat if "msg=fled " in l)
 gave_up = sum(1 for l in combat if "giving up target" in l)
 final_level = me.get("level", levels[-1][0] if levels else 1)
 reached = final_level >= int(target)
@@ -51,6 +54,7 @@ lines = [f"# Bench {name} — {race} {cls} 1 → {target} ({date})", "",
          f"- Argent final : {me.get('money', '?')} cuivres ; durabilité : {state.get('durabilityPct', '?')} %",
          f"- Sorts refusés (sort/code) : {dict(fails.most_common(8))}",
          f"- Combats : {len(fights)} ; perdus : {len(lost)}"] + [f"  - {l}" for l in lost] + [
+         f"- Fuites : {len(fled)} ; semées : {escaped}"] + [f"  - {l}" for l in fled] + [
          f"- Fin : {stops[-1] if stops else '?'}"]
 os.makedirs(os.path.join(root, "journal/bench"), exist_ok=True)
 fname = f"journal/bench/{datetime.datetime.fromtimestamp(start).strftime('%Y%m%d_%H%M')}_{name}.md"

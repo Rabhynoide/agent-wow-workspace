@@ -38,6 +38,7 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-nu
 th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 th { color: var(--muted); font-weight: 600; font-size: 12px; }
 tr.died td { color: var(--bad); font-weight: 600; }
+tr.fled td { color: var(--warn); font-weight: 600; }
 .scroll { overflow-x: auto; }
 pre { margin: 0; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; word-break: break-word; max-height: 380px; overflow-y: auto; }
 .steps { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
@@ -133,15 +134,16 @@ function run(d) {
   $('log').scrollTop = $('log').scrollHeight;
 }
 
+const RESULT = { died: 'mort', won: 'gagné', fled: 'fuite', left: 'perdu de vue' };
 const mob = e => names[e] ? `${names[e]} (${e})` : e;
 
 function render(d) {
   live(d); run(d);
   table('fights', ['Heure', 'Résultat', 'Cible', 'Niv.', 'Écart', 'PV début', 'PV min', 'Attaquants', 'Durée'],
-    d.fights.map(f => ({ died: f.result === 'died', cells: [f.time, f.result === 'died' ? 'mort' : 'gagné', mob(f.target), f.level, (f.gap > 0 ? '+' : '') + f.gap, f.hp_start + ' %', f.hp_min + ' %', f.attackers, f.s + ' s'] })),
-    r => r.died ? 'died' : '');
-  table('mobs', ['Monstre', 'Combats', 'Morts', 'Taux', 'Enchaînés (morts)'],
-    d.learned.mobs.slice(0, 12).map(m => ({ died: m.deaths > 0, cells: [mob(m.entry), m.n, m.deaths, m.n ? Math.round(100 * m.deaths / m.n) + ' %' : '—', `${m.chained} (${m.chained_deaths})`] })),
+    d.fights.map(f => ({ died: f.result === 'died', fled: f.result === 'fled', cells: [f.time, RESULT[f.result] || f.result, mob(f.target), f.level, (f.gap > 0 ? '+' : '') + f.gap, f.hp_start + ' %', f.hp_min + ' %', f.attackers, f.s + ' s'] })),
+    r => r.died ? 'died' : r.fled ? 'fled' : '');
+  table('mobs', ['Monstre', 'Combats', 'Morts', 'Taux', 'Enchaînés (morts)', 'Fuites'],
+    d.learned.mobs.slice(0, 12).map(m => ({ died: m.deaths > 0, cells: [mob(m.entry), m.n, m.deaths, m.n ? Math.round(100 * m.deaths / m.n) + ' %' : '—', `${m.chained} (${m.chained_deaths})`, m.fled || 0] })),
     r => r.died ? 'died' : '');
   table('gaps', ['Écart', 'Combats', 'PV perdus', 'Durée'],
     Object.entries(d.learned.gaps).sort((a, b) => a[0] - b[0]).map(([g, c]) => ({ cells: [(g > 0 ? '+' : '') + g, c.n, c.loss + ' %', c.s + ' s'] })));

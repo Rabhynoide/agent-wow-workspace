@@ -106,9 +106,9 @@ def learned():
     mobs = []
     for cls, entries in t.get("mobs", {}).items():
         for entry, by_gap in entries.items():
-            tot = {"class": cls, "entry": entry, "n": 0, "deaths": 0, "chained": 0, "chained_deaths": 0}
+            tot = {"class": cls, "entry": entry, "n": 0, "deaths": 0, "chained": 0, "chained_deaths": 0, "fled": 0}
             for c in by_gap.values():
-                for k in ("n", "deaths", "chained", "chained_deaths"):
+                for k in ("n", "deaths", "chained", "chained_deaths", "fled"):
                     tot[k] += c.get(k, 0)
             mobs.append(tot)
     mobs.sort(key=lambda m: (-m["deaths"], -m["n"]))

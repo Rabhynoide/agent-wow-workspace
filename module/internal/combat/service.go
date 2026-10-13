@@ -64,6 +64,7 @@ type Service struct {
 	melee     *meleeLog
 	abandoned map[uint64]time.Time // targets given up (no damage dealt): not picked again for a while
 	crowded   map[uint64]time.Time // targets skipped for their adds: not pulled for a while, still fought back
+	fledAt    time.Time            // last flight (flee.go)
 	items     map[uint32]*worldpb.ItemInfo
 	book      *spellBook
 }
@@ -536,7 +537,32 @@ func (s *Service) fight(ctx context.Context, j *job, guid uint64) (bool, string)
 	rec := s.watchFight(ctx, guid)
 	dead, why := s.fightClass(ctx, j, guid)
 	rec.done(dead, why)
+	if why == "fled" { // not a failure: the caller rests, then picks a target again
+		return false, ""
+	}
 	return dead, why
+}
+
+// fleeIfLosing runs away when the fight is expected to cost more health than we have (flee.go). It
+// returns the fight's end reason, "" to keep fighting.
+func (s *Service) fleeIfLosing(ctx context.Context, j *job, me *statepb.SelfInfo, checked *time.Time) string {
+	if time.Since(*checked) < time.Second {
+		return ""
+	}
+	*checked = time.Now()
+	ok, loss, att := s.mustFlee(ctx, me)
+	if !ok {
+		return ""
+	}
+	if s.flee(ctx, j, me, att, loss) {
+		return "dead"
+	}
+	// Rest before anything else: walking on at half health led back into the same monsters (bench
+	// of 2026-10-13). An attack stops the rest and the caller fights back.
+	if _, why := s.rest(ctx, j, 90, 70, 90); why == "dead" {
+		return "dead"
+	}
+	return "fled"
 }
 
 func (s *Service) fightClass(ctx context.Context, j *job, guid uint64) (bool, string) {
@@ -544,7 +570,7 @@ func (s *Service) fightClass(ctx context.Context, j *job, guid uint64) (bool, st
 	if err == nil && b.Self != nil && b.Self.ClassId == warrior.ClassID {
 		return s.fightWarrior(ctx, j, guid)
 	}
-	var lastSwing, lastShoot, losAt, lastFace time.Time
+	var lastSwing, lastShoot, losAt, lastFace, fleeCheck time.Time
 	progress, lastHP := time.Now(), uint32(0)
 	selected := false
 	fails := 0
@@ -592,6 +618,9 @@ func (s *Service) fightClass(ctx context.Context, j *job, guid uint64) (bool, st
 		if me.Dead {
 			s.forgetBuffs()
 			return false, "dead"
+		}
+		if why := s.fleeIfLosing(ctx, j, me, &fleeCheck); why != "" {
+			return false, why
 		}
 		mana := pct(me.Power, me.MaxPower)
 		if lastHP == 0 || t.Hp < lastHP || s.melee.lastHit(guid).After(progress) {
@@ -760,7 +789,7 @@ func (s *Service) fightWarrior(ctx context.Context, j *job, guid uint64) (bool, 
 		return false, "spells unavailable"
 	}
 	rot := s.fightTable(warrior.ClassID, known)
-	var lastSwing, lastFace time.Time
+	var lastSwing, lastFace, fleeCheck time.Time
 	progress, lastHP := time.Now(), uint32(0)
 	selected := false
 	started := time.Now()
@@ -789,6 +818,9 @@ func (s *Service) fightWarrior(ctx context.Context, j *job, guid uint64) (bool, 
 		if me.Dead {
 			s.forgetBuffs()
 			return false, "dead"
+		}
+		if why := s.fleeIfLosing(ctx, j, me, &fleeCheck); why != "" {
+			return false, why
 		}
 		dist := float32(math.Hypot(float64(t.X-me.X), float64(t.Y-me.Y)))
 		dist3 := float32(math.Sqrt(float64(dist*dist + (t.Z-me.Z)*(t.Z-me.Z))))
