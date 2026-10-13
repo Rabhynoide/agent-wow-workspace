@@ -20,7 +20,7 @@ est lancée. Champs : `spell` (nom anglais, rangs dans `module/internal/<classe>
 le sort : la course de Charge), `reactive` (sort sur événement, les refus sont normaux), `off_gcd` (Heroic Strike :
 envoyé sans attendre).
 Conditions : `and`, `or`, `not`, `< <= > >= == !=`, parenthèses. Variables : `hp`, `mana` (%), `rage`, `level`,
-`in_combat`, `attackers` (unités qui nous ciblent à 30 yards), `fight_s`, `dist`, `visible`, `target_hp` (%),
+`in_combat`, `attackers` (unités qui nous ciblent à 30 yards), `near_attackers` (les mêmes à 8 yards : portée de Thunder Clap et Cleave), `fight_s`, `dist`, `visible`, `target_hp` (%),
 `target_level`, `target_on_me`, `target_dies_in` (s, d'après la baisse de ses PV ; 99 sans mesure). Fonctions :
 `aura("X")` (sur nous), `my_aura_left("X")` (s, la nôtre ; 0 si absente), `target_aura("X")`, `target_aura_left("X")`,
 `known("X")`, `dodged(s)`, `aura_state(n)`, `target_aura_state(n)`. Validées par le test de `combat` (`go test ./internal/combat`).

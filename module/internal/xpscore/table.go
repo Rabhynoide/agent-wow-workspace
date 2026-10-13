@@ -159,7 +159,8 @@ func (t *Table) Learn(r io.Reader) int {
 		}
 		key := strconv.Itoa(tl - lv)
 		counted := false
-		if newMob && f["target"] != "" && f["target"] != "0" {
+		// "switched": the same fight goes on against another attacker (combat/focus.go), not a fight.
+		if newMob && f["target"] != "" && f["target"] != "0" && f["result"] != "switched" {
 			lastMobs = max(lastMobs, f["time"])
 			c := t.mobCell(f["class"], f["target"], key)
 			c.N++

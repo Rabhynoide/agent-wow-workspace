@@ -3,6 +3,8 @@ logs/combat.log (from a line), writes journal/bench/<date>_<name>.md and appends
 import collections, datetime, json, os, re, sys
 
 name, commit, race, cls, target, start, end, code, combat_from, state_from = sys.argv[1:11]
+snap = sys.argv[11] if len(sys.argv) > 11 else ""  # FROM: the run started from this snapshot
+first_level = int(sys.argv[12]) if len(sys.argv) > 12 and sys.argv[12].isdigit() else 1
 start, end, code, combat_from, state_from = int(start), int(end), int(code), int(combat_from), int(state_from)
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 read = lambda p: open(os.path.join(root, p), errors="replace").read().splitlines() if os.path.exists(os.path.join(root, p)) else []
@@ -39,6 +41,10 @@ lost = [re.sub(r'.*?(target=.*)', r'\1', l) for l in fights if "result=died" in 
 fled = [re.sub(r'.*?(hp=.*)', r'\1', l) for l in combat if "msg=fleeing " in l]
 escaped = sum(1 for l in combat if "msg=fled " in l)
 # Fled zones (combat/zones.go): spawn points the grind skipped, pull choices that left monsters there.
+# Multi-target fights (combat/focus.go, near_attackers): target switches and spells cast with 2+ attackers.
+switches = sum(1 for l in combat if "msg=\"switching target\"" in l)
+group_casts = collections.Counter(re.sub(r'.*spell="?([^"]+?)"? attackers.*', r'\1', l) for l in combat if "msg=\"group cast\"" in l)
+group_fights = sum(1 for l in fights if not re.search(r"attackers_max=[01]\b", l))
 zone_spawns = sum(1 for l in level_log if "near where we fled from" in l)
 zone_pulls = sum(1 for l in combat if "msg=\"pull choice\"" in l and "in_fled_zone=" in l and not re.search(r"in_fled_zone=0\b", l))
 gave_up = sum(1 for l in combat if "giving up target" in l)
@@ -46,7 +52,8 @@ final_level = me.get("level", levels[-1][0] if levels else 1)
 reached = final_level >= int(target)
 
 date = datetime.datetime.fromtimestamp(start).strftime("%Y-%m-%d %H:%M")
-lines = [f"# Bench {name} — {race} {cls} 1 → {target} ({date})", "",
+lines = [f"# Bench {name} — {race} {cls} {first_level} → {target} ({date})", "",
+         *( [f"- Départ : snapshot {snap} (niveau {first_level})"] if snap else [] ),
          f"- Commit : {commit}",
          f"- Résultat : {'OBJECTIF ATTEINT' if reached else 'non atteint'} (niveau {final_level}, code level.sh {code}) en {minutes:.1f} min",
          f"- Temps par niveau (minutes depuis le début) : " + ", ".join(f"{lv}: {m:.1f}" for lv, m in levels),
@@ -58,6 +65,7 @@ lines = [f"# Bench {name} — {race} {cls} 1 → {target} ({date})", "",
          f"- Sorts refusés (sort/code) : {dict(fails.most_common(8))}",
          f"- Combats : {len(fights)} ; perdus : {len(lost)}"] + [f"  - {l}" for l in lost] + [
          f"- Fuites : {len(fled)} ; semées : {escaped}"] + [f"  - {l}" for l in fled] + [
+         f"- Combats à plusieurs : {group_fights} ; changements de cible : {switches} ; sorts lancés à plusieurs : {dict(group_casts.most_common(8))}",
          f"- Zones fuies évitées : points d'apparition {zone_spawns} ; choix de pull {zone_pulls}",
          f"- Fin : {stops[-1] if stops else '?'}"]
 os.makedirs(os.path.join(root, "journal/bench"), exist_ok=True)
@@ -65,7 +73,7 @@ fname = f"journal/bench/{datetime.datetime.fromtimestamp(start).strftime('%Y%m%d
 open(os.path.join(root, fname), "w").write("\n".join(lines) + "\n")
 csv = os.path.join(root, "journal/bench/results.csv")
 if not os.path.exists(csv):
-    open(csv, "w").write("date,name,commit,race,class,target,reached,final_level,minutes,deaths,quests_done,quests_skipped,walk_fights,gave_up,meals,money\n")
-open(csv, "a").write(f"{date},{name},{commit},{race},{cls},{target},{int(reached)},{final_level},{minutes:.1f},{deaths},{len(done)},{len(skips)},{walk_fights},{gave_up},{meals},{me.get('money', '')}\n")
+    open(csv, "w").write("date,name,commit,race,class,target,reached,final_level,minutes,deaths,quests_done,quests_skipped,walk_fights,gave_up,meals,money,from,start_level\n")
+open(csv, "a").write(f"{date},{name},{commit},{race},{cls},{target},{int(reached)},{final_level},{minutes:.1f},{deaths},{len(done)},{len(skips)},{walk_fights},{gave_up},{meals},{me.get('money', '')},{snap},{first_level}\n")
 print("\n".join(lines))
 print(f"\n(report: {fname})")

@@ -26,6 +26,7 @@ var (
 	MortalStrike   = []uint32{47486, 47485, 30330, 25248, 21553, 21552, 21551, 12294}
 	Slam           = []uint32{47475, 47474, 25242, 25241, 11605, 11604, 8820, 1464}
 	SweepingStrike = []uint32{12328}
+	Cleave         = []uint32{47520, 47519, 25231, 20569, 11609, 11608, 7369, 845}
 	Bladestorm     = []uint32{46924}
 	IntimShout     = []uint32{5246}
 	Retaliation    = []uint32{20230}
@@ -37,6 +38,7 @@ var (
 		"Victory Rush": VictoryRush, "Overpower": Overpower, "Bloodrage": Bloodrage, "Execute": Execute, "Mortal Strike": MortalStrike,
 		"Slam": Slam, "Sweeping Strikes": SweepingStrike, "Bladestorm": Bladestorm, "Intimidating Shout": IntimShout,
 		"Retaliation": Retaliation, "Enraged Regeneration": EnragedRegen, "Berserker Rage": BerserkerRage,
+		"Cleave": Cleave,
 	}
 
 	// Auras by name for the priority table (journal/classes/warrior.yaml), when the aura is not the

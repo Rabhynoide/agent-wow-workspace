@@ -127,11 +127,15 @@ priorities:
   - { spell: "Victory Rush", every: 1, reactive: true }
   - { spell: "Execute", if: 'target_aura_state(2) or target_hp < 20 or aura("Sudden Death")' }
   - { spell: "Overpower", if: 'dodged(4) or aura("Taste for Blood")', every: 1, reactive: true }
+  # Plusieurs attaquants à 8 yards (near_attackers) : sorts de zone avant les coups sur la seule cible (Singular).
+  - { spell: "Sweeping Strikes", target: self, if: 'near_attackers >= 2' }
+  - { spell: "Thunder Clap", if: 'near_attackers >= 2', every: 1 }
   - { spell: "Rend", if: 'target_aura_left("Rend") < 2 and target_hp > 25 and target_dies_in > 8', every: 2 }
   - { spell: "Mortal Strike", if: 'rage >= 30' }
   - { spell: "Slam", if: 'level >= 41' }
   - { spell: "Thunder Clap", if: 'level < 20', every: 1 }
   # Remplace le prochain coup (sans recharge globale) : rage en trop seulement.
+  - { spell: "Cleave", off_gcd: true, every: 3.5, if: 'near_attackers >= 2 and rage >= 20' }
   - { spell: "Heroic Strike", off_gcd: true, every: 3.5, if: '(level < 41 and rage >= 30) or rage >= 60' }
 
 # Hors combat, avant un pull.

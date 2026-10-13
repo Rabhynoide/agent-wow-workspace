@@ -1,4 +1,4 @@
-date,name,commit,race,class,target,reached,final_level,minutes,deaths,quests_done,quests_skipped,walk_fights,gave_up,meals,money
+date,name,commit,race,class,target,reached,final_level,minutes,deaths,quests_done,quests_skipped,walk_fights,gave_up,meals,money,from,start_level
 2026-10-11 20:06,Benchbbcaad,c30f628,human,warrior,6,0,3,24.0,13,9,1,7,17,0,32
 2026-10-11 20:35,Benchbbcadc,c30f628+dirty,human,warrior,6,0,4,30.9,13,10,1,5,0,4,72
 2026-10-11 21:09,Benchbbcbag,c30f628+dirty,human,warrior,6,0,5,35.7,5,11,0,6,0,9,15
@@ -17,3 +17,6 @@ date,name,commit,race,class,target,reached,final_level,minutes,deaths,quests_don
 2026-10-13 00:19,Benchihlsot,e68afa6+dirty,human,warrior,6,1,6,56.0,2,11,0,11,0,10,181
 2026-10-13 01:19,Benchqbnqfp,e68afa6+dirty,human,warrior,6,1,6,47.8,0,11,0,10,0,10,157
 2026-10-13 07:21,Benchhxkmab,1fbfcbc+dirty,human,warrior,6,1,6,50.8,0,11,0,12,0,8,170
+2026-10-13 08:56,Benchurggua,43f98a3+dirty,human,warrior,6,1,6,48.3,0,11,0,10,0,9,305
+2026-10-13 10:38,Benchqbfdkq,43f98a3+dirty,human,warrior,6,1,6,54.5,2,11,0,10,2,13,220,,1
+2026-10-13 11:37,Benchaqmmhf,43f98a3+dirty,human,warrior,10,0,6,19.7,3,1,0,3,0,3,419,warrior_human_6,6

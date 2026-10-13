@@ -40,7 +40,7 @@ type env struct {
 	diesIn   float64
 	noEnemy  bool // spells on the enemy are skipped (priest: no line of sight, fighting in melee)
 	visible  *bool
-	attacked *int
+	attacked *[]*statepb.Obj
 }
 
 func (e *env) isVisible() bool {
@@ -52,18 +52,40 @@ func (e *env) isVisible() bool {
 }
 
 // attackers counts the units in combat that target us (within 30 yards).
-func (e *env) attackers() int {
+func (e *env) attackers() int { return len(e.onMe()) }
+
+// logGroupCast logs a spell cast while several units attack us (multi-target fights in the bench
+// report).
+func (e *env) logGroupCast(spell string) {
+	if e.t != nil && len(e.onMe()) >= 2 {
+		slog.Info("group cast", "spell", spell, "attackers", len(e.onMe()), "near", e.nearAttackers())
+	}
+}
+
+// nearAttackers counts the attackers within reach of our area spells (Thunder Clap: 8 yards).
+func (e *env) nearAttackers() int {
+	n := 0
+	for _, o := range e.onMe() {
+		if o.Dist <= areaRange {
+			n++
+		}
+	}
+	return n
+}
+
+// onMe lists the units in combat that target us (within 30 yards), read once per step.
+func (e *env) onMe() []*statepb.Obj {
 	if e.attacked == nil {
-		n := 0
+		var out []*statepb.Obj
 		r, err := e.s.api.Nearby(e.ctx, &statepb.NearbyRequest{Kind: "unit", Radius: 30, Max: 12, AliveOnly: true})
 		if err == nil {
 			for _, o := range r.Objs {
 				if o.Target == e.me.Guid && o.UnitFlags&unitInCombat != 0 {
-					n++
+					out = append(out, o)
 				}
 			}
 		}
-		e.attacked = &n
+		e.attacked = &out
 	}
 	return *e.attacked
 }
@@ -119,9 +141,11 @@ var variables = map[string]expr{
 	"level":     func(e *env) float64 { return float64(e.me.Level) },
 	"in_combat": func(e *env) float64 { return b2f(e.me.UnitFlags&inCombatFlag != 0) },
 	"attackers": func(e *env) float64 { return float64(e.attackers()) },
-	"fight_s":   func(e *env) float64 { return time.Since(e.started).Seconds() },
-	"dist":      func(e *env) float64 { return float64(e.dist) },
-	"visible":   func(e *env) float64 { return b2f(e.isVisible()) },
+	// Attackers within 8 yards: what Thunder Clap, Cleave and Sweeping Strikes reach.
+	"near_attackers": func(e *env) float64 { return float64(e.nearAttackers()) },
+	"fight_s":        func(e *env) float64 { return time.Since(e.started).Seconds() },
+	"dist":           func(e *env) float64 { return float64(e.dist) },
+	"visible":        func(e *env) float64 { return b2f(e.isVisible()) },
 	"target_hp": func(e *env) float64 {
 		return withTarget(e, func(t *statepb.Obj) float64 { return float64(pct(t.Hp, t.MaxHp)) })
 	},
@@ -510,10 +534,12 @@ func (s *Service) step(ctx context.Context, r *rotation, e *env, guid uint64) (c
 		l.mark = now
 		if l.p.OffGCD {
 			_, _ = s.cast(ctx, l.spell, target)
+			e.logGroupCast(l.p.Spell)
 			continue
 		}
 		r.busy = now.Add(time.Duration((max(l.p.Cast, 1.5) + 0.1) * float64(time.Second)))
 		if s.tryCast(ctx, l.spell, target) {
+			e.logGroupCast(l.p.Spell)
 			if l.p.After > 0 {
 				sleep(ctx, time.Duration(l.p.After*float64(time.Second)))
 			}

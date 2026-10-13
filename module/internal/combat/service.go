@@ -333,15 +333,16 @@ func (s *Service) aggressor(ctx context.Context, me *statepb.SelfInfo) *statepb.
 	if err != nil {
 		return nil
 	}
+	var att []*statepb.Obj
 	for _, o := range r.Objs {
 		// Friendly NPCs may face/target us (gossip): only units in combat are attackers. A target given
 		// up (unreachable: another level of a mine) is skipped, or defend fought it forever (bench of
 		// 2026-10-12: 40 minutes against one kobold).
 		if o.Target == me.Guid && o.UnitFlags&unitInCombat != 0 && !s.wasAbandoned(o.Guid) {
-			return o
+			att = append(att, o)
 		}
 	}
-	return nil
+	return pickAttacker(att) // the weakest within reach first (focus.go)
 }
 
 func (s *Service) kill(ctx context.Context, j *job, r *pb.KillRequest) (string, string) {
@@ -538,7 +539,7 @@ func (s *Service) fight(ctx context.Context, j *job, guid uint64) (bool, string)
 	rec := s.watchFight(ctx, guid)
 	dead, why := s.fightClass(ctx, j, guid)
 	rec.done(dead, why)
-	if why == "fled" { // not a failure: the caller rests, then picks a target again
+	if why == "fled" || why == "switched" { // not a failure: the caller picks a target again
 		return false, ""
 	}
 	return dead, why
@@ -629,8 +630,7 @@ func (s *Service) fightClass(ctx context.Context, j *job, guid uint64) (bool, st
 		}
 		lastHP = t.Hp
 		if time.Since(progress) > noProgress {
-			s.abandon(guid, "no damage dealt", t.Entry)
-			return false, ""
+			return false, s.giveUp(ctx, j, me, t)
 		}
 		dist := float32(math.Hypot(float64(t.X-me.X), float64(t.Y-me.Y)))
 		outOfMana := smite == 0 || mana < 8 || time.Now().Before(meleeUntil)
@@ -790,7 +790,7 @@ func (s *Service) fightWarrior(ctx context.Context, j *job, guid uint64) (bool, 
 		return false, "spells unavailable"
 	}
 	rot := s.fightTable(warrior.ClassID, known)
-	var lastSwing, lastFace, fleeCheck time.Time
+	var lastSwing, lastFace, fleeCheck, focusCheck time.Time
 	progress, lastHP := time.Now(), uint32(0)
 	selected := false
 	started := time.Now()
@@ -823,6 +823,20 @@ func (s *Service) fightWarrior(ctx context.Context, j *job, guid uint64) (bool, 
 		if why := s.fleeIfLosing(ctx, j, me, &fleeCheck); why != "" {
 			return false, why
 		}
+		// Several attackers: finish the weakest first (focus.go); the caller picks it up.
+		if time.Since(focusCheck) > time.Second {
+			focusCheck = time.Now()
+			var att []*statepb.Obj
+			for _, a := range s.onMe(ctx, me) {
+				if !s.wasAbandoned(a.Guid) { // as aggressor: else the same switch every second
+					att = append(att, a)
+				}
+			}
+			if b := focusTarget(t, att); b != nil {
+				slog.Info("switching target", "from", t.Entry, "from_hp", pct(t.Hp, t.MaxHp), "to", b.Entry, "to_hp", pct(b.Hp, b.MaxHp))
+				return false, "switched"
+			}
+		}
 		dist := float32(math.Hypot(float64(t.X-me.X), float64(t.Y-me.Y)))
 		dist3 := float32(math.Sqrt(float64(dist*dist + (t.Z-me.Z)*(t.Z-me.Z))))
 		now := time.Now()
@@ -833,8 +847,7 @@ func (s *Service) fightWarrior(ctx context.Context, j *job, guid uint64) (bool, 
 		}
 		lastHP = t.Hp
 		if now.Sub(progress) > noProgress {
-			s.abandon(guid, "no damage dealt", t.Entry)
-			return false, ""
+			return false, s.giveUp(ctx, j, me, t)
 		}
 		if !selected {
 			s.packetU64(ctx, uint32(opcode.CMSGSetSelection), guid)

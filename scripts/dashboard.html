@@ -102,7 +102,7 @@ svg text { fill: var(--muted); font-size: 11px; }
       <div class="scroll"><table id="gaps"></table></div>
     </section>
     <section class="card s12">
-      <h2>Benchs 1 → 6</h2>
+      <h2>Benchs</h2>
       <svg id="chart" width="100%" height="150" role="img" aria-label="Minutes et morts par bench"></svg>
       <div class="scroll"><table id="benches"></table></div>
     </section>
@@ -269,7 +269,7 @@ function armory(d) {
   box.append(doll, bags);
 }
 
-const RESULT = { died: 'mort', won: 'gagné', fled: 'fuite', left: 'perdu de vue' };
+const RESULT = { died: 'mort', won: 'gagné', fled: 'fuite', left: 'perdu de vue', switched: 'cible changée' };
 const mob = e => names[e] ? `${names[e]} (${e})` : e;
 
 function render(d) {
@@ -283,8 +283,8 @@ function render(d) {
   table('gaps', ['Écart', 'Combats', 'PV perdus', 'Durée'],
     Object.entries(d.learned.gaps).sort((a, b) => a[0] - b[0]).map(([g, c]) => ({ cells: [(g > 0 ? '+' : '') + g, c.n, c.loss + ' %', c.s + ' s'] })));
   const b = d.benches.slice().reverse();
-  table('benches', ['Date', 'Commit', 'Niveau', 'Minutes', 'Morts', 'Quêtes', 'Combats en marchant', 'Argent'],
-    b.map(x => ({ died: x.deaths !== '0', cells: [x.date, x.commit, `${x.final_level}${x.reached === '1' ? ' ✓' : ''}`, x.minutes, x.deaths, x.quests_done, x.walk_fights, x.money] })));
+  table('benches', ['Date', 'Commit', 'Niveaux', 'Atteint', 'Minutes', 'Morts', 'Quêtes', 'Combats en marchant', 'Argent'],
+    b.map(x => ({ died: x.deaths !== '0', cells: [x.date, x.commit, `${x.start_level || 1} → ${x.target}${x.from ? ' (snapshot)' : ''}`, `${x.final_level}${x.reached === '1' ? ' ✓' : ''}`, x.minutes, x.deaths, x.quests_done, x.walk_fights, x.money] })));
   chart(d.benches);
 }
 
@@ -298,7 +298,7 @@ function chart(rows) {
     const rect = document.createElementNS(ns, 'rect');
     Object.entries({ x: x + bw * .15, y: H - pad - h, width: bw * .7, height: h, rx: 3,
       fill: r.reached === '1' ? 'var(--good)' : (r.deaths !== '0' ? 'var(--bad)' : 'var(--warn)') }).forEach(([k, v]) => rect.setAttribute(k, v));
-    const t = document.createElementNS(ns, 'title'); t.textContent = `${r.date} · ${r.commit} · niveau ${r.final_level} en ${r.minutes} min, ${r.deaths} morts`; rect.append(t);
+    const t = document.createElementNS(ns, 'title'); t.textContent = `${r.date} · ${r.commit} · ${r.start_level || 1} → niveau ${r.final_level} en ${r.minutes} min, ${r.deaths} morts`; rect.append(t);
     svg.append(rect);
     const lbl = document.createElementNS(ns, 'text'); lbl.setAttribute('x', x + bw / 2); lbl.setAttribute('y', H - 8); lbl.setAttribute('text-anchor', 'middle');
     lbl.textContent = `L${r.final_level}·${r.deaths}☠`; svg.append(lbl);

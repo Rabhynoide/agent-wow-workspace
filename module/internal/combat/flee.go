@@ -3,6 +3,7 @@ package combat
 import (
 	"context"
 	"log/slog"
+	"math"
 	"time"
 
 	pb "wowagent/gen/combatv1"
@@ -122,4 +123,31 @@ func (s *Service) flee(ctx context.Context, j *job, me *statepb.SelfInfo, att []
 	}
 	slog.Info("still chased after fleeing", "s", fleeMaxS)
 	return false
+}
+
+// giveUp abandons a target we have not damaged for noProgress. When it keeps hitting us, staying
+// meant dying: the attackers given up are not fought back (aggressor skips them) and no fight is
+// running to flee from it (two deaths to a Defias Cutpurse, bench of 2026-10-13). So we run away;
+// it gives up 30 yards from where it was pulled. It returns the fight's end reason ("" or "fled",
+// "dead").
+func (s *Service) giveUp(ctx context.Context, j *job, me *statepb.SelfInfo, t *statepb.Obj) string {
+	s.abandon(t.Guid, "no damage dealt", t.Entry)
+	if t.Target != me.Guid {
+		return ""
+	}
+	tooFar, badFacing := s.melee.recent(5 * time.Second)
+	slog.Info("unhittable attacker", "entry", t.Entry, "level", t.Level, "hp", pct(t.Hp, t.MaxHp), "dist", int(math.Hypot(float64(t.X-me.X), float64(t.Y-me.Y))),
+		"dz", int(t.Z-me.Z), "not_in_range", tooFar, "bad_facing", badFacing, "flags", t.UnitFlags)
+	att := s.onMe(ctx, me)
+	if len(att) == 0 {
+		att = []*statepb.Obj{t}
+	}
+	s.mark(&s.fledAt)
+	if s.flee(ctx, j, me, att, 0) {
+		return "dead"
+	}
+	if _, why := s.rest(ctx, j, 90, 70, 90); why == "dead" {
+		return "dead"
+	}
+	return "fled"
 }
