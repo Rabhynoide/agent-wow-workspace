@@ -6,6 +6,21 @@ Légende : [ ] à faire, [~] partiel, [x] fait.
 Monter un personnage de 1 à 80 le plus vite possible, en autonomie. Chaque point se mesure en minutes gagnées (protocole : NOTES « Protocole de mesure », 2 benchs 6 → 8 par variante). État au 2026-10-14 : 1 → 10 en 224 min (Benchtrhoxd), seul Elwynn est joué, rien au-delà du niveau 11.
 
 ### Étape 1 : Elwynn rapide (niveaux 1-10), mesurable dès maintenant
+Variantes de prudence mesurées le 2026-10-14 (6 → 8 depuis `warrior_human_6`, commit 375f6c2, rapports dans journal/bench/) :
+| Variante | Runs (min) | Morts | Verdict provisoire |
+|---|---|---|---|
+| A référence (+ contrôle 58,5) | 55,4 ; 61,8 | 0 | base ~58,5 min, écart ±3 |
+| B `postpone_after_flights` 2 | 60,7 ; 57,4 | 0 | pas de gain |
+| C `crowd_flee` 0 | 66,2 ; 60,6 | 0 | plutôt plus lent |
+| D `chase_margin` 5 | 67,4 ; 55,0 | 3 | à écarter |
+| E `avoid` false | 45,1 ; (2e interrompu) | 0 | **meilleur 6 → 8 mesuré** : à confirmer par 2 runs, puis à adopter si confirmé |
+Apprentissage des cas limites : 6 combats restés au lieu de fuir sur la variante A, 0 mort (journal/learn/flee.json).
+Référence humaine (journal/sessions/20261014_humain_1-8.md) : **1 → 8 en ~60 min** contre ~117 pour le bot. Ce qui fait la différence, à reproduire dans l'ordre :
+- [ ] Pas de repos assis : reprendre le combat dès qu'on est hors combat avec assez de vie (régén hors combat rapide à bas niveau) ; repos/nourriture seulement sous un seuil bas. Mesurer `restBelow` 75 → 50 et le repos à 90 % après une fuite.
+- [ ] Taille de pull adaptative : augmenter le nombre de monstres pris tant que les combats coûtent moins que prévu, redescendre après un combat difficile, remonter après une amélioration d'équipement (aujourd'hui le bot fuit presque toujours à 3 ; le joueur combat à 2-4 la moitié du temps).
+- [ ] Placement : avec 2+ attaquants, reculer pour les avoir tous devant (parade, blocage) ; reculer en se battant quand une patrouille approche plutôt que fuir.
+- [ ] Mine de Fargodeep dès le niveau 5-6 par l'entrée basse ; ramasser le butin d'un monstre de quête (Goldtooth) avant tout autre combat.
+- [ ] Ouvrir les coffres du décor croisés en route (butin vert : épée à deux mains).
 - [~] (réglages `journal/learn/tuning.json` + apprentissage des cas limites, 2026-10-14 ; variantes B-E à mesurer, NOTES) Prudence qui coûte du temps : 19-33 fuites par run, presque toutes les quêtes 9-10 reportées. Essayer (une variante à la fois) : reporter une quête après 2 fuites au lieu d'1 ; règle des 3 attaquants assouplie quand ils sont plus faibles ou qu'une potion est prête ; `chaseMargin` 10 → 5.
 - [~] Contournement des monstres (`move/avoid.go`) : le mesurer contre son absence (`"avoid": false` dans tuning.json, variante E), la marche faisant 38 % du temps.
 - [ ] Mine de Fargodeep (quêtes 47, 60, 62, 87) : moitié des fuites de 5 à 8. Reporter dès la première fuite toute quête dont la cible est dans la mine, ou n'y aller qu'au niveau 8-9 ; mesurer.
