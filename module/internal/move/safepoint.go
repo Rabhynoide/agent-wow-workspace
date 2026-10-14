@@ -42,7 +42,7 @@ func (s *Service) SafePoint(ctx context.Context, r *pb.SafePointRequest) (*pb.Sa
 			continue
 		}
 		checks++
-		path, plen, err := s.plan(self.Map, from, c.X, c.Y, z)
+		path, plen, err := s.plan(self.Map, from, c.X, c.Y, z, nil)
 		if err != nil || len(path) == 0 {
 			continue
 		}

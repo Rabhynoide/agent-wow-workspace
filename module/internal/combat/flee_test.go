@@ -23,7 +23,8 @@ func TestLosing(t *testing.T) {
 		{"one fresh monster at full health", 100, []*statepb.Obj{mob(5, 100)}, false},
 		{"one fresh monster at 25 %", 25, []*statepb.Obj{mob(5, 100)}, true}, // 14 > 10 %
 		{"one dying monster at 25 %", 25, []*statepb.Obj{mob(5, 20)}, false},
-		{"2 wolves join at 70 %", 70, []*statepb.Obj{mob(5, 50), mob(5, 100), mob(5, 100)}, false}, // 46.7 ≤ 55
+		{"2 wolves join at 80 %", 80, []*statepb.Obj{mob(5, 50), mob(5, 100), mob(5, 100)}, false}, // 46.7 ≤ 55 (margin 25: 2 chasers)
+		{"2 wolves join at 70 %", 70, []*statepb.Obj{mob(5, 50), mob(5, 100), mob(5, 100)}, true},  // 46.7 > 45
 		{"2 wolves join at 60 %", 60, []*statepb.Obj{mob(5, 50), mob(5, 100), mob(5, 100)}, true},  // 46.7 > 45 (bench death)
 		{"2 wolves left at 49 %", 49, []*statepb.Obj{mob(5, 100), mob(5, 100)}, true},              // 35 > 34
 		{"last wolf at 19 %", 19, []*statepb.Obj{mob(5, 100)}, true},
@@ -33,6 +34,8 @@ func TestLosing(t *testing.T) {
 		{"3 kobolds 2 levels below", 92, []*statepb.Obj{mob(3, 100), mob(3, 100), mob(3, 100)}, false},      // loss under crowdLoss
 		{"3 fresh kobolds at full health", 100, []*statepb.Obj{mob(5, 100), mob(5, 100), mob(5, 90)}, true}, // crowd (Fargodeep deaths)
 		{"3 kobolds, one at half", 100, []*statepb.Obj{mob(5, 50), mob(5, 100), mob(5, 100)}, false},
+		{"2 fresh monsters at 45 %", 45, []*statepb.Obj{mob(5, 100), mob(5, 100)}, true}, // 2 chasers: margin 25
+		{"one fresh, one dying at 45 %", 45, []*statepb.Obj{mob(5, 100), mob(5, 30)}, false},
 	} {
 		got, loss := s.losing(me(c.hp), c.att)
 		if got != c.flee {

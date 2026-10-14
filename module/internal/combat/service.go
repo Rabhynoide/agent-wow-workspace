@@ -58,19 +58,22 @@ type Service struct {
 	castCount uint8
 	// failures by cast count (our CMSG_CAST_SPELL counter): SMSG_CAST_FAILED of other casts
 	// (server-side or item spells, count 0) must not be taken for ours.
-	failures    map[uint8]castFailure
-	rotations   map[uint32]*classTables // class -> priority tables (journal/classes), nil = none
-	fights      *xpscore.File           // learned fights (journal/learn): the pull capacity
-	melee       *meleeLog
-	abandoned   map[uint64]time.Time // targets given up (no damage dealt): not picked again for a while
-	crowded     map[uint64]time.Time // targets skipped for their adds: not pulled for a while, still fought back
-	fledAt      time.Time            // last flight (flee.go)
-	zones       []fledZone           // places we fled from (zones.go)
-	trail       *trail               // our recent positions, run back along when fleeing (trail.go)
-	items       map[uint32]*worldpb.ItemInfo
-	scrollTried map[uint32]time.Time
-	gearDue     bool // a weapon, armor or bag was looted since the last gear check // scroll spell -> last use (scrolls.go)
-	book        *spellBook
+	failures     map[uint8]castFailure
+	rotations    map[uint32]*classTables // class -> priority tables (journal/classes), nil = none
+	fights       *xpscore.File           // learned fights (journal/learn): the pull capacity
+	melee        *meleeLog
+	abandoned    map[uint64]time.Time // targets given up (no damage dealt): not picked again for a while
+	crowded      map[uint64]time.Time // targets skipped for their adds: not pulled for a while, still fought back
+	fledAt       time.Time            // last flight (flee.go)
+	zones        []fledZone           // places we fled from (zones.go)
+	trail        *trail               // our recent positions, run back along when fleeing (trail.go)
+	items        map[uint32]*worldpb.ItemInfo
+	buffTried    map[uint32]time.Time // buff item spell -> last use (buffitems.go)
+	gearDue      bool                 // a weapon, armor or bag was looted since the last gear check
+	potionAt     time.Time            // last healing potion (potion.go)
+	potionHave   bool                 // a healing potion was in the bags at potionSeenAt
+	potionSeenAt time.Time
+	book         *spellBook
 }
 
 func Register(g grpc.ServiceRegistrar, s modv1.SessionClient) {
@@ -482,6 +485,7 @@ func (s *Service) kill(ctx context.Context, j *job, r *pb.KillRequest) (string, 
 			continue
 		}
 		noTarget = 0
+		s.useBuffItems(ctx, me)
 		j.Update(func(st *pb.CombatStatus) { st.Doing = fmt.Sprintf("fighting %d", t.Entry) })
 		dead, why := s.fight(ctx, j, t.Guid)
 		if strings.HasPrefix(why, "cannot approach target") {
@@ -563,11 +567,6 @@ func (s *Service) forgetBuffs() {
 // buff casts the buffs table of the class out of combat (Battle Shout, Fortitude, Inner Fire...),
 // up to three spells in a row.
 func (s *Service) buff(ctx context.Context, me *statepb.SelfInfo) {
-	if s.readScrolls(ctx, me) {
-		if b, err := s.api.Brief(ctx); err == nil && b.Self != nil {
-			me = b.Self
-		}
-	}
 	tab := s.tables(me.ClassId)
 	if tab == nil || len(tab.buffs.lines) == 0 {
 		return
@@ -614,6 +613,9 @@ func (s *Service) fleeIfLosing(ctx context.Context, j *job, me *statepb.SelfInfo
 		return ""
 	}
 	*checked = time.Now()
+	if s.drinkPotion(ctx, me) {
+		return "" // the next check sees the healed health
+	}
 	ok, loss, att := s.mustFlee(ctx, me)
 	if !ok {
 		return ""

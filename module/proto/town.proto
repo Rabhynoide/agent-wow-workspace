@@ -53,6 +53,8 @@ message RestockRequest {
   uint32 drink = 2;
   // Spending limit in copper (0 = a third of our money).
   uint32 max_copper = 3;
+  // Wanted number of healing potions (spell category 4 with a heal effect).
+  uint32 potions = 4;
 }
 
 message BuyLine {

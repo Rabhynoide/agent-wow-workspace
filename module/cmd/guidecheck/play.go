@@ -18,6 +18,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"syscall"
@@ -33,6 +34,8 @@ type playState struct {
 	finished map[uint32]bool
 	skipped  map[uint32]string
 	retryAt  map[uint32]uint32
+	// when each skip was decided (kept skipKeep across runs, planstate.go)
+	skippedAt map[uint32]time.Time
 	// quests whose monsters were all dead or away: done later (after the next ones), at most 3 tries
 	waitUntil map[uint32]time.Time
 	tries     map[uint32]int
@@ -285,6 +288,23 @@ func (c *checker) grindTargets(mapID uint32, x, y, radius float64, level, class 
 	return out, report
 }
 
+// fledWait: pause after a grind found nothing to hunt (four of them outlast a fled zone, 5 min).
+const fledWait = 90 * time.Second
+
+// mergeTargets appends the far targets missing from near, up to n in all.
+func mergeTargets(near, far []uint32, n int) []uint32 {
+	out := append([]uint32(nil), near...)
+	for _, e := range far {
+		if len(out) >= n {
+			break
+		}
+		if !slices.Contains(out, e) {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
 // rpc talks to the agent-wow world RPC (same endpoint as scripts/rpc.sh).
 type rpc struct {
 	url      string
@@ -458,8 +478,23 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 	race, class := b.Self.Race, b.Self.ClassID
 	raceName, className := nameOf(raceIDs, race), nameOf(classIDs, class)
 	ps := &playState{finished: c.rewardedOf(char), skipped: map[uint32]string{}, retryAt: map[uint32]uint32{},
-		waitUntil: map[uint32]time.Time{}, tries: map[uint32]int{}}
+		waitUntil: map[uint32]time.Time{}, tries: map[uint32]int{}, skippedAt: map[uint32]time.Time{}}
 	say("%s (%s %s) level %d -> %d, %d quests already rewarded", char, raceName, className, b.Self.Level, until, len(ps.finished))
+	if ids := c.addClassQuests(className, raceName, class); len(ids) > 0 {
+		var why []string
+		for _, id := range ids {
+			if m := c.manual[id]; m != "" {
+				why = append(why, fmt.Sprintf("%d (manual: %s)", id, m))
+			} else {
+				why = append(why, fmt.Sprint(id))
+			}
+		}
+		say("class quests added to the route: %s", strings.Join(why, ", "))
+	}
+	if n := loadPlan(planPath(char), ps, time.Now()); n > 0 {
+		say("restored %d postponed or skipped quests from %s (postponed %v, skipped %v)", n, planPath(char), ps.retryAt, ps.skipped)
+	}
+	defer savePlan(planPath(char), ps)
 	deaths, idle := 0, 0
 	for {
 		if time.Since(start) > time.Duration(maxMin)*time.Minute {
@@ -526,8 +561,10 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 					say("  %d %s postponed 4 min (monsters dead or away, try %d/3)", q, c.cache[q].Title, ps.tries[q])
 				default:
 					ps.skipped[q] = reason
+					ps.skippedAt[q] = time.Now()
 					say("  SKIP %d %s: %s", q, c.cache[q].Title, reason)
 				}
+				savePlan(planPath(char), ps)
 			}
 		case need > 0:
 			if n, err := c.learnFights(); err != nil {
@@ -536,8 +573,12 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 				say("learned %d fights: %s", n, strings.Join(c.fights.Summary(class), " | "))
 			}
 			targets, report := c.grindTargets(me.Map, me.X, me.Y, 250, me.Level, class, factions[playerFactions[race]], factions)
-			if len(targets) == 0 {
-				targets, report = c.grindTargets(me.Map, me.X, me.Y, 600, me.Level, class, factions[playerFactions[race]], factions)
+			// One target is not enough: after a flight its spawn points are avoided for minutes and the
+			// grind ends with nothing to hunt (Young Forest Bears among Prowlers, bench of 2026-10-13).
+			// The farther ones come after the near ones.
+			if len(targets) < 2 {
+				far, farReport := c.grindTargets(me.Map, me.X, me.Y, 600, me.Level, class, factions[playerFactions[race]], factions)
+				targets, report = mergeTargets(targets, far, 4), farReport // the far search covers the near one
 			}
 			for _, l := range report {
 				detail("  score %s", l)
@@ -561,6 +602,16 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 			deaths += int(st.Deaths)
 			if st.State != "done" {
 				say("  grind ended: %s %s", st.State, st.Reason)
+				// The spawn points near a flight are avoided for 5 minutes: four rounds in the same
+				// second ended the run (bench of 2026-10-14). Rest and let them clear first.
+				if strings.Contains(st.Reason, "nothing to hunt right now") {
+					say("  waiting %d s for the places we fled from to clear", int(fledWait.Seconds()))
+					_ = r.call("combat.rest", map[string]any{"wait_s": 25}, nil)
+					for t := time.Duration(0); t < fledWait; t += 10 * time.Second {
+						time.Sleep(10 * time.Second)
+						r.defend() // returns at once when nothing attacks us
+					}
+				}
 			}
 		default:
 			say("route finished for this character")

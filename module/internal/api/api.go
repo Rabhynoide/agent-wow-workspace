@@ -255,9 +255,9 @@ func (c C) FindFoodVendor(ctx context.Context, mapID uint32, x, y float32, categ
 	return r.Spawns, err
 }
 
-func (c C) Restock(ctx context.Context, food, drink uint32) (*townpb.RestockResult, error) {
+func (c C) Restock(ctx context.Context, food, drink, potions uint32) (*townpb.RestockResult, error) {
 	var r townpb.RestockResult
-	err := invoke.Call(ctx, c.S, "town", "restock", &townpb.RestockRequest{Food: food, Drink: drink}, &r)
+	err := invoke.Call(ctx, c.S, "town", "restock", &townpb.RestockRequest{Food: food, Drink: drink, Potions: potions}, &r)
 	return &r, err
 }
 

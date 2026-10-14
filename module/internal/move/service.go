@@ -43,6 +43,8 @@ type route struct {
 	target [3]float32
 	radius float32
 	plen   float32
+	mapID  uint32
+	known  map[uint64]bool // monsters avoided when planning (avoid.go)
 }
 
 type Service struct {
@@ -213,21 +215,23 @@ func smoothZ(p [][3]float32) [][3]float32 {
 	return out
 }
 
-func (s *Service) plan(mapID uint32, from [3]float32, x, y, z float32) ([][3]float32, float32, error) {
+func (s *Service) plan(mapID uint32, from [3]float32, x, y, z float32, avoid []nav.Danger) ([][3]float32, float32, error) {
 	m, err := s.mesh(mapID)
 	if err != nil {
 		return nil, 0, err
 	}
 	tm, vm := s.terrainFor(mapID), s.vmapFor(mapID)
 	to := [3]float32{x, y, z}
-	dense, err := navPlan(m, tm, vm, from, to)
+	f := nav.GroundOnly
+	f.Avoid = avoid
+	dense, err := navPlan(m, tm, vm, from, to, f)
 	// Only when the START is the problem: an unreachable destination would make every escape try
 	// search the whole area (seconds each).
 	if errors.Is(err, nav.ErrNoStartPoly) || (errors.Is(err, nav.ErrNoPath) &&
 		m.IslandSize(nav.ToRecast(from[0], from[1], from[2]), nav.GroundOnly, islandPolys) < islandPolys) {
 		// Pushed onto a scrap of navmesh cut from the rest (ledge, rock) or off it: walk a short
 		// straight line on the ground to a point that has a path, then follow it.
-		if out, ok := escape(m, tm, vm, from, to); ok {
+		if out, ok := escape(m, tm, vm, from, to, f); ok {
 			slog.Info("unstuck: straight walk to the navmesh", "from", from, "via", out[0])
 			dense, err = out[1:], nil
 		}
@@ -245,16 +249,16 @@ func (s *Service) plan(mapID uint32, from [3]float32, x, y, z float32) ([][3]flo
 // islandPolys: a start reaching fewer polygons than this is on an island (cut from the rest).
 const islandPolys = 300
 
-func navPlan(m *nav.Mesh, tm *terrain.Maps, vm *vmap.Tree, from, to [3]float32) ([][3]float32, error) {
+func navPlan(m *nav.Mesh, tm *terrain.Maps, vm *vmap.Tree, from, to [3]float32, f nav.Filter) ([][3]float32, error) {
 	src, dst := nav.ToRecast(from[0], from[1], from[2]), nav.ToRecast(to[0], to[1], to[2])
 	// Points every 2 yards that slide along the walkable polygons (the server's own smoothing), heights
 	// from the polygon reached; the old funnel + interpolation is the fallback.
-	if pts, err := m.SmoothPath(src, dst, nav.GroundOnly, nav.SmoothStep, nav.SmoothSlop); err == nil {
+	if pts, err := m.SmoothPath(src, dst, f, nav.SmoothStep, nav.SmoothSlop); err == nil {
 		return onGround(pts, tm, vm), nil
 	} else {
 		slog.Info("smooth path failed, using the funnel path", "err", err)
 	}
-	pts, corridor, err := m.PathCorridor(src, dst, nav.GroundOnly)
+	pts, corridor, err := m.PathCorridor(src, dst, f)
 	if err != nil {
 		return nil, err
 	}
@@ -265,7 +269,7 @@ func navPlan(m *nav.Mesh, tm *terrain.Maps, vm *vmap.Tree, from, to [3]float32) 
 // directions, reachable in a straight line on the ground (no step over 1.5 yards, nothing in the
 // way) and from which the navmesh has a path to the destination. It returns that point followed by
 // the straight walk and the path (the first element is the escape point, for the log).
-func escape(m *nav.Mesh, tm *terrain.Maps, vm *vmap.Tree, from, to [3]float32) ([][3]float32, bool) {
+func escape(m *nav.Mesh, tm *terrain.Maps, vm *vmap.Tree, from, to [3]float32, f nav.Filter) ([][3]float32, bool) {
 	base := math.Atan2(float64(to[1]-from[1]), float64(to[0]-from[0]))
 	for _, turn := range []float64{0, 0.5, -0.5, 1, -1, 1.6, -1.6, 2.2, -2.2, math.Pi} {
 		a := base + turn
@@ -286,7 +290,7 @@ func escape(m *nav.Mesh, tm *terrain.Maps, vm *vmap.Tree, from, to [3]float32) (
 			if d < 4 || int(d)%4 != 0 {
 				continue
 			}
-			if rest, err := navPlan(m, tm, vm, p, to); err == nil && len(rest) > 0 {
+			if rest, err := navPlan(m, tm, vm, p, to, f); err == nil && len(rest) > 0 {
 				return append([][3]float32{p}, append(line, rest...)...), true
 			}
 		}
@@ -358,7 +362,7 @@ func (s *Service) Path(ctx context.Context, r *pb.PathRequest) (*pb.PathResponse
 	if err != nil {
 		return &pb.PathResponse{Error: err.Error()}, nil
 	}
-	pts, l, err := s.plan(self.Map, [3]float32{self.X, self.Y, self.Z}, r.X, r.Y, r.Z)
+	pts, l, err := s.plan(self.Map, [3]float32{self.X, self.Y, self.Z}, r.X, r.Y, r.Z, navDangers(s.dangers(ctx, self, r.X, r.Y, r.Z)))
 	if err != nil {
 		return &pb.PathResponse{Error: err.Error()}, nil
 	}
@@ -422,16 +426,18 @@ func (s *Service) startGoto(ctx context.Context, r *pb.GotoRequest) (*pb.MoveSta
 		radius = 1.5
 	}
 	target := [3]float32{r.X, r.Y, r.Z}
+	ds := s.dangers(ctx, self, r.X, r.Y, r.Z)
+	avoid, known := navDangers(ds), knownOf(ds)
 	// Already walking with the same gait: plan from the live position and swap the route in place,
 	// so chasing a moving target does not stutter with stop/start packets.
 	if j := s.jobs.Cur(); j != nil {
 		cur := j.Snap()
-		path, plen, err := s.plan(self.Map, [3]float32{cur.X, cur.Y, cur.Z}, r.X, r.Y, r.Z)
+		path, plen, err := s.plan(self.Map, [3]float32{cur.X, cur.Y, cur.Z}, r.X, r.Y, r.Z, avoid)
 		if err == nil && len(path) >= 2 {
 			s.rmu.Lock()
 			ok := s.walking && s.walkFlags == flags
 			if ok {
-				s.next = &route{path: path, target: target, radius: radius, plen: plen}
+				s.next = &route{path: path, target: target, radius: radius, plen: plen, mapID: self.Map, known: known}
 			}
 			s.rmu.Unlock()
 			if ok {
@@ -439,13 +445,13 @@ func (s *Service) startGoto(ctx context.Context, r *pb.GotoRequest) (*pb.MoveSta
 			}
 		}
 	}
-	path, plen, err := s.plan(self.Map, [3]float32{self.X, self.Y, self.Z}, r.X, r.Y, r.Z)
+	path, plen, err := s.plan(self.Map, [3]float32{self.X, self.Y, self.Z}, r.X, r.Y, r.Z, avoid)
 	if err != nil {
 		s.jobs.StartLocked(&pb.MoveStatus{State: "failed", Reason: err.Error(), X: self.X, Y: self.Y, Z: self.Z}, func(*job) {})
 		return &pb.MoveStatus{State: "failed", Reason: err.Error(), X: self.X, Y: self.Y, Z: self.Z}, nil
 	}
 	s.jobs.StartLocked(&pb.MoveStatus{State: "moving", X: self.X, Y: self.Y, Z: self.Z, PathLen: plen, DistLeft: plen}, func(j *job) {
-		s.run(j, &route{path: path, target: target, radius: radius, plen: plen}, speed, flags)
+		s.run(j, &route{path: path, target: target, radius: radius, plen: plen, mapID: self.Map, known: known}, speed, flags)
 	})
 	return nil, nil
 }
@@ -489,6 +495,7 @@ func (s *Service) run(j *job, rt *route, speed float32, flags uint32) {
 	lastBeat := time.Now()
 	lastTick := time.Now()
 	lastAlive := time.Now()
+	lastCheck := time.Now()
 	t := time.NewTicker(tick)
 	defer t.Stop()
 	for {
@@ -510,6 +517,26 @@ func (s *Service) run(j *job, rt *route, speed float32, flags uint32) {
 		}
 		s.rmu.Unlock()
 		now := time.Now()
+		// Monsters seen since the route was planned, close to what is left of it: plan again around them.
+		if now.Sub(lastCheck) >= recheckEvery*time.Second && seg < len(path)-1 {
+			lastCheck = now
+			if me, err := s.self(ctx); err == nil {
+				ds := s.dangers(ctx, me, rt.target[0], rt.target[1], rt.target[2])
+				if newOnPath(ds, rt.known, path, seg) {
+					np, plen, err := s.plan(rt.mapID, pos, rt.target[0], rt.target[1], rt.target[2], navDangers(ds))
+					if err == nil && len(np) >= 2 {
+						slog.Info("path planned again around monsters seen on the way", "dangers", len(ds), "len", int(plen))
+						rt = &route{path: np, target: rt.target, radius: rt.radius, plen: plen, mapID: rt.mapID, known: knownOf(ds)}
+						path, seg = np, 1
+						j.Update(func(st *pb.MoveStatus) { st.PathLen = plen })
+						continue
+					}
+					for g := range knownOf(ds) { // no other way: do not try again for them
+						rt.known[g] = true
+					}
+				}
+			}
+		}
 		// Stop walking when the character dies (otherwise the body "walks" on in our position model).
 		if now.Sub(lastAlive) >= time.Second {
 			lastAlive = now

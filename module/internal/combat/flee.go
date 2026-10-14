@@ -2,6 +2,7 @@ package combat
 
 import (
 	"context"
+	"google.golang.org/protobuf/proto"
 	"log/slog"
 	"math"
 	"time"
@@ -40,6 +41,10 @@ const (
 	// seconds of the run cost more (two deaths to a level-10 Riverpaw Outrunner at level 8, flights
 	// started at 44 and 20 %).
 	highMargin = 10.0
+	// chaseMargin: added per fresh attacker (more than half its health) beyond the first: each keeps
+	// hitting us while we run (Prowler + Young Forest Bear at level 9: flight started at 34 %, dead 8 s
+	// later, bench of 2026-10-13).
+	chaseMargin = 10.0
 )
 
 // onMe lists the units in combat that target us within 30 yards.
@@ -76,6 +81,16 @@ func (s *Service) mustFlee(ctx context.Context, me *statepb.SelfInfo) (bool, flo
 		return false, 0, nil
 	}
 	att := s.onMe(ctx, me)
+	if len(att) == 0 {
+		return false, 0, nil
+	}
+	// A potion ready in the bags is health too: running from two melee monsters costs hits all the
+	// way (Benchtrhoxd died 11 s into a flight started at 55 %, with an expected loss of 41 %).
+	if s.potionReady(ctx, me) {
+		boosted := proto.Clone(me).(*statepb.SelfInfo)
+		boosted.Hp = min(me.MaxHp, me.Hp+me.MaxHp*potionHeal/100)
+		me = boosted
+	}
 	ok, loss := s.losing(me, att)
 	return ok, loss, att
 }
@@ -88,10 +103,17 @@ func (s *Service) losing(me *statepb.SelfInfo, att []*statepb.Obj) (bool, float6
 	}
 	loss := s.lossLeft(me, att)
 	margin := fleeMargin
+	fresh := 0
 	for _, a := range att {
 		if a.Level >= me.Level+2 {
 			margin += highMargin
 		}
+		if a.MaxHp > 0 && 2*a.Hp > a.MaxHp {
+			fresh++
+		}
+	}
+	if fresh > 1 {
+		margin += chaseMargin * float64(fresh-1)
 	}
 	return (crowd(att) && loss > crowdLoss) || loss > float64(pct(me.Hp, me.MaxHp))-margin, loss
 }
@@ -149,6 +171,7 @@ func (s *Service) flee(ctx context.Context, j *job, me *statepb.SelfInfo, att []
 			s.forgetBuffs()
 			return true
 		}
+		s.drinkPotion(ctx, me) // still hit while running
 		// Twice in a row, running on in between: the chasers lost us for a moment and caught up again
 		// right after "fled" (Fargodeep mine, 2026-10-13).
 		if len(s.onMe(ctx, me)) > 0 {

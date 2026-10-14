@@ -13,6 +13,11 @@ agent-wow auth status >/dev/null 2>&1 || { echo "auth invalid: run agent-wow aut
 if ss -ltn 2>/dev/null | grep -q ":$port "; then
   echo "port $port busy (another agent?): export AGENT_WOW_WORLDRPC_PORT=<free port> and rerun"; exit 1
 fi
+# Build the module images one at a time first: char play builds the 8 of them at once, and after a
+# change to a shared package the parallel Go builds were killed (2026-10-13). Then it reuses the cache.
+for m in modules/*/compose.yaml; do
+  docker compose -f "$m" build -q >> logs/module_build.log 2>&1 || { echo "module build failed: $m (see logs/module_build.log)"; exit 1; }
+done
 setsid nohup agent-wow char play "$char" --module-timeout 8m > logs/play.log 2>&1 < /dev/null &
 for _ in $(seq 1 100); do
   sleep 5

@@ -9,6 +9,12 @@ Useful resources to reference:
 - wow client-data: https://github.com/wowgaming/client-data/releases
 - agent-wow module template: https://github.com/agent-wow/go-module-template
 
+## Final goal (set by the user on 2026-10-14)
+
+Speedrun the leveling from 1 to 80, autonomously, as fast as possible in real play time. Judge every
+change by the minutes it saves (measurement protocol and roadmap: `NOTES.md` « OBJECTIF FINAL » and
+« Protocole de mesure », `BACKLOG.md` « Objectif speedrun 1 → 80 »).
+
 ## Session memory (read first)
 
 Before anything else read `NOTES.md` (character state, how to start/stop, pitfalls) and

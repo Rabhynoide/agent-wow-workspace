@@ -349,7 +349,9 @@ type RestockRequest struct {
 	Food  uint32 `protobuf:"varint,1,opt,name=food,proto3" json:"food,omitempty"`
 	Drink uint32 `protobuf:"varint,2,opt,name=drink,proto3" json:"drink,omitempty"`
 	// Spending limit in copper (0 = a third of our money).
-	MaxCopper     uint32 `protobuf:"varint,3,opt,name=max_copper,json=maxCopper,proto3" json:"max_copper,omitempty"`
+	MaxCopper uint32 `protobuf:"varint,3,opt,name=max_copper,json=maxCopper,proto3" json:"max_copper,omitempty"`
+	// Wanted number of healing potions (spell category 4 with a heal effect).
+	Potions       uint32 `protobuf:"varint,4,opt,name=potions,proto3" json:"potions,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -401,6 +403,13 @@ func (x *RestockRequest) GetDrink() uint32 {
 func (x *RestockRequest) GetMaxCopper() uint32 {
 	if x != nil {
 		return x.MaxCopper
+	}
+	return 0
+}
+
+func (x *RestockRequest) GetPotions() uint32 {
+	if x != nil {
+		return x.Potions
 	}
 	return 0
 }
@@ -582,12 +591,13 @@ const file_town_proto_rawDesc = "" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x16\n" +
 	"\x06copper\x18\x03 \x01(\rR\x06copper\x12%\n" +
 	"\x0edurability_pct\x18\x04 \x01(\rR\rdurabilityPct\x12\x16\n" +
-	"\x06vendor\x18\x05 \x01(\tR\x06vendor\"Y\n" +
+	"\x06vendor\x18\x05 \x01(\tR\x06vendor\"s\n" +
 	"\x0eRestockRequest\x12\x12\n" +
 	"\x04food\x18\x01 \x01(\rR\x04food\x12\x14\n" +
 	"\x05drink\x18\x02 \x01(\rR\x05drink\x12\x1d\n" +
 	"\n" +
-	"max_copper\x18\x03 \x01(\rR\tmaxCopper\"a\n" +
+	"max_copper\x18\x03 \x01(\rR\tmaxCopper\x12\x18\n" +
+	"\apotions\x18\x04 \x01(\rR\apotions\"a\n" +
 	"\aBuyLine\x12\x14\n" +
 	"\x05entry\x18\x01 \x01(\rR\x05entry\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +

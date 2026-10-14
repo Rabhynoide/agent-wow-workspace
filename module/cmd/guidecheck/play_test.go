@@ -2,6 +2,7 @@ package main
 
 import (
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 )
@@ -73,5 +74,11 @@ func TestGrayLevel(t *testing.T) {
 		if g := grayLevel(l); g != want {
 			t.Errorf("grayLevel(%d) = %d, want %d", l, g, want)
 		}
+	}
+}
+
+func TestMergeTargets(t *testing.T) {
+	if got := mergeTargets([]uint32{822}, []uint32{525, 822, 30, 299, 113}, 4); !slices.Equal(got, []uint32{822, 525, 30, 299}) {
+		t.Errorf("merge = %v", got)
 	}
 }

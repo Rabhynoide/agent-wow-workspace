@@ -3,6 +3,8 @@ package town
 import (
 	"context"
 	"fmt"
+	"os"
+	"sync"
 	"time"
 
 	modv1 "github.com/agent-wow/agent-wow/pkg/modules/v1"
@@ -12,6 +14,7 @@ import (
 	statepb "wowagent/gen/statev1"
 	pb "wowagent/gen/townv1"
 	worldpb "wowagent/gen/worldv1"
+	"wowagent/internal/dbc"
 	"wowagent/internal/moveio"
 	"wowagent/internal/wire"
 )
@@ -20,7 +23,9 @@ import (
 const (
 	categoryFood  = 11
 	categoryDrink = 59
-	vendorFlag    = 128
+	// Potions share category 4 (one cooldown); healing ones are told apart by their spell (heals).
+	categoryPotion = 4
+	vendorFlag     = 128
 )
 
 func (s *Service) OnPacket(_ context.Context, p *modv1.WorldPacket) (*emptypb.Empty, error) {
@@ -138,17 +143,26 @@ func (s *Service) Restock(ctx context.Context, r *pb.RestockRequest) (*pb.Restoc
 	}
 	res := &pb.RestockResult{Ok: true, Vendor: fmt.Sprint(vendor.Entry)}
 	free := snap.FreeSlots
-	for _, want := range []struct{ category, count uint32 }{{categoryFood, r.Food}, {categoryDrink, r.Drink}} {
+	for _, want := range []struct{ category, count uint32 }{{categoryFood, r.Food}, {categoryDrink, r.Drink}, {categoryPotion, r.Potions}} {
 		if want.count == 0 {
 			continue
 		}
+		pick := info
+		if want.category == categoryPotion {
+			pick = func(e uint32) *worldpb.ItemInfo {
+				if in := info(e); in != nil && heals(in.UseSpell) {
+					return in
+				}
+				return nil
+			}
+		}
 		var have uint32
 		for _, it := range snap.Items {
-			if in := info(it.Entry); it.Bag != 0 && in != nil && in.SpellCategory == want.category && in.RequiredLevel <= me.Level {
+			if in := pick(it.Entry); it.Bag != 0 && in != nil && in.SpellCategory == want.category && in.RequiredLevel <= me.Level {
 				have += it.Count
 			}
 		}
-		v, in, ok := pickVendorItem(list, info, want.category, me.Level)
+		v, in, ok := pickVendorItem(list, pick, want.category, me.Level)
 		if !ok {
 			continue
 		}
@@ -182,4 +196,26 @@ func (s *Service) Restock(ctx context.Context, r *pb.RestockRequest) (*pb.Restoc
 		res.Ok, res.Reason = false, "the vendor took no money: purchases refused (bags, reputation or stock?)"
 	}
 	return res, nil
+}
+
+var (
+	spellsOnce sync.Once
+	spells     map[uint32]dbc.SpellInfo
+)
+
+// heals tells whether a spell has a heal effect (Spell.dbc, loaded once).
+func heals(spell uint32) bool {
+	spellsOnce.Do(func() {
+		dir := os.Getenv("DBC_DIR")
+		if dir == "" {
+			dir = "/dbc"
+		}
+		spells, _ = dbc.LoadSpellInfo(dir)
+	})
+	for _, e := range spells[spell].Effects {
+		if e == 10 { // SPELL_EFFECT_HEAL
+			return true
+		}
+	}
+	return false
 }

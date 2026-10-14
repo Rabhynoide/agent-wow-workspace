@@ -2,6 +2,33 @@
 
 Légende : [ ] à faire, [~] partiel, [x] fait.
 
+## Objectif speedrun 1 → 80 (objectif final, fixé par l'utilisateur le 2026-10-14)
+Monter un personnage de 1 à 80 le plus vite possible, en autonomie. Chaque point se mesure en minutes gagnées (protocole : NOTES « Protocole de mesure », 2 benchs 6 → 8 par variante). État au 2026-10-14 : 1 → 10 en 224 min (Benchtrhoxd), seul Elwynn est joué, rien au-delà du niveau 11.
+
+### Étape 1 : Elwynn rapide (niveaux 1-10), mesurable dès maintenant
+- [ ] Prudence qui coûte du temps : 19-33 fuites par run, presque toutes les quêtes 9-10 reportées. Essayer (une variante à la fois) : reporter une quête après 2 fuites au lieu d'1 ; règle des 3 attaquants assouplie quand ils sont plus faibles ou qu'une potion est prête ; `chaseMargin` 10 → 5.
+- [ ] Contournement des monstres (`move/avoid.go`) : le mesurer contre son absence (option à ajouter pour le couper), la marche faisant 38 % du temps.
+- [ ] Mine de Fargodeep (quêtes 47, 60, 62, 87) : moitié des fuites de 5 à 8. Reporter dès la première fuite toute quête dont la cible est dans la mine, ou n'y aller qu'au niveau 8-9 ; mesurer.
+- [ ] Sorts tentés pour rien (Victory Rush 34428/97 ×16-34 par run, Charge 100/128, Rend 772/97) : vérifier l'état d'aura, la distance et la cible avant de les lancer.
+- [ ] Repos (5-7 %) : manger/boire dès le début du repos, Premiers soins (bandages) pour le guerrier.
+- [ ] Butin (2 %) et sacs : ne ramasser que ce qui vaut quelque chose quand les sacs sont presque pleins.
+
+### Étape 2 : quitter Elwynn (niveaux 10-20)
+- [ ] Changer de zone : routes Zygor 13-20 (Westfall, Loch Modan, Redridge, Duskwood) dans `assets/routes/` ; voyages à pied d'une zone à l'autre, puis maîtres de vol (découverte, achat de trajets) et pierre de foyer (lier à l'auberge de la zone de quêtes).
+- [ ] Quête de classe guerrier 1640 « Beat Bartleby » (duel scripté) : débloque la Posture défensive ; puis postures dans la rotation si elles font gagner du temps.
+- [ ] Nage (quêtes de murlocs, rivières) : `move` ne nage pas (section « Nage »).
+- [ ] Respec de talents (niveau 25 du build guerrier) et talents par niveau.
+
+### Étape 3 : niveaux 20-60
+- [ ] Monture au niveau 20 (Apprentice Riding + monture) : réduit directement les 38 % de marche ; prévoir l'argent (or à garder dès le niveau 15).
+- [ ] Transports : bateaux, tram, zeppelins (`UseTransport` des profils CopilotBuddy), autres continents (Kalimdor).
+- [ ] Routes de quêtes 20-60 converties et vérifiées (`guidecheck`), quêtes de groupe et élites sautées.
+- [ ] Équipement : améliorations achetées (hôtel des ventes ? marchands), armes de quête.
+
+### Étape 4 : niveaux 60-80
+- [ ] Outreterre (Portail des Ténèbres, 58-70) puis Norfendre (bateaux, 68-80) ; vol (monture volante 60/70, Vol par temps froid 77).
+- [ ] Autres classes ou races seulement si elles montent plus vite (à mesurer sur 1 → 10).
+
 ## Remarques de l'utilisateur
 - [ ] À vérifier en jeu : talents au niveau 10 (SMSG_TALENTS_INFO, CMSG_LEARN_TALENT), Bouclier/Rénovation au niveau 6-8, baguette (Tir) une fois une baguette équipée.
 - [ ] Rotation d'ombre (guides de leveling) : le build prend Mind Flay (20), Shadowform (40), Vampiric Touch (50) mais `combat` ne les lance pas. A ajouter avec les rangs vérifiés par test : Dévorer (Devouring Plague, niveau 20), Attaque mentale puis Fouet mental, Étreinte vampirique, Forme d'ombre (bloque les sorts du Sacré : Bouclier, Soins, Châtiment ; donc à gérer ensemble), Toucher vampirique. Niveau requis : Opus pour la logique de combat.
@@ -23,14 +50,14 @@ Légende : [ ] à faire, [~] partiel, [x] fait.
 ## Revente et inventaire (fait le 2026-10-10)
 - [ ] Le prix attendu (156 pc) dépasse le gain mesuré (134 pc) : 22 pc d'écart non expliqués (prix de vente ajusté par le serveur ?). Le 2e test (44 pc attendus, 44 reçus) était exact. Comparer par objet si ça se reproduit.
 - [ ] Ne ramasser que ce qui vaut quelque chose quand les sacs sont presque pleins (ignorer les gris de très faible valeur, loot sélectif dans `loot.Take`).
-- [ ] Équiper automatiquement les sacs trouvés/achetés (aujourd'hui gardés, jamais équipés) : plus d'emplacements, donc moins de ventes.
+- [x] Équiper automatiquement les sacs trouvés/achetés (aujourd'hui gardés, jamais équipés) : plus d'emplacements, donc moins de ventes.
 - [ ] Manger/boire : `combat.rest` ne mange ni ne boit ; la nourriture gardée ne sert à rien tant que ce n'est pas fait (gain de temps de repos).
 - [ ] Argent pour l'entraînement : `progress.train` achète du moins cher au plus cher ; si l'argent manque, noter le déficit dans le statut.
 
 ## Déplacement (idées des bots du serveur, 2026-10-10)
 - [ ] Sorts interrompus (code 40) : ne pas se déplacer pendant une incantation quand la cible bouge un peu.
 - [ ] Idées mod-playerbots (src/Ai, mouvements) : suivre une cible (distance/angle), vérifier qu'une destination est atteignable avant d'y aller, se débloquer.
-- [ ] Évitement des monstres hostiles dans l'A* (coût autour des monstres). Opus.
+- [x] Évitement des monstres hostiles dans l'A* (coût autour des monstres, `move/avoid.go`, 2026-10-13).
 
 ## Nage, eau et quêtes d'eau (question utilisateur, 2026-10-11)
 - [ ] `move` ne sait PAS nager : le navmesh est filtré sur le sol (GroundOnly), pas de drapeau de nage (MOVEMENTFLAG_SWIMMING 0x200000), pas de vitesse de nage, pas de gestion du souffle (SMSG_START_MIRROR_TIMER type 1, noyade après ~60 s sous l'eau, fatigue). Une destination dans l'eau est refusée (« not on the navmesh ») ; `nav.GroundPartial` (opt-in) mène au point marchable le plus proche mais n'est utilisé nulle part. A faire pour nager : (1) polygones NAV_WATER (flag 0x08) et niveau d'eau (liquide des `.map` et des vmaps) ; (2) paquets de mouvement de nage avec tangage ; (3) écouter le minuteur de souffle et remonter à la surface ; (4) ne nager que si un chemin marchable n'existe pas. Opus.
@@ -43,7 +70,7 @@ Légende : [ ] à faire, [~] partiel, [x] fait.
 - [ ] Portée visible : le serveur n'envoie que les monstres proches (~100 yards), donc les chasses « rayon 150 » sur des créatures éloignées échouent vite ; `auto.grind` saute, mais `world.spawns` pourrait guider `hunt` vers les points d'apparition éloignés (déjà fait dans `hunt` ; à vérifier pour `grind`).
 
 ## Sécurité du personnage (morts répétées constatées le 2026-10-10)
-- [ ] Pathfinding qui évite les monstres hostiles (idée utilisateur) : voir « Déplacement ». Cause des 3 morts dans la mine de Fargodeep.
+- [x] Pathfinding qui évite les monstres hostiles (idée utilisateur, fait le 2026-10-13 : `nav.Filter.Avoid`) : voir « Déplacement ». Cause des 3 morts dans la mine de Fargodeep.
 - [~] `auto.collect` / `auto.hunt` : monstres élites ou de plus de 2 niveaux au-dessus refusés (fait) ; reste le danger des groupes (quêtes 60, 47, 87 de la mine).
 - [~] (point sûr près du corps : fait, à valider sur une vraie mort) Dès le niveau 11 : le corps reste souvent dans le camp qui nous a tués. A faire : avant de réclamer, attendre/éviter les monstres proches du corps (vue du fantôme), ou ne pas partir au corps tant que les monstres n'ont pas quitté la zone ; envisager de fuir plus tôt (voir pathfinding qui évite les monstres). Niveau requis : Opus.
 - [~] Après une résurrection, se reposer avant toute autre action (sinon mort immédiate à 50 % de PV) : l'esprit guérisseur redonne ~75 % de PV loin du danger ; ajouter un repos automatique à la fin de `auto.recover`.
@@ -59,15 +86,15 @@ Légende : [ ] à faire, [~] partiel, [x] fait.
   - [ ] Objets qu'aucun monstre ne lâche (53 : achetés, fabriqués, donnés par un script, ou objet à utiliser sur une cible) : backlog, cas par cas.
 
 ## Leveling automatique `level.sh` (2026-10-11)
-- [ ] Les reports (« too dangerous », mort) et les SKIP ne sont gardés que pendant une exécution : relancer retente tout de suite (ex. 47 dans la mine juste après une mort). Les garder dans `logs/level_<Nom>.state` si ça gêne.
-- [ ] Quêtes de classe (1638 au niveau 10, 1718 au niveau 30) : pas dans la route Zygor convertie ; à ajouter au plan selon `journal/classes/<classe>.yaml`.
+- [x] (2026-10-13, `logs/level_<Nom>.plan.json`) Les reports (« too dangerous », mort) et les SKIP ne sont gardés que pendant une exécution : relancer retente tout de suite (ex. 47 dans la mine juste après une mort). Les garder dans `logs/level_<Nom>.state` si ça gêne.
+- [x] (2026-10-13, `guidecheck/classquests.go` ; reste « Beat Bartleby » 1640, duel scripté, manuel) Quêtes de classe (1638 au niveau 10, 1718 au niveau 30) : pas dans la route Zygor convertie ; à ajouter au plan selon `journal/classes/<classe>.yaml`.
 - [ ] Mine de Fargodeep (47, 60) : mort en y marchant (groupes de kobolds) ; dépend du pull d'un seul monstre / évitement.
 - [ ] Voyages (bateau, tram, vols, autre continent) : `level.sh` ne sait pas encore changer de zone autrement qu'à pied.
 
 ## Revue de mod-playerbots (2026-10-11) : à développer
 Détail et comparaison : `journal/playerbots_review.md`. Attention, une partie de leur aisance vient de
 triches serveur (sorts, talents, équipement et consommables offerts, téléportations) que nous n'avons pas.
-- [ ] Potions/pierre de soins à PV critiques ; racials par déclencheur.
+- [x] Potions/pierre de soins à PV critiques (2026-10-13, `combat/potion.go`, achat de 3 potions chez le marchand) ; racials par déclencheur.
 - [~] FleeManager (point sûr) : `move.safe_point` fait et testé, utilisé pour la résurrection au corps (pas encore vu en jeu sur une vraie mort). Reste : recul après pull, fuite, distance des lanceurs.
 - [~] Adds possibles + pull où l'on est susceptible de gagner (voir « Points à réfléchir »).
 - [ ] Cible de grind : attaquants d'abord, même hauteur (± 5 yards), en vue ; en route, seulement ce qui sert aux quêtes ou nous attaque.
@@ -157,6 +184,7 @@ Icy Veins bloque ma lecture (403) : à chaque palier ci-dessous, prévenir l'uti
 - [x] Apprentissage sans oubli (question utilisateur 2026-10-13) : les morts d'avant les fuites pesaient autant que les combats récents. `xpscore` : au-delà de 40 combats par case, compteurs ramenés à 40 (`keepFights`, `forget`).
 - [x] Équipement ramassé jamais porté pendant les longs grinds (remarque utilisateur 2026-10-13 : cotte, bottes et brassards de mailles dans les sacs) : `progress.gear` n'était appelé qu'au début d'un job, aux niveaux et après une quête ; `auto` l'appelle maintenant après chaque tournée de chasse (`huntAt`).
 - [x] Sacs non équipés et parchemins jamais lus (remarque utilisateur 2026-10-13) : `progress.gear` équipe le plus grand sac ordinaire dans un emplacement libre, `combat` lit les parchemins avant un pull.
+- [x] Élixir de force jamais bu (remarque utilisateur 2026-10-13) : parchemins généralisés en objets de buff (élixirs, flacons, parchemins) filtrés par l'utilité de leurs auras pour la classe, utilisés une fois la cible choisie (plus avant la recherche de cible, pour ne pas les gaspiller dans une marche). À vérifier en jeu (« using buff item » dans les logs).
 - [~] Morts hors combat (bench 2026-10-13 10:39, 2 morts) : Defias Cutpurse (94) abandonné pour « no damage dealt » (25 s sans dégâts) mais qui nous frappait toujours ; les cibles abandonnées ne sont pas combattues en riposte et aucune fuite n'était possible hors combat. Corrigé : `giveUp` (flee.go) fuit quand la cible abandonnée nous attaque, et journalise `unhittable attacker` (distance, dz, refus de mêlée, flags). Reste : comprendre POURQUOI nos coups ne le touchaient pas (lire ces lignes au prochain cas).
 - [ ] Les 2 morts restantes : loup + Defias Cutpurse niveau 6 ensemble ; le Cutpurse achève après le loup (49 % puis 14 % de PV). Pas de fuite ; envisager la fuite ou un défensif (Intimidating Shout n'est appris qu'au niveau 22).
 
@@ -168,7 +196,7 @@ Icy Veins bloque ma lecture (403) : à chaque palier ci-dessous, prévenir l'uti
   - Usage : choix des cibles de grind (level.sh), puis remplace la règle fixe « niveau + 1 » et la capacité de pull (évolue seule avec l'équipement).
   - Repères : mêlée +0/+1, lanceurs ≤ +2 (raté des sorts 17 % à +3), personnage fragile −1/−2.
 
-## Prochaines étapes suggérées (2026-10-11)
+## Prochaines étapes suggérées (2026-10-11, remplacé par « Objectif speedrun 1 → 80 »)
 - FAIT : suivi des auras et aura state (« Rotation et combat » étape 1). FAIT aussi : « peut lancer ». SUITE : moteur de priorités en table, rotations Guerrier/Prêtre en tables ; tester le prêtre (Claudia) en jeu.
 - Pull où l'on est susceptible de gagner (voir « Points à réfléchir ») et capacité qui apprend des combats.
 - Continuer Claudio avec `level.sh` (11 → 20) : quête 87, quête de classe 1638 (posture défensive), Westfall à partir de 13-14 (voyage à pied).
@@ -189,3 +217,14 @@ Profils de quêtes Honorbuddy 3.3.5 (232, dont 97 Alliance), comportements spéc
   - [ ] Prêtre ombre (niveau 20+) : priorités complètes (Vampiric Touch, Devouring Plague, Mind Blast, Mind Flay, SW:Death, Shadowfiend, Dispersion sur mana bas, Inner Focus, Holy Fire/Smite si la cible est immunisée à l'ombre, DoT seulement si cible élite ou > 40 %) : base pour la rotation d'ombre du BACKLOG.
   - Déjà chez nous : Charge, Victory Rush, Execute (Sudden Death), Overpower, Rend, Mortal Strike, Slam, Retaliation, Enraged Regeneration, Bloodrage, Battle Shout ; prêtre bas niveau identique (Bouclier, Soins rapides < 40 %, Douleur, Attaque mentale, Châtiment).
 - Idées (à réécrire, code Honorbuddy décompilé) : en combat, taper l'attaquant au plus bas de PV ; liste de monstres à éviter (zones interdites sur le navmesh) ; déblocage gradué (saut, pas de côté, zone marquée puis recul).
+- [ ] Quête de classe 1640 « Beat Bartleby » (guerrier humain) : Bartleby devient hostile après l'acceptation (script) ; le battre jusqu'au seuil sans le tuer. Débloque 1665-1667 et la Posture défensive.
+- [ ] Contournement des monstres : granularité limitée par la taille des polygones du navmesh (un grand polygone de prairie ne se contourne pas à l'intérieur). Mesurer les combats en marchant avant / après.
+
+## Fait les 2026-10-13 et 14 (benchs Benchtrhoxd, Benchnwhuzf, Benchzcoilj, Benchekrosq ; analyses dans journal/bench/)
+- [x] Contournement des monstres dans l'A* (`nav.Filter.Avoid`), recalculé en marchant quand un monstre apparaît près des 80 prochains yards, zones fuies comprises (Cutpurse de la route de Goldshire : 6 fuites puis aucune).
+- [x] Potions de soin : bues sous 35 %, comptées dans la décision de fuite (30 % de PV), achetées (3 visées) chez un vendeur de potions à moins de 500 yards ou autour du dernier marchand atteint ; PNJ d'événement exclus de `world.find_npc`.
+- [x] Élixirs, flacons, parchemins utiles à la classe utilisés juste avant un pull.
+- [x] Points d'apparition derrière une fuite sautés (`auto.behindFled`, 80 yards) : la mine coûtait 4 fuites par quête.
+- [x] guidecheck : grind élargi à 600 yards sous 2 cibles ; repos + attente 90 s quand il ne trouve rien à chasser (zones fuies) au lieu de 4 tours dans la même seconde ; reports et sauts gardés entre deux exécutions ; quêtes de classe insérées dans la route.
+- [x] Bench : répartition du temps (`bench_sample.py`), snapshots en route (`SAVE_AT`), modules construits un par un avant le lancement.
+- [ ] Mesurer ces changements selon le protocole (2 benchs 6 → 8) : ils ont surtout réduit les morts (3-4 → 0-1 par run) sans gain de vitesse visible (6 → 9 : 84 min avant, 92-110 après).

@@ -23,7 +23,8 @@ done
 name=$(basename "$log" .log); name=${name#level_}
 while true; do
   sleep 30
-  if [ -f "logs/bench_$name.state.json" ] || ! pgrep -f "guidecheck -play -char $name" >/dev/null; then
+  # Between two SAVE_AT stages guidecheck is not running but bench.sh is (logout, snapshot, start).
+  if [ -f "logs/bench_$name.state.json" ] || { ! pgrep -f "guidecheck -play -char $name" >/dev/null && ! pgrep -f "[b]ench.sh" >/dev/null; }; then
     echo "watch: bench $name ended ($(tail -1 "$log" | cut -c1-160))"; exit 0
   fi
   deaths=$(tail -n +"$state_from" logs/state.log 2>/dev/null | grep -c "msg=teleported")

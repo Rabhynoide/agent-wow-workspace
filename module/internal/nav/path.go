@@ -22,6 +22,38 @@ var (
 type Filter struct {
 	Include uint16
 	Partial bool
+	// Avoid: places the path keeps away from when it can (hostile monsters and their aggro range).
+	Avoid []Danger
+}
+
+// Danger is a disc (Recast space, 2D) a path pays to cross: up to AvoidWeight times its length at
+// the centre, nothing at the edge. Paths through it stay possible (the only way through a gorge).
+type Danger struct {
+	P V3
+	R float32
+}
+
+// AvoidWeight: a step at a danger's centre costs 1 + AvoidWeight times its length, so a detour up
+// to that much longer is preferred to crossing a monster's aggro range.
+const AvoidWeight = 6
+
+// stepCost is the cost of walking from a to b: its length, more inside dangers (sampled at b and
+// halfway).
+func (f Filter) stepCost(a, b V3) float32 {
+	d := dist3D(a, b)
+	if len(f.Avoid) == 0 {
+		return d
+	}
+	mid := V3{(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2}
+	w := float32(0)
+	for _, p := range [2]V3{mid, b} {
+		for _, z := range f.Avoid {
+			if r := dist2D(p, z.P); r < z.R {
+				w = max(w, 1-r/z.R)
+			}
+		}
+	}
+	return d * (1 + AvoidWeight*w)
 }
 
 var GroundOnly = Filter{Include: NavGround}
@@ -370,9 +402,9 @@ func (m *Mesh) corridor(from, to V3, f Filter) (V3, V3, []*node, error) {
 				continue
 			}
 			mid := V3{(l.pa[0] + l.pb[0]) / 2, (l.pa[1] + l.pb[1]) / 2, (l.pa[2] + l.pb[2]) / 2}
-			g := cur.g + dist3D(cur.pos, mid)
+			g := cur.g + f.stepCost(cur.pos, mid)
 			if l.to == eRef {
-				g += dist3D(mid, ePt)
+				g += f.stepCost(mid, ePt)
 				mid = ePt
 			}
 			if nb := best[l.to]; nb != nil && nb.g <= g {

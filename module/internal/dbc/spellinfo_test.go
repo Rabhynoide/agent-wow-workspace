@@ -26,6 +26,14 @@ func TestSpellInfo(t *testing.T) {
 	if vr.CasterAuraState != 10 {
 		t.Errorf("Victory Rush %+v", vr)
 	}
+	// Elixir of Lion's Strength: +Strength (SPELL_AURA_MOD_STAT 29, stat 0); Scroll of Protection:
+	// armor (SPELL_AURA_MOD_RESISTANCE 22, school mask 1).
+	if lion, prot := m[2367], m[8091]; lion.Auras[0] != 29 || lion.Misc[0] != 0 || prot.Auras[0] != 22 || prot.Misc[0] != 1 {
+		t.Errorf("buff auras: lion %v %v, protection %v %v", lion.Auras, lion.Misc, prot.Auras, prot.Misc)
+	}
+	if pot := m[439]; pot.Effects[0] != 10 { // Minor Healing Potion
+		t.Errorf("healing potion effects %v", pot.Effects)
+	}
 	if blast.CategoryRecovery != 8000 || blast.CostPct != 17 || blast.MaxRange != 30 {
 		t.Errorf("Mind Blast %+v", blast)
 	}

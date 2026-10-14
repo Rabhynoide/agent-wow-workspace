@@ -80,7 +80,10 @@ func limit(n uint32, def int) int {
 func (s *Service) FindNpc(ctx context.Context, r *pb.FindNpcRequest) (*pb.FindNpcResponse, error) {
 	// Names in brackets ("[DND] ...") are technical NPCs: dozens carry vendor/repair flags around
 	// Goldshire and would fill the result list.
-	where := []string{"ct.name NOT LIKE '[%'"}
+	where := []string{"ct.name NOT LIKE '[%'",
+		// Spawned only during a game event (Darkmoon Faire: Professor Thaddeus Paleo, the Goldshire
+		// potion vendor, sent the bot to an empty spot, 2026-10-14).
+		"NOT EXISTS (SELECT 1 FROM game_event_creature g WHERE g.guid=c.guid AND g.eventEntry>0)"}
 	var args []any
 	if r.Entry != 0 {
 		where = append(where, "ct.entry=?")

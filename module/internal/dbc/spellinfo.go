@@ -22,6 +22,12 @@ type SpellInfo struct {
 	Melee            bool   // range type "combat range": reach + target size
 	GCD              uint32 // StartRecoveryTime, ms (1500 for most spells)
 	NeedsWeapon      bool   // EquippedItemClass = weapon (Rend, Heroic Strike...)
+	// Auras applied by the three effects (EffectApplyAuraName, 0 = none) and their misc value
+	// (the stat of SPELL_AURA_MOD_STAT, the school mask of SPELL_AURA_MOD_RESISTANCE...).
+	Auras [3]uint32
+	Misc  [3]int32
+	// Effects (Effect, 0 = none): 10 = heal, 6 = apply aura...
+	Effects [3]uint32
 }
 
 // Spell.dbc field indexes (verified on Charge, Rend, Heroic Strike, Mind Blast, Shadow Word: Pain).
@@ -36,6 +42,9 @@ const (
 	siManaCost         = 42
 	siRangeIndex       = 46
 	siEquippedClass    = 68
+	siEffect           = 71  // 71..73
+	siEffectAura       = 95  // 95..97
+	siEffectMisc       = 110 // 110..112
 	siManaCostPct      = 204
 	siStartRecovery    = 206
 )
@@ -62,6 +71,10 @@ func LoadSpellInfo(dir string) (map[uint32]SpellInfo, error) {
 			CastTimeIndex: f.U32(r, siCastTimeIndex), Recovery: f.U32(r, siRecovery), CategoryRecovery: f.U32(r, siCategoryRecovery),
 			PowerType: int32(f.U32(r, siPowerType)), Cost: f.U32(r, siManaCost), CostPct: f.U32(r, siManaCostPct),
 			GCD: f.U32(r, siStartRecovery), NeedsWeapon: f.U32(r, siEquippedClass) == 2,
+		}
+		for e := 0; e < 3; e++ {
+			s.Auras[e], s.Misc[e] = f.U32(r, siEffectAura+e), int32(f.U32(r, siEffectMisc+e))
+			s.Effects[e] = f.U32(r, siEffect+e)
 		}
 		if rg, ok := ranges[f.U32(r, siRangeIndex)]; ok {
 			s.MinRange, s.MaxRange, s.Melee = rg[0], rg[1], rg[2] == 1

@@ -55,6 +55,11 @@ type Service struct {
 	repairFailedAt atomic.Uint32
 	// money when a food trip bought nothing (too poor): no new trip before we earn a silver more
 	foodFailedAt atomic.Uint32
+	// lastVendor: where the last vendor we reached stands (map, x, y), searched around when none is
+	// within 500 yards of us (lastvendor.go).
+	lastVendor atomic.Pointer[[3]float32]
+	// potionFailedAt: money when the last potion trip bought nothing (no new trip before 1 silver more).
+	potionFailedAt atomic.Uint32
 	// learned fights (journal/learn/fights.json): the danger of a monster type
 	fights *xpscore.File
 }
@@ -939,6 +944,10 @@ func (r *run) huntAt(entry uint32, name string, count, itemEntry, itemCount uint
 	// go to the next point instead of waiting there; kills already made count.
 	var err2 error
 	tried, avoided := 0, 0
+	// Spawn points we fled on the way to: the others close to them lie behind the same monsters (the
+	// four Kobold Miner points of the Fargodeep mine cost a flight each, twice: 10 flights in 10 min,
+	// bench of 2026-10-13).
+	var fledTo [][2]float32
 	for i := 0; i < len(sp) && tried < 5; i++ {
 		// Re-read each time: a flight during this hunt adds a zone.
 		if b, err := r.s.api.Brief(r.ctx); err == nil && b.Self != nil {
@@ -950,12 +959,18 @@ func (r *run) huntAt(entry uint32, name string, count, itemEntry, itemCount uint
 				continue
 			}
 		}
+		if behindFled(fledTo, sp[i].X, sp[i].Y) {
+			continue
+		}
 		tried++
 		if tried > 1 || sp[i].Dist > 30 {
 			if err := r.walk(sp[i].X, sp[i].Y, sp[i].Z, 10); err != nil {
 				// A spawn point off the navmesh (water, cliff) or unreachable: try the next one.
 				r.step("cannot reach a %s spawn point (%v), trying another", name, err)
 				err2 = err
+				if strings.Contains(err.Error(), "too dangerous") {
+					fledTo = append(fledTo, [2]float32{sp[i].X, sp[i].Y})
+				}
 				if r.ctx.Err() != nil {
 					return r.ctx.Err()
 				}
@@ -1026,13 +1041,18 @@ const (
 	suppliesLow                 = 5
 	minMoneyForFood             = 100 // copper
 	categoryFood, categoryDrink = 11, 59
+	// Healing potions for critical health (combat/potion.go): bought at the vendor visited for food or
+	// to sell (they share category 4 with mana potions: town buys the healing ones). No trip for them.
+	potionsWanted      = 3
+	categoryPotion     = 4
+	minMoneyForPotions = 500 // copper: 3 Lesser Healing Potions cost 3 silver
 )
 
-// supplies counts the food and drink in the bags usable at our level.
-func (r *run) supplies(me *statepb.SelfInfo) (food, drink uint32) {
+// supplies counts the food, drink and potions in the bags usable at our level.
+func (r *run) supplies(me *statepb.SelfInfo) (food, drink, potions uint32) {
 	snap, err := r.s.api.Snapshot(r.ctx)
 	if err != nil {
-		return foodWanted, drinkWanted // unknown: do not run to a vendor for it
+		return foodWanted, drinkWanted, potionsWanted // unknown: do not run to a vendor for it
 	}
 	for _, it := range snap.Items {
 		if it.Bag == 0 {
@@ -1052,9 +1072,11 @@ func (r *run) supplies(me *statepb.SelfInfo) (food, drink uint32) {
 			food += it.Count
 		case categoryDrink:
 			drink += it.Count
+		case categoryPotion:
+			potions += it.Count
 		}
 	}
-	return food, drink
+	return food, drink, potions
 }
 
 // ensureSpace visits the nearest vendor when the bags are nearly full or the gear is worn out:
@@ -1065,7 +1087,7 @@ func (r *run) ensureSpace() error {
 		return err
 	}
 	me := snap.Self
-	food, drink := r.supplies(me)
+	food, drink, potions := r.supplies(me)
 	wantDrink := uint32(0)
 	if me.PowerType == 0 {
 		wantDrink = drinkWanted
@@ -1079,7 +1101,13 @@ func (r *run) ensureSpace() error {
 	if failed := r.s.foodFailedAt.Load(); failed > 0 && me.Money < failed+100 {
 		needFood = false
 	}
-	if !needSell && !needRepair && !needFood {
+	// No healing potion left: the looted ones ran out and food vendors sell none (Benchtrhoxd died in a
+	// flight with an empty bag, 2026-10-13). A vendor selling potions (category 4) within 500 yards.
+	needPotion := potions == 0 && me.Level >= 3 && me.Money >= minMoneyForPotions && snap.DurabilityPct >= repairBelow
+	if failed := r.s.potionFailedAt.Load(); failed > 0 && me.Money < failed+100 {
+		needPotion = false
+	}
+	if !needSell && !needRepair && !needFood && !needPotion {
 		return nil
 	}
 	const vendorFlag, repairFlag = 128, 4096
@@ -1096,10 +1124,21 @@ func (r *run) ensureSpace() error {
 		if food >= suppliesLow {
 			category = categoryDrink
 		}
-		r.step("buying food and drink (food %d, drink %d)", food, drink)
+		if !needFood {
+			category = categoryPotion
+		}
+		r.step("buying food and drink (food %d, drink %d, potions %d)", food, drink, potions)
 		vendors, err = r.s.api.FindFoodVendor(r.ctx, me.Map, me.X, me.Y, category, me.Level)
+		if lv := r.s.lastVendor.Load(); err == nil && len(vendors) == 0 && lv != nil && uint32(lv[0]) == me.Map {
+			// Not a wider search: at 1200 yards of east Elwynn it found Darkshire and Lakeshire, and the
+			// bot died twice on the way (bench of 2026-10-14). Around the town we already went to.
+			vendors, err = r.s.api.FindFoodVendor(r.ctx, me.Map, lv[1], lv[2], category, me.Level)
+		}
 		if err == nil && len(vendors) == 0 {
-			r.note("no food vendor within 500 yards")
+			r.note("no food vendor within 500 yards (nor near the last vendor)")
+			if !needFood {
+				r.s.potionFailedAt.Store(max(me.Money, 1))
+			}
 			return nil
 		}
 	}
@@ -1134,11 +1173,15 @@ func (r *run) ensureSpace() error {
 	}
 	if npc == nil {
 		if !needSell && !needRepair {
+			if !needFood {
+				r.s.potionFailedAt.Store(max(me.Money, 1))
+			}
 			r.note("food vendor unreachable: %v", lastErr)
 			return nil
 		}
 		return fmt.Errorf("no reachable vendor (%d candidates): %v", len(vendors), lastErr)
 	}
+	r.s.lastVendor.Store(&[3]float32{float32(me.Map), npc.X, npc.Y})
 	if needSell || npc.NpcFlags&vendorFlag != 0 {
 		res, err := r.s.api.SellJunk(r.ctx)
 		if err != nil || !res.Ok {
@@ -1151,18 +1194,21 @@ func (r *run) ensureSpace() error {
 			return fmt.Errorf("bags still full after selling %d items: nothing else may be sold (see town.sell_junk with dry_run and show_kept)", res.Sold)
 		}
 	}
-	if npc.NpcFlags&vendorFlag != 0 && snap.DurabilityPct >= repairBelow && (food < foodWanted/2 || (wantDrink > 0 && drink < wantDrink/2)) {
-		if res, err := r.s.api.Restock(r.ctx, foodWanted, wantDrink); err == nil && res.Ok && len(res.Bought) > 0 {
+	if npc.NpcFlags&vendorFlag != 0 && snap.DurabilityPct >= repairBelow && (food < foodWanted/2 || (wantDrink > 0 && drink < wantDrink/2) || potions < potionsWanted) {
+		if res, err := r.s.api.Restock(r.ctx, foodWanted, wantDrink, potionsWanted); err == nil && res.Ok && len(res.Bought) > 0 {
 			r.s.foodFailedAt.Store(0)
 			var what []string
 			for _, b := range res.Bought {
 				what = append(what, fmt.Sprintf("%d %s", b.Count, b.Name))
 			}
 			r.note("bought %s for %d copper", strings.Join(what, ", "), res.Copper)
-		} else {
+		} else if !needFood && needPotion {
+			r.note("no healing potion bought: %v %s", err, res.GetReason())
+			r.s.potionFailedAt.Store(max(me.Money, 1))
+		} else if food < foodWanted/2 || (wantDrink > 0 && drink < wantDrink/2) {
 			r.note("restock: nothing bought %v %s", err, res.GetReason())
 			r.s.foodFailedAt.Store(max(me.Money, 1))
-		}
+		} // only potions wanted: most food vendors sell none
 	}
 	if npc.NpcFlags&repairFlag != 0 && snap.DurabilityPct < 100 {
 		if res, err := r.s.api.Repair(r.ctx); err == nil && res.Ok {
@@ -1279,3 +1325,16 @@ func (r *run) useObject(entry uint32, name string, loot bool) error {
 	jobs.Sleep(r.ctx, 2*time.Second)
 	return nil
 }
+
+// behindFled tells whether a spawn point lies within fledReach of one we fled on the way to.
+func behindFled(fledTo [][2]float32, x, y float32) bool {
+	for _, p := range fledTo {
+		if math.Hypot(float64(p[0]-x), float64(p[1]-y)) < fledReach {
+			return true
+		}
+	}
+	return false
+}
+
+// fledReach: yards around a spawn point we fled on the way to.
+const fledReach = 80

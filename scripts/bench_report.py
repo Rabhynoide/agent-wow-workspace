@@ -46,8 +46,14 @@ switches = sum(1 for l in combat if "msg=\"switching target\"" in l)
 group_casts = collections.Counter(re.sub(r'.*spell="?([^"]+?)"? attackers.*', r'\1', l) for l in combat if "msg=\"group cast\"" in l)
 group_fights = sum(1 for l in fights if not re.search(r"attackers_max=[01]\b", l))
 zone_spawns = sum(1 for l in level_log if "near where we fled from" in l)
+potions = sum(1 for l in combat if "drinking potion" in l)
+buff_items = sum(1 for l in combat if "using buff item" in l)
 zone_pulls = sum(1 for l in combat if "msg=\"pull choice\"" in l and "in_fled_zone=" in l and not re.search(r"in_fled_zone=0\b", l))
 gave_up = sum(1 for l in combat if "giving up target" in l)
+# Time split (scripts/bench_sample.py: one activity every 5 s).
+samples = collections.Counter(l.split()[1] for l in read(f"logs/bench_{name}.samples") if len(l.split()) == 2)
+n_samples = sum(samples.values())
+split = ", ".join(f"{k} {100 * v / n_samples:.0f} % ({v * 5 / 60:.1f} min)" for k, v in samples.most_common()) if n_samples else "pas d'échantillons"
 final_level = me.get("level", levels[-1][0] if levels else 1)
 reached = final_level >= int(target)
 
@@ -57,10 +63,11 @@ lines = [f"# Bench {name} — {race} {cls} {first_level} → {target} ({date})",
          f"- Commit : {commit}",
          f"- Résultat : {'OBJECTIF ATTEINT' if reached else 'non atteint'} (niveau {final_level}, code level.sh {code}) en {minutes:.1f} min",
          f"- Temps par niveau (minutes depuis le début) : " + ", ".join(f"{lv}: {m:.1f}" for lv, m in levels),
+         f"- Répartition du temps : {split}",
          f"- Morts : {deaths} ; combats en marchant : {walk_fights} ; cibles abandonnées : {gave_up}",
          f"- Quêtes faites ({len(done)}) : {done}",
          f"- Quêtes sautées ({len(skips)}) :"] + [f"  - {s}" for s in skips] + [
-         f"- Grinds : {grinds} ; passages marchand/achat : {vendor} ; repas : {meals}",
+         f"- Grinds : {grinds} ; passages marchand/achat : {vendor} ; repas : {meals} ; potions bues : {potions} ; objets de buff : {buff_items}",
          f"- Argent final : {me.get('money', '?')} cuivres ; durabilité : {state.get('durabilityPct', '?')} %",
          f"- Sorts refusés (sort/code) : {dict(fails.most_common(8))}",
          f"- Combats : {len(fights)} ; perdus : {len(lost)}"] + [f"  - {l}" for l in lost] + [
