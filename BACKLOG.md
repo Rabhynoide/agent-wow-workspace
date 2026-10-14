@@ -6,8 +6,8 @@ Légende : [ ] à faire, [~] partiel, [x] fait.
 Monter un personnage de 1 à 80 le plus vite possible, en autonomie. Chaque point se mesure en minutes gagnées (protocole : NOTES « Protocole de mesure », 2 benchs 6 → 8 par variante). État au 2026-10-14 : 1 → 10 en 224 min (Benchtrhoxd), seul Elwynn est joué, rien au-delà du niveau 11.
 
 ### Étape 1 : Elwynn rapide (niveaux 1-10), mesurable dès maintenant
-- [ ] Prudence qui coûte du temps : 19-33 fuites par run, presque toutes les quêtes 9-10 reportées. Essayer (une variante à la fois) : reporter une quête après 2 fuites au lieu d'1 ; règle des 3 attaquants assouplie quand ils sont plus faibles ou qu'une potion est prête ; `chaseMargin` 10 → 5.
-- [ ] Contournement des monstres (`move/avoid.go`) : le mesurer contre son absence (option à ajouter pour le couper), la marche faisant 38 % du temps.
+- [~] (réglages `journal/learn/tuning.json` + apprentissage des cas limites, 2026-10-14 ; variantes B-E à mesurer, NOTES) Prudence qui coûte du temps : 19-33 fuites par run, presque toutes les quêtes 9-10 reportées. Essayer (une variante à la fois) : reporter une quête après 2 fuites au lieu d'1 ; règle des 3 attaquants assouplie quand ils sont plus faibles ou qu'une potion est prête ; `chaseMargin` 10 → 5.
+- [~] Contournement des monstres (`move/avoid.go`) : le mesurer contre son absence (`"avoid": false` dans tuning.json, variante E), la marche faisant 38 % du temps.
 - [ ] Mine de Fargodeep (quêtes 47, 60, 62, 87) : moitié des fuites de 5 à 8. Reporter dès la première fuite toute quête dont la cible est dans la mine, ou n'y aller qu'au niveau 8-9 ; mesurer.
 - [ ] Sorts tentés pour rien (Victory Rush 34428/97 ×16-34 par run, Charge 100/128, Rend 772/97) : vérifier l'état d'aura, la distance et la cible avant de les lancer.
 - [ ] Repos (5-7 %) : manger/boire dès le début du repos, Premiers soins (bandages) pour le guerrier.

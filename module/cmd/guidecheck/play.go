@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"wowagent/internal/faction"
+	"wowagent/internal/tuning"
 	"wowagent/internal/xpscore"
 )
 
@@ -39,6 +40,7 @@ type playState struct {
 	// quests whose monsters were all dead or away: done later (after the next ones), at most 3 tries
 	waitUntil map[uint32]time.Time
 	tries     map[uint32]int
+	flights   map[uint32]int // flights in each quest, against tuning postpone_after_flights
 }
 
 // nextBatch walks the route in order. It returns the first quests doable now (up to n, stopping at the
@@ -288,6 +290,27 @@ func (c *checker) grindTargets(mapID uint32, x, y, radius float64, level, class 
 	return out, report
 }
 
+const learnPath = "../journal/learn"
+
+// learnFlee adds the borderline fights of logs/combat.log to journal/learn/flee.json.
+func learnFlee() (int, error) {
+	path := filepath.Join(learnPath, "flee.json")
+	f, err := tuning.LoadFlee(path)
+	if err != nil {
+		return 0, err
+	}
+	lf, err := os.Open(combatLog)
+	if err != nil {
+		return 0, err
+	}
+	defer lf.Close()
+	n := f.Learn(lf)
+	if n > 0 {
+		return n, f.Save(path)
+	}
+	return 0, nil
+}
+
 // fledWait: pause after a grind found nothing to hunt (four of them outlast a fled zone, 5 min).
 const fledWait = 90 * time.Second
 
@@ -478,7 +501,7 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 	race, class := b.Self.Race, b.Self.ClassID
 	raceName, className := nameOf(raceIDs, race), nameOf(classIDs, class)
 	ps := &playState{finished: c.rewardedOf(char), skipped: map[uint32]string{}, retryAt: map[uint32]uint32{},
-		waitUntil: map[uint32]time.Time{}, tries: map[uint32]int{}, skippedAt: map[uint32]time.Time{}}
+		waitUntil: map[uint32]time.Time{}, tries: map[uint32]int{}, skippedAt: map[uint32]time.Time{}, flights: map[uint32]int{}}
 	say("%s (%s %s) level %d -> %d, %d quests already rewarded", char, raceName, className, b.Self.Level, until, len(ps.finished))
 	if ids := c.addClassQuests(className, raceName, class); len(ids) > 0 {
 		var why []string
@@ -496,6 +519,7 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 	}
 	defer savePlan(planPath(char), ps)
 	deaths, idle := 0, 0
+	tune := tuning.NewSource(learnPath)
 	for {
 		if time.Since(start) > time.Duration(maxMin)*time.Minute {
 			say("time limit (%d min) reached", maxMin)
@@ -543,6 +567,11 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 				q := st.Quest
 				reason := st.Reason
 				switch {
+				case strings.Contains(reason, "fled from monsters") && ps.flights[q]+1 < tune.Get().PostponeAfterFlights:
+					// Not postponed yet (tuning postpone_after_flights): the other quests first, then again.
+					ps.flights[q]++
+					ps.waitUntil[q] = time.Now().Add(3 * time.Minute)
+					say("  %d fled (%d/%d before postponing), retried in 3 min: %s", q, ps.flights[q], tune.Get().PostponeAfterFlights, reason)
 				case strings.Contains(reason, "too dangerous") || strings.Contains(reason, "needs level"):
 					ps.retryAt[q] = me.Level + 1
 					say("  %d postponed to level %d: %s", q, me.Level+1, reason)
@@ -571,6 +600,9 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 				say("learned fights: %v", err)
 			} else if n > 0 {
 				say("learned %d fights: %s", n, strings.Join(c.fights.Summary(class), " | "))
+			}
+			if n, err := learnFlee(); err == nil && n > 0 {
+				say("learned %d borderline fights", n)
 			}
 			targets, report := c.grindTargets(me.Map, me.X, me.Y, 250, me.Level, class, factions[playerFactions[race]], factions)
 			// One target is not enough: after a flight its spawn points are avoided for minutes and the

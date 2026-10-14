@@ -7,6 +7,7 @@ import (
 	statepb "wowagent/gen/statev1"
 	"wowagent/internal/nav"
 	"wowagent/internal/safe"
+	"wowagent/internal/tuning"
 )
 
 // Paths keep away from the idle hostile monsters we can see and from the places combat fled from:
@@ -22,6 +23,8 @@ const (
 	recheckEvery = 3  // seconds between two looks for new monsters on the way
 	recheckAhead = 80 // yards of the remaining path checked
 )
+
+var tuneSrc = tuning.NewSource("")
 
 // danger is a disc to keep away from, with the monster's guid (0 for a fled zone).
 type danger struct {
@@ -40,6 +43,9 @@ func navDangers(ds []danger) []nav.Danger {
 // dangers lists the discs around the idle hostile monsters near us and the fled zones, except the
 // ones around the destination (the target of a pull, the quest giver's camp: we must go there).
 func (s *Service) dangers(ctx context.Context, me *statepb.SelfInfo, x, y, z float32) []danger {
+	if !tuneSrc.Get().Avoid { // tuning.json "avoid": false, to measure the walk without it
+		return nil
+	}
 	var out []danger
 	if near, err := s.api.Nearby(ctx, &statepb.NearbyRequest{Kind: "unit", Radius: avoidSeen, Max: 60, AliveOnly: true, HostileOnly: true}); err == nil {
 		for _, o := range near.Objs {

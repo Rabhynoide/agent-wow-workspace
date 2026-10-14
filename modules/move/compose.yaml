@@ -8,8 +8,10 @@ services:
       MMAPS_DIR: /mmaps
       MAPS_DIR: /maps
       VMAPS_DIR: /vmaps
+      LEARN_DIR: /learn
     volumes:
       - ../../logs:/logs
+      - ../../journal/learn:/learn:ro
       - ../../assets/mmaps:/mmaps:ro
       - ../../assets/maps:/maps:ro
       - ../../assets/vmaps:/vmaps:ro

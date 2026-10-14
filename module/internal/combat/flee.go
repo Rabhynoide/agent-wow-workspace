@@ -5,10 +5,12 @@ import (
 	"google.golang.org/protobuf/proto"
 	"log/slog"
 	"math"
+	"math/rand"
 	"time"
 
 	pb "wowagent/gen/combatv1"
 	statepb "wowagent/gen/statev1"
+	"wowagent/internal/tuning"
 	"wowagent/internal/xpscore"
 )
 
@@ -20,6 +22,8 @@ import (
 // and give up 30 yards from where they were pulled (CreatureLeashRadius), so running away works as
 // long as no spell slows us.
 
+// The margins below are the defaults of journal/learn/tuning.json (internal/tuning), which overrides
+// them without a rebuild; borderline cases are explored and learned (fleeDecision).
 const (
 	// fleeMargin: health (percent) we want left when the fight is expected to end. A fight can cost
 	// twice its average; a death (150 s, durability) costs far more than a flight (a kill lost).
@@ -92,7 +96,82 @@ func (s *Service) mustFlee(ctx context.Context, me *statepb.SelfInfo) (bool, flo
 		me = boosted
 	}
 	ok, loss := s.losing(me, att)
-	return ok, loss, att
+	if !ok {
+		return false, loss, att
+	}
+	return s.decide(me, att, loss), loss, att
+}
+
+// fleeDecision: the first borderline decision of a fight (the rule says flee), logged with the
+// fight's outcome ("flee outcome") so that guidecheck learns the death rate of staying.
+type fleeDecision struct {
+	key    string
+	stayed bool
+	how    string // rule, learned, explore
+	hp     uint32
+	slack  float64
+}
+
+// decide: the rule says flee. The learned table may say stay (its death rate is low enough for the
+// speedrun's costs); without enough fights, a borderline case where we are expected to survive is
+// explored (stay) with probability Explore. An exploration holds for the rest of the fight.
+func (s *Service) decide(me *statepb.SelfInfo, att []*statepb.Obj, loss float64) bool {
+	t := s.tuneGet()
+	s.mu.Lock()
+	d := s.decision
+	s.mu.Unlock()
+	if d != nil && d.how == "explore" && d.stayed {
+		return false
+	}
+	fresh := 0
+	for _, a := range att {
+		if a.MaxHp > 0 && 2*a.Hp > a.MaxHp {
+			fresh++
+		}
+	}
+	slack := float64(pct(me.Hp, me.MaxHp)) - loss
+	key := tuning.Key(fresh, slack)
+	flee, how := true, "rule"
+	if s.fleeTab != nil {
+		if f, learned := tuning.Decide(s.fleeTab.Get(), key, t); learned {
+			flee, how = f, "learned"
+		} else if slack > 0 && rand.Float64() < t.Explore {
+			flee, how = false, "explore"
+		}
+	}
+	if d == nil {
+		s.mu.Lock()
+		s.decision = &fleeDecision{key: key, stayed: !flee, how: how, hp: pct(me.Hp, me.MaxHp), slack: slack}
+		s.mu.Unlock()
+		slog.Info("flee decision", "key", key, "stay", !flee, "how", how, "hp", pct(me.Hp, me.MaxHp), "loss", int(loss), "fresh", fresh)
+	}
+	return flee
+}
+
+// logOutcome ends the fight's borderline decision: result died, fled or won.
+func (s *Service) logOutcome(why string) {
+	s.mu.Lock()
+	d := s.decision
+	s.decision = nil
+	s.mu.Unlock()
+	if d == nil {
+		return
+	}
+	res := "won"
+	switch why {
+	case "dead":
+		res = "died"
+	case "fled":
+		res = "fled"
+	}
+	slog.Info("flee outcome", "key", d.key, "stayed", d.stayed, "how", d.how, "hp", d.hp, "slack", int(d.slack), "result", res)
+}
+
+func (s *Service) tuneGet() tuning.Tuning {
+	if s.tune == nil {
+		return tuning.Defaults()
+	}
+	return s.tune.Get()
 }
 
 // losing tells whether the fight still to come against these attackers is expected to leave us less
@@ -101,21 +180,23 @@ func (s *Service) losing(me *statepb.SelfInfo, att []*statepb.Obj) (bool, float6
 	if len(att) == 0 {
 		return false, 0
 	}
+	t := s.tuneGet()
 	loss := s.lossLeft(me, att)
-	margin := fleeMargin
+	margin := t.FleeMargin
 	fresh := 0
 	for _, a := range att {
 		if a.Level >= me.Level+2 {
-			margin += highMargin
+			margin += t.HighMargin
 		}
 		if a.MaxHp > 0 && 2*a.Hp > a.MaxHp {
 			fresh++
 		}
 	}
 	if fresh > 1 {
-		margin += chaseMargin * float64(fresh-1)
+		margin += t.ChaseMargin * float64(fresh-1)
 	}
-	return (crowd(att) && loss > crowdLoss) || loss > float64(pct(me.Hp, me.MaxHp))-margin, loss
+	crowded := t.CrowdFlee > 0 && fresh >= t.CrowdFlee
+	return (crowded && loss > t.CrowdLoss) || loss > float64(pct(me.Hp, me.MaxHp))-margin, loss
 }
 
 // crowd tells whether at least crowdFlee attackers have more than half their health.

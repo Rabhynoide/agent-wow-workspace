@@ -46,6 +46,14 @@ switches = sum(1 for l in combat if "msg=\"switching target\"" in l)
 group_casts = collections.Counter(re.sub(r'.*spell="?([^"]+?)"? attackers.*', r'\1', l) for l in combat if "msg=\"group cast\"" in l)
 group_fights = sum(1 for l in fights if not re.search(r"attackers_max=[01]\b", l))
 zone_spawns = sum(1 for l in level_log if "near where we fled from" in l)
+# Caution knobs in effect (journal/learn/tuning.json) and borderline flight decisions (combat/flee.go).
+try:
+    tuning = json.load(open(os.path.join(root, "journal/learn/tuning.json")))
+except Exception:
+    tuning = "défauts"
+decisions = collections.Counter(re.sub(r'.*stay=(\w+) how=(\w+).*', r'\2/\1', l) for l in combat if 'msg="flee decision"' in l)
+stays = [l for l in combat if 'msg="flee outcome"' in l and "stayed=true" in l]
+stay_deaths = sum(1 for l in stays if "result=died" in l)
 potions = sum(1 for l in combat if "drinking potion" in l)
 buff_items = sum(1 for l in combat if "using buff item" in l)
 zone_pulls = sum(1 for l in combat if "msg=\"pull choice\"" in l and "in_fled_zone=" in l and not re.search(r"in_fled_zone=0\b", l))
@@ -64,6 +72,8 @@ lines = [f"# Bench {name} — {race} {cls} {first_level} → {target} ({date})",
          f"- Résultat : {'OBJECTIF ATTEINT' if reached else 'non atteint'} (niveau {final_level}, code level.sh {code}) en {minutes:.1f} min",
          f"- Temps par niveau (minutes depuis le début) : " + ", ".join(f"{lv}: {m:.1f}" for lv, m in levels),
          f"- Répartition du temps : {split}",
+         f"- Réglages : {json.dumps(tuning, separators=(',', ':')) if isinstance(tuning, dict) else tuning}",
+         f"- Décisions de fuite limites (comment/resté) : {dict(decisions)} ; combats restés : {len(stays)}, morts : {stay_deaths}",
          f"- Morts : {deaths} ; combats en marchant : {walk_fights} ; cibles abandonnées : {gave_up}",
          f"- Quêtes faites ({len(done)}) : {done}",
          f"- Quêtes sautées ({len(skips)}) :"] + [f"  - {s}" for s in skips] + [

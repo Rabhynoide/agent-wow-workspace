@@ -27,6 +27,7 @@ import (
 	"wowagent/internal/loot"
 	"wowagent/internal/moveio"
 	"wowagent/internal/priest"
+	"wowagent/internal/tuning"
 	"wowagent/internal/warrior"
 	"wowagent/internal/wire"
 	"wowagent/internal/xpscore"
@@ -61,6 +62,9 @@ type Service struct {
 	failures     map[uint8]castFailure
 	rotations    map[uint32]*classTables // class -> priority tables (journal/classes), nil = none
 	fights       *xpscore.File           // learned fights (journal/learn): the pull capacity
+	tune         *tuning.Source          // caution knobs (journal/learn/tuning.json)
+	fleeTab      *tuning.FleeTable       // learned borderline fights (journal/learn/flee.json)
+	decision     *fleeDecision           // borderline decision of the fight running (flee.go)
 	melee        *meleeLog
 	abandoned    map[uint64]time.Time // targets given up (no damage dealt): not picked again for a while
 	crowded      map[uint64]time.Time // targets skipped for their adds: not pulled for a while, still fought back
@@ -83,7 +87,7 @@ func Register(g grpc.ServiceRegistrar, s modv1.SessionClient) {
 	runner.Decorate = func(j *job, st *pb.CombatStatus) { st.ElapsedS = uint32(time.Since(j.Start).Seconds()) }
 	pb.RegisterCombatServer(g, &Service{s: s, api: api.C{S: s}, loot: loot.NewTracker(), guid: guid, jobs: runner, failures: map[uint8]castFailure{},
 		rotations: map[uint32]*classTables{}, melee: newMeleeLog(), abandoned: map[uint64]time.Time{}, crowded: map[uint64]time.Time{}, items: map[uint32]*worldpb.ItemInfo{}, book: &spellBook{ready: map[uint32]time.Time{}},
-		fights: xpscore.LearnedFile(), trail: tr})
+		fights: xpscore.LearnedFile(), trail: tr, tune: tuning.NewSource(""), fleeTab: tuning.NewFleeTable("")})
 	go tr.follow(api.C{S: s})
 }
 
@@ -595,8 +599,12 @@ func (s *Service) buff(ctx context.Context, me *statepb.SelfInfo) {
 // mana uses its wand (Shoot) if one is equipped, else melee.
 func (s *Service) fight(ctx context.Context, j *job, guid uint64) (bool, string) {
 	rec := s.watchFight(ctx, guid)
+	s.mu.Lock()
+	s.decision = nil
+	s.mu.Unlock()
 	dead, why := s.fightClass(ctx, j, guid)
 	rec.done(dead, why)
+	s.logOutcome(why)
 	if why == "switched" { // not a failure: the caller picks a target again
 		return false, ""
 	}
