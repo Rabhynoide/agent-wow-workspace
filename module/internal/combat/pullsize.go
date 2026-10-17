@@ -34,10 +34,10 @@ type engagement struct {
 }
 
 type pullSizer struct {
-	mu     sync.Mutex
-	size   int // 0 until the first use: tuning PullSize
-	easy   int // easy engagements of the full size in a row
-	cur    *engagement
+	mu   sync.Mutex
+	size int // 0 until the first use: tuning PullSize
+	easy int // easy engagements of the full size in a row
+	cur  *engagement
 }
 
 // cap is the most monsters a pull may bring at once; 0 when the adaptive pull size is off.
