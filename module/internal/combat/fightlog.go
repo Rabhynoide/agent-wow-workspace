@@ -78,7 +78,7 @@ func (s *Service) sampleFight(ctx context.Context, r *fightRecord, first bool) {
 	r.most = max(r.most, count)
 }
 
-func (r *fightRecord) done(dead bool, why string) {
+func (r *fightRecord) done(dead bool, why string) string {
 	r.stop()
 	r.wg.Wait()
 	var entries []uint32
@@ -98,4 +98,5 @@ func (r *fightRecord) done(dead bool, why string) {
 	slog.Info("fight", "result", result, "target", r.entry, "target_level", r.level, "level", r.myLevel, "class", r.class, "max_hp", r.maxHP,
 		"hp_start", r.hpStart, "hp_min", r.hpMin, "hp_end", r.hpEnd, "attackers_max", r.most,
 		"attackers", entries, "s", int(time.Since(r.start).Seconds()))
+	return result
 }

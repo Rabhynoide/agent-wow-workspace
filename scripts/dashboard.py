@@ -97,6 +97,16 @@ def fights():
     return out[::-1]
 
 
+def pull_size():
+    """Adaptive pull size (combat/pullsize.go): the last changes, newest first."""
+    out = []
+    for line in tail(path("logs", "combat.log"), 8, lambda l: 'msg="pull size"' in l):
+        f = {k: v.strip('"') for k, v in FIELD.findall(line)}
+        out.append({"time": f.get("time", "")[11:19], "size": f.get("size"), "why": f.get("why"),
+                    "attackers": f.get("attackers", ""), "hp_min": f.get("hp_min", ""), "bad": f.get("bad", "")})
+    return out[::-1]
+
+
 def learned():
     try:
         with open(path("journal", "learn", "fights.json")) as f:
@@ -272,7 +282,7 @@ def data():
     snap = rpc("state.snapshot")
     run = current_run()
     return {"live": brief, "zones": combat.get("avoid", []), "gear": gear(snap), "doing": combat.get("doing", ""), "run": run,
-            "quests": quests(snap, run), "fights": fights(), "learned": learned(), "benches": benches()}
+            "quests": quests(snap, run), "fights": fights(), "pull_size": pull_size(), "learned": learned(), "benches": benches()}
 
 
 class Handler(BaseHTTPRequestHandler):

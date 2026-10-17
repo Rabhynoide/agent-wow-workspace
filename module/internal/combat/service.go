@@ -78,6 +78,7 @@ type Service struct {
 	potionHave   bool                 // a healing potion was in the bags at potionSeenAt
 	potionSeenAt time.Time
 	book         *spellBook
+	pullSize     pullSizer // adaptive pull size (pullsize.go)
 }
 
 func Register(g grpc.ServiceRegistrar, s modv1.SessionClient) {
@@ -391,6 +392,7 @@ func (s *Service) gearIfLooted(ctx context.Context) {
 	s.mu.Unlock()
 	if len(g.Equipped) > 0 {
 		slog.Info("equipped after loot", "items", g.Equipped)
+		s.pullSize.gearUp(s.tuneGet())
 	}
 }
 
@@ -603,7 +605,7 @@ func (s *Service) fight(ctx context.Context, j *job, guid uint64) (bool, string)
 	s.decision = nil
 	s.mu.Unlock()
 	dead, why := s.fightClass(ctx, j, guid)
-	rec.done(dead, why)
+	s.pullSize.fightDone(s.tuneGet(), rec, rec.done(dead, why))
 	s.logOutcome(why)
 	if why == "switched" { // not a failure: the caller picks a target again
 		return false, ""

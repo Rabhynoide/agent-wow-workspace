@@ -75,7 +75,7 @@ func (s *Service) lossLeft(me *statepb.SelfInfo, att []*statepb.Obj) float64 {
 			left[i] = float64(a.Hp) / float64(a.MaxHp)
 		}
 	}
-	return xpscore.LossLeft(levels, left, me.Level, me.ClassId, s.fights.Get())
+	return xpscore.LossLeftAt(levels, left, me.Level, me.ClassId, s.fights.Get(), s.tuneGet().AddCost)
 }
 
 // mustFlee tells whether the fight is expected to cost more health than we have (with fleeMargin),
@@ -195,7 +195,7 @@ func (s *Service) losing(me *statepb.SelfInfo, att []*statepb.Obj) (bool, float6
 	if fresh > 1 {
 		margin += t.ChaseMargin * float64(fresh-1)
 	}
-	crowded := t.CrowdFlee > 0 && fresh >= t.CrowdFlee
+	crowded := t.CrowdFlee > 0 && fresh >= max(t.CrowdFlee, s.pullSize.cap(t)+1)
 	return (crowded && loss > t.CrowdLoss) || loss > float64(pct(me.Hp, me.MaxHp))-margin, loss
 }
 

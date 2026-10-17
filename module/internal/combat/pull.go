@@ -19,6 +19,10 @@ import (
 
 func aggroRange(player, creature uint32) float32 { return safe.AggroRange(player, creature) }
 
+// groupYards: with the adaptive pull size, one more monster in a pull is worth this many yards of
+// walk (2-3 s per kill saved against about 3 s of walk).
+const groupYards = 20
+
 // assistRange: a monster attacked calls for help within this distance (CreatureFamilyAssistanceRadius).
 const assistRange = 10
 
@@ -107,7 +111,8 @@ func (s *Service) pullFits(me *statepb.SelfInfo, maxPull float32) func(t *statep
 			return load <= maxPull, load, maxPull
 		}
 	}
-	table := s.fights.Get()
+	table, tune := s.fights.Get(), s.tuneGet()
+	size := s.pullSize.cap(tune)
 	limit := float32(pct(me.Hp, me.MaxHp)) - xpscore.PullReserve
 	return func(t *statepb.Obj, adds []*statepb.Obj) (bool, float32, float32) {
 		if len(adds) == 0 {
@@ -117,8 +122,8 @@ func (s *Service) pullFits(me *statepb.SelfInfo, maxPull float32) func(t *statep
 		for _, a := range adds {
 			levels = append(levels, a.Level)
 		}
-		loss := float32(xpscore.PullLoss(levels, me.Level, me.ClassId, table))
-		return loss <= limit, loss, limit
+		loss := float32(xpscore.PullLossAt(levels, me.Level, me.ClassId, table, tune.AddCost))
+		return loss <= limit && (size == 0 || len(levels) <= size), loss, limit
 	}
 }
 
@@ -141,8 +146,11 @@ func (s *Service) choosePull(ctx context.Context, j *job, me *statepb.SelfInfo, 
 		return nil, err
 	}
 	fits := s.pullFits(me, r.MaxPull)
+	group := r.MaxPull == 0 && s.pullSize.cap(s.tuneGet()) > 1
 	self := &statepb.Obj{Guid: me.Guid, X: me.X, Y: me.Y, Z: me.Z}
 	var crowded, taken []*statepb.Obj
+	var best *statepb.Obj
+	bestScore, bestN := float32(-1e9), 0
 	zones, now, fled := s.fledZones(), time.Now(), 0
 	for _, c := range cands.Objs {
 		if s.wasAbandoned(c.Guid) || s.wasCrowded(c.Guid) {
@@ -161,11 +169,23 @@ func (s *Service) choosePull(ctx context.Context, j *job, me *statepb.SelfInfo, 
 		}
 		adds := addsOf(c, hostile.Objs, me.Level)
 		ok, load, limit := fits(c, adds)
-		if ok {
+		if ok && !group {
 			return c, nil
+		}
+		if ok { // the most monsters the pull size allows, a little farther away if needed
+			if score := float32(len(adds))*groupYards - c.Dist; score > bestScore {
+				best, bestScore, bestN = c, score, 1+len(adds)
+			}
+			continue
 		}
 		slog.Info("crowded target", "entry", c.Entry, "level", c.Level, "dist", int(c.Dist), "adds", len(adds), "load", load, "limit", limit)
 		crowded = append(crowded, c)
+	}
+	if best != nil {
+		if bestN > 1 {
+			slog.Info("group pull", "entry", best.Entry, "monsters", bestN, "dist", int(best.Dist), "size", s.pullSize.cap(s.tuneGet()))
+		}
+		return best, nil
 	}
 	for i, c := range crowded {
 		if r.BodyPull && i < 2 && s.bodyPull(ctx, j, self, c, hostile.Objs, me.Level) {

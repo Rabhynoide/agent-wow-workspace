@@ -36,11 +36,24 @@ type Tuning struct {
 	MinFights  float64 `json:"min_fights"`
 	DeathCostS float64 `json:"death_cost_s"` // run to the corpse, rest, durability
 	FleeCostS  float64 `json:"flee_cost_s"`  // run, rest, the quest or spot left
+	// Extra health loss per add, times the single fight (xpscore.AddCost): the pull choice and the
+	// flight rule. Engagements of 2026-10-13/14 (levels 6-9, won, started at 90 %+): 2 monsters lost
+	// 1.5 times a single fight, 3 monsters 1.7 times (about 0.5 per add, but the lost ones are missing).
+	AddCost float64 `json:"add_cost"`
+	// Adaptive pull size (combat/pullsize.go): the monsters we accept at once (target and its adds)
+	// start at PullSize, go up after PullUpAfter easy engagements of that size, down after a hard
+	// one, within 1..PullSizeMax. The crowd rule only counts attackers beyond the pull size. Off:
+	// the old rules (any adds that fit the expected loss, crowd rule at CrowdFlee).
+	PullAdapt   bool `json:"pull_adapt"`
+	PullSize    int  `json:"pull_size"`
+	PullSizeMax int  `json:"pull_size_max"`
+	PullUpAfter int  `json:"pull_up_after"`
 }
 
 func Defaults() Tuning {
 	return Tuning{FleeMargin: 15, HighMargin: 10, ChaseMargin: 10, CrowdFlee: 3, CrowdLoss: 30, Avoid: true,
-		PostponeAfterFlights: 1, Explore: 0.25, Learn: true, MinFights: 6, DeathCostS: 180, FleeCostS: 90}
+		PostponeAfterFlights: 1, Explore: 0.25, Learn: true, MinFights: 6, DeathCostS: 180, FleeCostS: 90,
+		AddCost: 1.5, PullAdapt: false, PullSize: 2, PullSizeMax: 4, PullUpAfter: 2}
 }
 
 // cached reads a JSON file again when it changes (looked at every 10 s at most).
