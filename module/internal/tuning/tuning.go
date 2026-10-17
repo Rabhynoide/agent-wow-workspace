@@ -19,7 +19,7 @@ import (
 	"time"
 )
 
-// Tuning: the defaults are the rules of commit eb70f0b.
+// Tuning: the defaults are the rules of commit eb70f0b, without the monster avoidance (variant E, 2026-10-17).
 type Tuning struct {
 	FleeMargin  float64 `json:"flee_margin"`  // % of health kept after the expected loss
 	HighMargin  float64 `json:"high_margin"`  // + per attacker 2+ levels above us
@@ -51,7 +51,7 @@ type Tuning struct {
 }
 
 func Defaults() Tuning {
-	return Tuning{FleeMargin: 15, HighMargin: 10, ChaseMargin: 10, CrowdFlee: 3, CrowdLoss: 30, Avoid: true,
+	return Tuning{FleeMargin: 15, HighMargin: 10, ChaseMargin: 10, CrowdFlee: 3, CrowdLoss: 30, Avoid: false,
 		PostponeAfterFlights: 1, Explore: 0.25, Learn: true, MinFights: 6, DeathCostS: 180, FleeCostS: 90,
 		AddCost: 1.5, PullAdapt: false, PullSize: 2, PullSizeMax: 4, PullUpAfter: 2}
 }

@@ -4,7 +4,7 @@
  "chase_margin": 10,
  "crowd_flee": 3,
  "crowd_loss": 30,
- "avoid": true,
+ "avoid": false,
  "postpone_after_flights": 1,
  "explore": 0.25,
  "learn": true,

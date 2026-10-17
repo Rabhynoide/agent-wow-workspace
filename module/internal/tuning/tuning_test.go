@@ -9,9 +9,9 @@ import (
 
 func TestOverrideAndDecide(t *testing.T) {
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, "tuning.json"), []byte(`{"chase_margin": 5, "avoid": false}`), 0o644)
+	os.WriteFile(filepath.Join(dir, "tuning.json"), []byte(`{"chase_margin": 5, "avoid": true}`), 0o644)
 	tu := NewSource(dir).Get()
-	if tu.ChaseMargin != 5 || tu.Avoid || tu.FleeMargin != 15 {
+	if tu.ChaseMargin != 5 || !tu.Avoid || tu.FleeMargin != 15 {
 		t.Fatalf("override: %+v", tu)
 	}
 	f := &Flee{}
