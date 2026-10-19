@@ -22,7 +22,7 @@ Appels : `scripts/rpc.sh <module.methode> '<json>' [chemin]` ; jobs async : `scr
 - `state.get_obj {guid}` (avec auras, aura_state, reaction), `state.spells {}`, `state.set_pos`.
 - Auras : SMSG_AURA_UPDATE(_ALL) de toute unité visible (sort, charges, temps restant, `mine`, `positive`) ; UNIT_FIELD_AURASTATE = champ 61, bit n-1 = état n (10 Victory Rush sur nous, 2 « < 20 % » sur la cible).
 - Répond au serveur comme le client : MSG_MOVE_TELEPORT_ACK, MSG_MOVE_WORLDPORT_ACK, vitesses forcées, enracinement (sans eux le serveur ignorait nos mouvements après une mort).
-- Positions des monstres en mouvement (2026-10-19) : interpolées le long de leur trajet (SMSG_MONSTER_MOVE : départ, destination, durée ; linéaire même pour les courbes) au lieu de la seule destination, qui les donnait au corps à corps jusqu'à 2 s trop tôt (Victory Rush et Rend refusés « hors de portée », code 97). Notre propre personnage garde la destination.
+- Positions des monstres en mouvement : x, y, z et `dist` = destination de leur trajet (comme avant) ; `dist_now` (2026-10-19) = distance à leur position actuelle, interpolée le long du trajet (SMSG_MONSTER_MOVE : départ, destination, durée). `combat` ne lance un sort que si les deux distances sont à portée (Victory Rush et Rend refusés « hors de portée », code 97, quand le monstre arrivait encore). Interpoler les positions pour tout (variante G) rendait le 6 → 8 plus lent de 5-8 min.
 - Limites : pas de chat ni de journal de combat complet.
 
 ## world (MySQL acore_world, lecture seule)

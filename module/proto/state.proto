@@ -130,6 +130,9 @@ message Obj {
   uint32 aura_state = 17;
   // Only with NearbyRequest.with_auras.
   repeated Aura auras = 18;
+  // Distance to where a moving monster is now, along its move (x, y, z and dist give its
+  // destination, as the server will place it): the spell range checks use both.
+  float dist_now = 19;
 }
 
 message NearbyResponse {

@@ -24,7 +24,7 @@ Référence humaine (journal/sessions/20261014_humain_1-8.md) : **1 → 8 en ~60
 - [~] (réglages `journal/learn/tuning.json` + apprentissage des cas limites, 2026-10-14 ; variantes B-E à mesurer, NOTES) Prudence qui coûte du temps : 19-33 fuites par run, presque toutes les quêtes 9-10 reportées. Essayer (une variante à la fois) : reporter une quête après 2 fuites au lieu d'1 ; règle des 3 attaquants assouplie quand ils sont plus faibles ou qu'une potion est prête ; `chaseMargin` 10 → 5.
 - [x] Contournement des monstres (`move/avoid.go`) mesuré contre son absence (variante E, 2026-10-17) : sans, 46,6 min contre 58,6 ; désactivé (`avoid` false), la marche passe de 38 % à 22-26 %.
 - [ ] Mine de Fargodeep (quêtes 47, 60, 62, 87) : moitié des fuites de 5 à 8. Reporter dès la première fuite toute quête dont la cible est dans la mine, ou n'y aller qu'au niveau 8-9 ; mesurer.
-- [~] (2026-10-19 : code 97 = hors de portée ; positions des monstres interpolées le long de leur trajet, module state ; à mesurer, variante G) Sorts tentés pour rien (Victory Rush 34428/97 ×8-20 par run, Charge 100/128, Rend 772/97) : vérifier l'état d'aura, la distance et la cible avant de les lancer.
+- [~] (2026-10-19 : code 97 = hors de portée ; interpoler les positions pour tout, variante G : 54,2 min, plus lent ; variante I : `dist_now` pour la portée des sorts seulement, à mesurer) Sorts tentés pour rien (Victory Rush 34428/97 ×8-20 par run, Charge 100/128, Rend 772/97) : vérifier l'état d'aura, la distance et la cible avant de les lancer.
 - [ ] Repos (5-7 %) : manger/boire dès le début du repos, Premiers soins (bandages) pour le guerrier.
 - [ ] Butin (2 %) et sacs : ne ramasser que ce qui vaut quelque chose quand les sacs sont presque pleins.
 

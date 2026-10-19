@@ -12,7 +12,7 @@ runs=${1:-2}; target=${2:-8}; maxmin=${3:-70}; snap=${4:-warrior_human_6}
 tune=journal/learn/tuning.json
 cp "$tune" logs/tuning.json.orig
 trap 'cp logs/tuning.json.orig "$tune"' EXIT
-for variant in ${VARIANTS:-"A: B:postpone_after_flights=2 C:crowd_flee=0 D:chase_margin=5 E:avoid=true"}; do
+for variant in ${VARIANTS:-A: B:postpone_after_flights=2 C:crowd_flee=0 D:chase_margin=5 E:avoid=true}; do
   name=${variant%%:*} change=${variant#*:}
   python3 -I - "$change" logs/tuning.json.orig "$tune" <<'EOF'
 import json, sys

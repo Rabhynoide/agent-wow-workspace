@@ -819,7 +819,10 @@ type Obj struct {
 	// UNIT_FIELD_AURASTATE (2 = health below 20 %: Execute usable).
 	AuraState uint32 `protobuf:"varint,17,opt,name=aura_state,json=auraState,proto3" json:"aura_state,omitempty"`
 	// Only with NearbyRequest.with_auras.
-	Auras         []*Aura `protobuf:"bytes,18,rep,name=auras,proto3" json:"auras,omitempty"`
+	Auras []*Aura `protobuf:"bytes,18,rep,name=auras,proto3" json:"auras,omitempty"`
+	// Distance to where a moving monster is now, along its move (x, y, z and dist give its
+	// destination, as the server will place it): the spell range checks use both.
+	DistNow       float32 `protobuf:"fixed32,19,opt,name=dist_now,json=distNow,proto3" json:"dist_now,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -978,6 +981,13 @@ func (x *Obj) GetAuras() []*Aura {
 		return x.Auras
 	}
 	return nil
+}
+
+func (x *Obj) GetDistNow() float32 {
+	if x != nil {
+		return x.DistNow
+	}
+	return 0
 }
 
 type NearbyResponse struct {
@@ -1281,7 +1291,7 @@ const file_state_proto_rawDesc = "" +
 	"\tnpc_flags\x18\x06 \x01(\rR\bnpcFlags\x12!\n" +
 	"\fhostile_only\x18\a \x01(\bR\vhostileOnly\x12\x1d\n" +
 	"\n" +
-	"with_auras\x18\b \x01(\bR\twithAuras\"\xb3\x03\n" +
+	"with_auras\x18\b \x01(\bR\twithAuras\"\xce\x03\n" +
 	"\x03Obj\x12\x12\n" +
 	"\x04guid\x18\x01 \x01(\x04R\x04guid\x12\x14\n" +
 	"\x05entry\x18\x02 \x01(\rR\x05entry\x12\x12\n" +
@@ -1303,7 +1313,8 @@ const file_state_proto_rawDesc = "" +
 	"\breaction\x18\x10 \x01(\tR\breaction\x12\x1d\n" +
 	"\n" +
 	"aura_state\x18\x11 \x01(\rR\tauraState\x12-\n" +
-	"\x05auras\x18\x12 \x03(\v2\x17.wowagent.state.v1.AuraR\x05auras\"R\n" +
+	"\x05auras\x18\x12 \x03(\v2\x17.wowagent.state.v1.AuraR\x05auras\x12\x19\n" +
+	"\bdist_now\x18\x13 \x01(\x02R\adistNow\"R\n" +
 	"\x0eNearbyResponse\x12*\n" +
 	"\x04objs\x18\x01 \x03(\v2\x16.wowagent.state.v1.ObjR\x04objs\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\rR\x05total\"Y\n" +

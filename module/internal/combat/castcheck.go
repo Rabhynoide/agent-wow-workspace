@@ -196,6 +196,9 @@ func (b *spellBook) canCast(spell uint32, me *statepb.SelfInfo, t *statepb.Obj, 
 	if info.TargetAuraState > 0 && !auraState(t.AuraState, info.TargetAuraState) {
 		return false, "target aura state"
 	}
+	// A monster running at us is at its destination for t's position, but not yet there: in range
+	// only when both distances are (Victory Rush, Rend refused "out of range" before, code 97).
+	dist = max(dist, t.DistNow)
 	switch {
 	case info.Melee:
 		if dist > meleeRange+0.5 {

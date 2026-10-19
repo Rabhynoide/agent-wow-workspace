@@ -209,10 +209,13 @@ func kindOf(t uint8) string {
 }
 
 func (o *Obj) toPB(cx, cy, cz float32) *pb.Obj {
+	d := float32(math.Sqrt(float64((o.X-cx)*(o.X-cx) + (o.Y-cy)*(o.Y-cy) + (o.Z-cz)*(o.Z-cz))))
 	x, y, z := o.pos(time.Now())
-	d := float32(math.Sqrt(float64((x-cx)*(x-cx) + (y-cy)*(y-cy) + (z-cz)*(z-cz))))
+	dn := float32(math.Sqrt(float64((x-cx)*(x-cx) + (y-cy)*(y-cy) + (z-cz)*(z-cz))))
+	// Positions stay the destination: placing moving monsters along their way for everything made
+	// the 6 -> 8 bench 5-8 min slower (3 runs of 2026-10-19, the Fargodeep quests postponed each time).
 	return &pb.Obj{
-		Guid: o.Guid, Entry: o.u(fEntry), Kind: kindOf(o.Type), X: x, Y: y, Z: z, Dist: d,
+		Guid: o.Guid, Entry: o.u(fEntry), Kind: kindOf(o.Type), X: o.X, Y: o.Y, Z: o.Z, Dist: d, DistNow: dn,
 		Level: o.u(fUnitLevel), Hp: o.u(fUnitHealth), MaxHp: o.u(fUnitMaxHP), Faction: o.u(fUnitFaction),
 		UnitFlags: o.u(fUnitFlags), NpcFlags: o.u(fUnitNpc), DynFlags: o.u(fUnitDyn), Target: o.guid(fUnitTarget),
 	}

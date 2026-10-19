@@ -43,23 +43,41 @@ func (s *Service) chainPull(ctx context.Context, j *job, me *statepb.SelfInfo, t
 	}
 	zones, now := s.fledZones(), time.Now()
 	var extra []*statepb.Obj
+	why := map[string]int{} // candidates left out, by reason (log "chain pull skipped")
 	for len(group) < size {
 		var pick *statepb.Obj
 		pickD := float32(chainSearch)
 		for _, h := range hostiles {
-			if in[h.Guid] || h.Target != 0 || h.Reaction != "hostile" || h.Level > me.Level+1 || h.Level+5 < me.Level ||
-				s.wasAbandoned(h.Guid) || s.wasCrowded(h.Guid) || inFledZone(zones, me.Map, h.X, h.Y, now) {
+			if in[h.Guid] || h.Target != 0 || h.Reaction != "hostile" || dist2D(h.X, h.Y, t.X, t.Y) >= chainSearch {
+				continue
+			}
+			if h.Level > me.Level+1 || h.Level+5 < me.Level {
+				why["level"]++
+				continue
+			}
+			if s.wasAbandoned(h.Guid) || s.wasCrowded(h.Guid) || inFledZone(zones, me.Map, h.X, h.Y, now) {
+				why["avoided"]++
 				continue
 			}
 			d := dist2D(h.X, h.Y, t.X, t.Y)
-			if d >= pickD || len(addsOf(h, hostiles, me.Level)) > countIn(addsOf(h, hostiles, me.Level), in) {
-				continue // too far, or it would bring monsters of its own
+			if d >= pickD {
+				continue
+			}
+			if own := addsOf(h, hostiles, me.Level); len(own) > countIn(own, in) {
+				why["own adds"]++
+				continue
 			}
 			try := append(append([]*statepb.Obj{}, group...), h)
+			if _, _, ok := groupSpot(me, try, nil, me.Level); !ok {
+				why["too far apart"]++
+				continue
+			}
 			if _, _, ok := groupSpot(me, try, others(hostiles, try), me.Level); !ok {
+				why["spot seen by others"]++
 				continue
 			}
 			if ok, _, _ := fits(t, try[1:]); !ok {
+				why["loss"]++
 				continue
 			}
 			pick, pickD = h, d
@@ -72,12 +90,21 @@ func (s *Service) chainPull(ctx context.Context, j *job, me *statepb.SelfInfo, t
 		in[pick.Guid] = true
 	}
 	if len(extra) == 0 {
+		if len(why) > 0 {
+			slog.Info("chain pull skipped", "entry", t.Entry, "size", size, "why", why)
+		}
 		return 0
 	}
 	x, y, _ := groupSpot(me, group, others(hostiles, group), me.Level)
 	j.Update(func(st *pb.CombatStatus) { st.Doing = "group pulling" })
 	if st, err := s.api.GotoWait(ctx, x, y, t.Z, 1.5, 30); err != nil || st.State != "arrived" {
-		slog.Info("chain pull", "entry", t.Entry, "monsters", len(group), "came", "no spot", "spot", [2]float32{x, y})
+		got := ""
+		if err != nil {
+			got = err.Error()
+		} else {
+			got = st.State + " " + st.Reason
+		}
+		slog.Info("chain pull", "entry", t.Entry, "monsters", len(group), "came", "no spot", "spot", [2]float32{x, y}, "goto", got)
 		return 0
 	}
 	came := 0
