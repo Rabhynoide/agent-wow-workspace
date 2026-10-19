@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"os"
 	"sync"
+	"time"
 
 	"wowagent/internal/wire"
 )
@@ -78,7 +79,35 @@ type Obj struct {
 	HasPos     bool
 	Speeds     [9]float32
 	Auras      map[uint8]*aura // by aura slot
+	spl        *spline         // monster on its way (SMSG_MONSTER_MOVE); X, Y, Z = destination
 }
+
+// spline is a monster move: from the position in the packet to the destination in dur. Positions are
+// read along it (linear, also for Catmull-Rom paths): with the destination alone, a monster running
+// at us was taken for being in melee range up to 2 s too soon (Victory Rush and Rend refused "out of
+// range" 15-25 times per bench, 2026-10-17).
+type spline struct {
+	fx, fy, fz float32
+	start      time.Time
+	dur        time.Duration
+}
+
+// pos is where the object is now.
+func (o *Obj) pos(now time.Time) (x, y, z float32) {
+	sp := o.spl
+	if sp == nil || sp.dur <= 0 {
+		return o.X, o.Y, o.Z
+	}
+	f := float32(now.Sub(sp.start)) / float32(sp.dur)
+	if f >= 1 {
+		return o.X, o.Y, o.Z
+	}
+	f = max(f, 0)
+	return sp.fx + (o.X-sp.fx)*f, sp.fy + (o.Y-sp.fy)*f, sp.fz + (o.Z-sp.fz)*f
+}
+
+// setPos places the object (no move running).
+func (o *Obj) setPos(x, y, z float32) { o.X, o.Y, o.Z, o.HasPos, o.spl = x, y, z, true, nil }
 
 func (o *Obj) u(i uint16) uint32 { return o.F[i] }
 func (o *Obj) guid(i uint16) uint64 {
@@ -185,7 +214,7 @@ func (s *Store) monsterMove(r *wire.Reader) {
 	}
 	// Our own character moves by spline only when the server drives it (Charge, knockback, fear...):
 	// keep our position model in sync with the destination.
-	o.X, o.Y, o.Z, o.HasPos = x, y, z, true
+	o.setPos(x, y, z)
 	switch typ {
 	case 1:
 		return
@@ -200,7 +229,7 @@ func (s *Store) monsterMove(r *wire.Reader) {
 	if flags&splineAnimation != 0 {
 		r.Skip(5)
 	}
-	r.U32() // duration
+	dur := r.U32()
 	if flags&splineParabolic != 0 {
 		r.Skip(8)
 	}
@@ -219,6 +248,9 @@ func (s *Store) monsterMove(r *wire.Reader) {
 	dx, dy, dz := r.F32(), r.F32(), r.F32()
 	if !r.Err {
 		o.X, o.Y, o.Z = dx, dy, dz
+		if guid != s.self && dur > 0 {
+			o.spl = &spline{fx: x, fy: y, fz: z, start: time.Now(), dur: time.Duration(dur) * time.Millisecond}
+		}
 	}
 }
 
@@ -314,7 +346,8 @@ func (s *Store) movement(o *Obj, r *wire.Reader) {
 			s.skipSpline(r)
 		}
 		if !r.Err {
-			o.X, o.Y, o.Z, o.O, o.HasPos = x, y, z, orient, true
+			o.setPos(x, y, z)
+			o.O = orient
 		}
 	case flags&0x100 != 0:
 		r.PackedGUID()
@@ -323,12 +356,14 @@ func (s *Store) movement(o *Obj, r *wire.Reader) {
 		orient := r.F32()
 		r.F32()
 		if !r.Err {
-			o.X, o.Y, o.Z, o.O, o.HasPos = x, y, z, orient, true
+			o.setPos(x, y, z)
+			o.O = orient
 		}
 	case flags&0x40 != 0:
 		x, y, z, orient := r.F32(), r.F32(), r.F32(), r.F32()
 		if !r.Err {
-			o.X, o.Y, o.Z, o.O, o.HasPos = x, y, z, orient, true
+			o.setPos(x, y, z)
+			o.O = orient
 		}
 	}
 	if flags&0x8 != 0 {

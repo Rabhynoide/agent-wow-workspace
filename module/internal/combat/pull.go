@@ -182,6 +182,9 @@ func (s *Service) choosePull(ctx context.Context, j *job, me *statepb.SelfInfo, 
 		crowded = append(crowded, c)
 	}
 	if best != nil {
+		if extra := s.chainPull(ctx, j, me, best, hostile.Objs, fits); extra > 0 {
+			bestN += extra
+		}
 		if bestN > 1 {
 			slog.Info("group pull", "entry", best.Entry, "monsters", bestN, "dist", int(best.Dist), "size", s.pullSize.cap(s.tuneGet()))
 		}

@@ -7,6 +7,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"time"
 	"wowagent/internal/faction"
 
 	modv1 "github.com/agent-wow/agent-wow/pkg/modules/v1"
@@ -208,9 +209,10 @@ func kindOf(t uint8) string {
 }
 
 func (o *Obj) toPB(cx, cy, cz float32) *pb.Obj {
-	d := float32(math.Sqrt(float64((o.X-cx)*(o.X-cx) + (o.Y-cy)*(o.Y-cy) + (o.Z-cz)*(o.Z-cz))))
+	x, y, z := o.pos(time.Now())
+	d := float32(math.Sqrt(float64((x-cx)*(x-cx) + (y-cy)*(y-cy) + (z-cz)*(z-cz))))
 	return &pb.Obj{
-		Guid: o.Guid, Entry: o.u(fEntry), Kind: kindOf(o.Type), X: o.X, Y: o.Y, Z: o.Z, Dist: d,
+		Guid: o.Guid, Entry: o.u(fEntry), Kind: kindOf(o.Type), X: x, Y: y, Z: z, Dist: d,
 		Level: o.u(fUnitLevel), Hp: o.u(fUnitHealth), MaxHp: o.u(fUnitMaxHP), Faction: o.u(fUnitFaction),
 		UnitFlags: o.u(fUnitFlags), NpcFlags: o.u(fUnitNpc), DynFlags: o.u(fUnitDyn), Target: o.guid(fUnitTarget),
 	}

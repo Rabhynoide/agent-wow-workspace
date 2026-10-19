@@ -2,6 +2,7 @@ package state
 
 import (
 	"testing"
+	"time"
 
 	"wowagent/internal/wire"
 )
@@ -82,6 +83,44 @@ func TestMonsterMoveDestination(t *testing.T) {
 	st.Handle(opMonsterMove, monsterMove(42, splineCatmull|splineCyclic, [][3]float32{{50, 50, 50}, {60, 60, 60}}))
 	if mob.X != 1 || mob.Y != 2 || mob.Z != 3 {
 		t.Fatalf("cyclic: pos = %v %v %v", mob.X, mob.Y, mob.Z)
+	}
+}
+
+func TestMonsterMoveAlongTheWay(t *testing.T) {
+	st := NewStore(1)
+	mob := st.obj(42, TypeUnit)
+	st.Handle(opMonsterMove, append(monsterMove(42, 0, [][3]float32{{11, 22, 33}}), 0, 0, 0, 0))
+	if mob.spl == nil {
+		t.Fatal("no spline kept")
+	}
+	start := mob.spl.start
+	if x, y, z := mob.pos(start.Add(500 * time.Millisecond)); x != 6 || y != 12 || z != 18 {
+		t.Fatalf("half way: %v %v %v", x, y, z)
+	}
+	if x, _, _ := mob.pos(start.Add(2 * time.Second)); x != 11 {
+		t.Fatalf("arrived: %v", x)
+	}
+	if x, _, _ := mob.pos(start.Add(-time.Second)); x != 1 {
+		t.Fatalf("before the start: %v", x)
+	}
+	// A stop (type 1) places it where the packet says, no move running.
+	w := &wire.Writer{}
+	w.PackedGUID(42)
+	w.U8(0)
+	w.F32(5)
+	w.F32(5)
+	w.F32(5)
+	w.U32(10)
+	w.U8(1)
+	st.Handle(opMonsterMove, w.B)
+	if x, _, _ := mob.pos(time.Now()); mob.spl != nil || x != 5 {
+		t.Fatalf("stop: %v %v", x, mob.spl)
+	}
+	// Our own character: the destination only (the position model of move follows it).
+	me := st.obj(1, TypePlayer)
+	st.Handle(opMonsterMove, append(monsterMove(1, 0, [][3]float32{{11, 22, 33}}), 0, 0, 0, 0))
+	if me.spl != nil || me.X != 11 {
+		t.Fatalf("self: %v %v", me.X, me.spl)
 	}
 }
 
