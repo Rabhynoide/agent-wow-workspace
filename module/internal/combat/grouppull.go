@@ -29,7 +29,23 @@ func (s *Service) chainPull(ctx context.Context, j *job, me *statepb.SelfInfo, t
 	fits func(*statepb.Obj, []*statepb.Obj) (bool, float32, float32)) int {
 	tune := s.tuneGet()
 	size := s.pullSize.cap(tune)
-	if !tune.ChainPull || size < 2 || t.Target != 0 || t.Reaction != "hostile" {
+	if !tune.ChainPull {
+		return 0
+	}
+	if size < 2 || t.Target != 0 || t.Reaction != "hostile" {
+		slog.Info("chain pull off", "entry", t.Entry, "size", size, "target_busy", t.Target != 0, "reaction", t.Reaction)
+		return 0
+	}
+	near, idle := 0, 0
+	for _, h := range hostiles {
+		if h.Guid != t.Guid && dist2D(h.X, h.Y, t.X, t.Y) < chainSearch {
+			if near++; h.Target == 0 && h.Reaction == "hostile" {
+				idle++
+			}
+		}
+	}
+	if idle == 0 {
+		slog.Info("chain pull none", "entry", t.Entry, "size", size, "near", near, "hostiles", len(hostiles))
 		return 0
 	}
 	adds := addsOf(t, hostiles, me.Level)
