@@ -15,6 +15,5 @@
  "add_cost": 1.5,
  "pull_size": 2,
  "pull_size_max": 4,
- "pull_up_after": 2,
- "quest_hub": true
+ "pull_up_after": 2
 }
