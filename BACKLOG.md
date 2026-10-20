@@ -29,7 +29,8 @@ Référence humaine (journal/sessions/20261014_humain_1-8.md) : **1 → 8 en ~60
 - [ ] Butin (2 %) et sacs : ne ramasser que ce qui vaut quelque chose quand les sacs sont presque pleins.
 
 - [x] Pull de groupe (`chain_pull`, variante M, 2026-10-20) : sans objet tel quel. Le choix de pull ne sert que ~9 fois sur ~80 combats d'un 6 → 8 : presque tous commencent par un monstre qui nous attaque pendant la marche. Pour prendre plus de monstres il faudrait agir sur la marche (aller exprès au contact d'un 2e monstre en chemin) : à repenser.
-- [ ] Ralentissement inexpliqué depuis le 2026-10-19 (6 → 8 en 51-68 min au lieu de 43-51, 10 runs, voir l'audit de journal/bench/20261020_*.md) : tester l'heure (référence en journée), sinon redémarrer le worldserver (accord de l'utilisateur).
+- [~] Ralentissement de nuit (2026-10-19/20 : 10 runs 6 → 8 de 51-68 min entre 20 h et 7 h ; de jour 45,2 / 50,6 avec le même code) : benchs de jour seulement (NOTES). Cause à trouver : comparer un run de nuit et de jour (monstres vus, positions, fuites en marchant) ; redémarrer le worldserver pour voir si ça persiste (accord de l'utilisateur).
+- [ ] Remesurer de jour : G (positions interpolées partout) et le pull de groupe ne sont pas jugés (mesurés de nuit).
 - [ ] À REMESURER (2026-10-20) : les variantes G (positions interpolées partout), H (pull de groupe), I et K ont tourné pendant la Sanssaint, avec les flame bunnies de Goldshire pris pour des monstres de niveau 70 (corrigé) : leurs temps (51-68 min) ne jugent pas ces changements. Refaire I (référence), puis le pull de groupe (`pull_adapt` + `chain_pull`), puis éventuellement l'interpolation complète.
 
 ### Étape 2 : quitter Elwynn (niveaux 10-20)

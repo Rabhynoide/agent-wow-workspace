@@ -10,6 +10,7 @@ L'agent doit monter un personnage du niveau 1 au niveau 80 le plus vite possible
 
 ## Protocole de mesure (décidé avec l'utilisateur le 2026-10-14)
 - Une variante = **2 benchs 6 → 8** depuis le snapshot `warrior_human_6` (`FROM=warrior_human_6 scripts/bench.sh 8 70`, ~50 min chacun, détaché + `bench_watch.sh`). C'est la plage la plus informative : mine de Fargodeep (la moitié des fuites), Cutpurse de la route de Goldshire, beaucoup de quêtes, combats en marchant, achats, potions. Écart d'un run à l'autre ±6 min : un seul run ne prouve rien.
+- **Benchs de jour seulement (entre 7 h et 19 h, heure locale)** : du 2026-10-19 20 h au 2026-10-20 7 h, 10 runs 6 → 8 d'affilée ont pris 51-68 min contre 42-51 de jour (même code ; cause non trouvée, ni la charge de la machine, ni l'apprentissage, ni la config du serveur). Une série lancée le soir ne compare rien ; comparer seulement des runs de même créneau.
 - Non-régression de temps en temps : 1 → 6 (`scripts/bench.sh 6 70`, ~60 min, peu de variance).
 - Avant un commit ou pour un problème propre aux niveaux 8-10 (grind, marchands) : 8 → 10 depuis `warrior_human_8` (`FROM=warrior_human_8 scripts/bench.sh 10 120`, 100-120 min, très variable).
 - Snapshots : `warrior_human_6` (2026-10-14, 191 pc, sans potion), `warrior_human_8` (2026-10-14, 635 pc, 1 élixir). Les refaire avec `SAVE_AT="6:warrior_human_6 8:warrior_human_8" scripts/bench.sh 10 240` quand le code du début change beaucoup.
