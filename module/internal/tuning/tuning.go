@@ -48,6 +48,9 @@ type Tuning struct {
 	PullSize    int  `json:"pull_size"`
 	PullSizeMax int  `json:"pull_size_max"`
 	PullUpAfter int  `json:"pull_up_after"`
+	// QuestHub: auto.run takes all the quests of its batch first, works on their objectives, then
+	// turns them in, by rounds (auto/hub.go), instead of accept, objectives, turn-in one by one.
+	QuestHub bool `json:"quest_hub"`
 }
 
 func Defaults() Tuning {

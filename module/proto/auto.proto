@@ -46,6 +46,14 @@ message AutoStatus {
   repeated string progress = 9;
   // Deaths this job recovered from (one more when it ends dead).
   uint32 deaths = 10;
+  // Quests of the batch that failed while the others went on (tuning quest_hub); quest and reason
+  // also hold the first of them when the job ends failed.
+  repeated QuestFailure failed = 11;
+}
+
+message QuestFailure {
+  uint32 quest = 1;
+  string reason = 2;
 }
 
 message GotoRequest {

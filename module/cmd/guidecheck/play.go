@@ -368,6 +368,11 @@ type jobStatus struct {
 	Done   []uint32 `json:"done"`
 	Level  uint32   `json:"level"`
 	Deaths uint32   `json:"deaths"`
+	// Quests that failed while the batch went on (auto quest_hub).
+	Failed []struct {
+		Quest  uint32 `json:"quest"`
+		Reason string `json:"reason"`
+	} `json:"failed"`
 }
 
 // job starts an auto job and waits for its end, logging each new step. Past the deadline the job is
@@ -564,34 +569,44 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 				say("  done %v", st.Done)
 			}
 			if st.State != "done" {
-				q := st.Quest
-				reason := st.Reason
 				switch {
-				case strings.Contains(reason, "fled from monsters") && ps.flights[q]+1 < tune.Get().PostponeAfterFlights:
-					// Not postponed yet (tuning postpone_after_flights): the other quests first, then again.
-					ps.flights[q]++
-					ps.waitUntil[q] = time.Now().Add(3 * time.Minute)
-					say("  %d fled (%d/%d before postponing), retried in 3 min: %s", q, ps.flights[q], tune.Get().PostponeAfterFlights, reason)
-				case strings.Contains(reason, "too dangerous") || strings.Contains(reason, "needs level"):
-					ps.retryAt[q] = me.Level + 1
-					say("  %d postponed to level %d: %s", q, me.Level+1, reason)
-				case strings.Contains(reason, "dead"):
-					ps.retryAt[q] = me.Level + 1
-					say("  DEATH on %d (%d in this run), postponed to level %d: %s", q, deaths+1, me.Level+1, reason)
 				case st.State == "stopped" && st.Reason == "time limit":
 					say("time limit (%d min) reached during a job", maxMin)
 					return 2
 				case st.State == "stopped":
 					say("auto stopped from outside")
 					return 1
-				case strings.Contains(reason, "no live entry") && ps.tries[q] < 2:
-					ps.tries[q]++
-					ps.waitUntil[q] = time.Now().Add(4 * time.Minute)
-					say("  %d %s postponed 4 min (monsters dead or away, try %d/3)", q, c.cache[q].Title, ps.tries[q])
-				default:
-					ps.skipped[q] = reason
-					ps.skippedAt[q] = time.Now()
-					say("  SKIP %d %s: %s", q, c.cache[q].Title, reason)
+				}
+				failures := st.Failed
+				if len(failures) == 0 { // one by one: the job stops at the first failure
+					failures = append(failures, struct {
+						Quest  uint32 `json:"quest"`
+						Reason string `json:"reason"`
+					}{st.Quest, st.Reason})
+				}
+				for _, f := range failures {
+					q, reason := f.Quest, f.Reason
+					switch {
+					case strings.Contains(reason, "fled from monsters") && ps.flights[q]+1 < tune.Get().PostponeAfterFlights:
+						// Not postponed yet (tuning postpone_after_flights): the other quests first, then again.
+						ps.flights[q]++
+						ps.waitUntil[q] = time.Now().Add(3 * time.Minute)
+						say("  %d fled (%d/%d before postponing), retried in 3 min: %s", q, ps.flights[q], tune.Get().PostponeAfterFlights, reason)
+					case strings.Contains(reason, "too dangerous") || strings.Contains(reason, "needs level"):
+						ps.retryAt[q] = me.Level + 1
+						say("  %d postponed to level %d: %s", q, me.Level+1, reason)
+					case strings.Contains(reason, "dead"):
+						ps.retryAt[q] = me.Level + 1
+						say("  DEATH on %d (%d in this run), postponed to level %d: %s", q, deaths+1, me.Level+1, reason)
+					case strings.Contains(reason, "no live entry") && ps.tries[q] < 2:
+						ps.tries[q]++
+						ps.waitUntil[q] = time.Now().Add(4 * time.Minute)
+						say("  %d %s postponed 4 min (monsters dead or away, try %d/3)", q, c.cache[q].Title, ps.tries[q])
+					default:
+						ps.skipped[q] = reason
+						ps.skippedAt[q] = time.Now()
+						say("  SKIP %d %s: %s", q, c.cache[q].Title, reason)
+					}
 				}
 				savePlan(planPath(char), ps)
 			}

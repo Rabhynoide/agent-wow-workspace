@@ -23,6 +23,7 @@ import (
 	worldpb "wowagent/gen/worldv1"
 	"wowagent/internal/api"
 	"wowagent/internal/jobs"
+	"wowagent/internal/tuning"
 	"wowagent/internal/wire"
 	"wowagent/internal/xpscore"
 )
@@ -62,12 +63,14 @@ type Service struct {
 	potionFailedAt atomic.Uint32
 	// learned fights (journal/learn/fights.json): the danger of a monster type
 	fights *xpscore.File
+	// caution and play knobs (journal/learn/tuning.json): quest_hub
+	tune *tuning.Source
 }
 
 func Register(g grpc.ServiceRegistrar, s modv1.SessionClient) {
 	runner := jobs.NewRunner(&pb.AutoStatus{State: "idle"})
 	runner.Decorate = func(j *job, st *pb.AutoStatus) { st.ElapsedS = uint32(time.Since(j.Start).Seconds()) }
-	svc := &Service{sess: s, corpse: make(chan [4]float32, 4), api: api.C{S: s}, jobs: runner, fights: xpscore.LearnedFile()}
+	svc := &Service{sess: s, corpse: make(chan [4]float32, 4), api: api.C{S: s}, jobs: runner, fights: xpscore.LearnedFile(), tune: tuning.NewSource("")}
 	pb.RegisterAutoServer(g, svc)
 	go svc.guardLoop()
 }
@@ -409,6 +412,9 @@ func (r *run) quests(req *pb.RunRequest) error {
 		}
 		r.progress()
 	}
+	if r.s.tune.Get().QuestHub {
+		return r.hubQuests(req)
+	}
 	for _, id := range req.Quests {
 		r.j.Update(func(st *pb.AutoStatus) { st.Quest = id })
 		var err error
@@ -639,29 +645,46 @@ func (r *run) doQuest(id uint32, reward uint32, chosen bool) error {
 	if err != nil {
 		return err
 	}
+	if err := r.acceptQuest(id, info); err != nil {
+		return err
+	}
+	if err := r.completeQuest(id, info); err != nil {
+		return err
+	}
+	return r.turnInQuest(id, info, reward, chosen)
+}
+
+// acceptQuest goes to the nearest giver and accepts the quest, unless it is already in the log.
+func (r *run) acceptQuest(id uint32, info *worldpb.QuestInfo) error {
 	snap, err := r.snapshot()
 	if err != nil {
 		return err
 	}
 	me := snap.Self
-	if inLog(snap, id) == nil {
-		if info.MinLevel > me.Level {
-			return fmt.Errorf("needs level %d (have %d)", info.MinLevel, me.Level)
-		}
-		st := nearestNpc(info.Starters, me.Map, me.X, me.Y)
-		if st == nil {
-			return fmt.Errorf("no quest giver found on this map")
-		}
-		r.step("go to %s to accept '%s'", st.Name, info.Title)
-		if err := r.approachNpc(st.Entry, st.X, st.Y, st.Z); err != nil {
-			return err
-		}
-		if res, err := r.s.api.Accept(r.ctx, st.Entry, id); err != nil || !res.Ok {
-			return fmt.Errorf("accept failed: %v %s", err, res.GetReason())
-		}
+	if inLog(snap, id) != nil {
+		return nil
 	}
+	if info.MinLevel > me.Level {
+		return fmt.Errorf("needs level %d (have %d)", info.MinLevel, me.Level)
+	}
+	st := nearestNpc(info.Starters, me.Map, me.X, me.Y)
+	if st == nil {
+		return fmt.Errorf("no quest giver found on this map")
+	}
+	r.step("go to %s to accept '%s'", st.Name, info.Title)
+	if err := r.approachNpc(st.Entry, st.X, st.Y, st.Z); err != nil {
+		return err
+	}
+	if res, err := r.s.api.Accept(r.ctx, st.Entry, id); err != nil || !res.Ok {
+		return fmt.Errorf("accept failed: %v %s", err, res.GetReason())
+	}
+	return nil
+}
+
+// completeQuest works on the objectives of a quest in the log until it is complete.
+func (r *run) completeQuest(id uint32, info *worldpb.QuestInfo) error {
 	for tries := 0; tries < 12; tries++ {
-		snap, err = r.snapshot()
+		snap, err := r.snapshot()
 		if err != nil {
 			return err
 		}
@@ -670,27 +693,33 @@ func (r *run) doQuest(id uint32, reward uint32, chosen bool) error {
 			return fmt.Errorf("quest vanished from log")
 		}
 		if q.State == 1 {
-			break
+			return nil
 		}
 		if err := r.objectives(info, q); err != nil {
 			return err
 		}
 	}
-	snap, err = r.snapshot()
+	snap, err := r.snapshot()
 	if err != nil {
 		return err
 	}
 	if q := inLog(snap, id); q != nil && q.State != 1 {
 		return fmt.Errorf("objectives still incomplete (counts %v)", q.Counts)
 	}
+	return nil
+}
+
+// turnInQuest goes to the nearest ender of a complete quest and turns it in.
+func (r *run) turnInQuest(id uint32, info *worldpb.QuestInfo, reward uint32, chosen bool) error {
 	// Item rewards need bag space, or the turn-in is refused.
 	if err := r.ensureSpace(); err != nil {
 		r.step("could not make bag space: %v", err)
 	}
-	if snap, err = r.snapshot(); err != nil {
+	snap, err := r.snapshot()
+	if err != nil {
 		return err
 	}
-	me = snap.Self
+	me := snap.Self
 	en := nearestNpc(info.Enders, me.Map, me.X, me.Y)
 	if en == nil {
 		return fmt.Errorf("no quest ender found on this map")
