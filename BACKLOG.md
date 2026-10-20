@@ -33,6 +33,14 @@ Référence humaine (journal/sessions/20261014_humain_1-8.md) : **1 → 8 en ~60
 - [ ] Remesurer de jour : G (positions interpolées partout) n'est pas jugé (mesuré de nuit).
 - [ ] À REMESURER (2026-10-20) : les variantes G (positions interpolées partout), H (pull de groupe), I et K ont tourné pendant la Sanssaint, avec les flame bunnies de Goldshire pris pour des monstres de niveau 70 (corrigé) : leurs temps (51-68 min) ne jugent pas ces changements. La référence de jour (N, 47,9 min) est faite ; reste l'interpolation complète, de jour.
 
+### Idées (recherche du 2026-10-20 : guides de speedrun, code de mod-playerbots, notre code), par gain attendu
+- [ ] Quêtes par « hub » au lieu d'une à la fois : `auto.doQuest` fait prendre → objectifs → rendre pour chaque quête, donc un aller-retour par quête (mine de Fargodeep : 47, 60, 62 = trois trajets). Prendre toutes les quêtes d'un donneur / d'une ville, faire les objectifs proches ensemble (un kill compte pour toutes les quêtes qui le veulent), rendre tout en un passage. Vise la marche (22-26 %) et une partie du combat.
+- [ ] Valeur d'une quête en XP/minute (comme `IsQuestWorthDoing` de playerbots et la règle des speedrunners : sauter escortes, objets du décor lents à réapparaître, quêtes « facteur » hors route) : XP de la quête / (trajet + objectifs estimés) comparé à l'XP/min du grind (`xpscore`) ; sauter ou garder pour plus tard celles qui rapportent moins que le grind sur place.
+- [ ] Tuer ce qui est sur le chemin (playerbots : tout monstre qui donne de l'XP à moins de min(30, aggro + 10) yards pendant une quête ; speedrunners : les monstres verts/jaunes sur la route) : engager avec Charge (rage d'ouverture) au lieu d'être frappé de dos en marchant, et sans détour.
+- [ ] Mort comme voyage avant le niveau 10 (pas de malus de résurrection, `Death.SicknessLevel` 11) : esprit guérisseur quand le cimetière est plus près de la prochaine étape que le corps. Contraire à la remarque utilisateur du 2026-10-12 (durabilité) : à proposer seulement si la mesure le justifie.
+- [ ] Pierre de foyer liée à l'auberge du hub de quêtes, utilisée pour rendre les quêtes loin (recharge 30 min) : surtout utile hors d'Elwynn (étape 2).
+- [ ] Premiers soins (bandages) pour le guerrier, butin sélectif quand les sacs sont pleins : petits gains (repos 2-5 %, butin 1-5 %).
+
 ### Étape 2 : quitter Elwynn (niveaux 10-20)
 - [ ] Changer de zone : routes Zygor 13-20 (Westfall, Loch Modan, Redridge, Duskwood) dans `assets/routes/` ; voyages à pied d'une zone à l'autre, puis maîtres de vol (découverte, achat de trajets) et pierre de foyer (lier à l'auberge de la zone de quêtes).
 - [ ] Quête de classe guerrier 1640 « Beat Bartleby » (duel scripté) : débloque la Posture défensive ; puis postures dans la rotation si elles font gagner du temps.
