@@ -44,21 +44,21 @@ func TestLearnAndScore(t *testing.T) {
 		t.Fatalf("gap +1 extrapolated to %.1f %%", loss)
 	}
 	base := Mob{Entry: 1, MinLevel: 4, MaxLevel: 4, Spawns: 20, AreaRadius: 150, RespawnS: 300}
-	easy := Of(base, 5, 1, tb)
+	easy := Of(base, 5, 1, tb, AddCost)
 	hard := base
 	hard.MinLevel, hard.MaxLevel = 6, 6
 	camp := base
 	camp.Neighbours = 3
-	if h := Of(hard, 5, 1, tb); h.XPMin >= easy.XPMin || h.Loss <= easy.Loss {
+	if h := Of(hard, 5, 1, tb, AddCost); h.XPMin >= easy.XPMin || h.Loss <= easy.Loss {
 		t.Errorf("level 6 (%.0f xp/min, %.0f %%) should score below level 4 (%.0f xp/min, %.0f %%)", h.XPMin, h.Loss, easy.XPMin, easy.Loss)
 	}
-	if c := Of(camp, 5, 1, tb); c.XPMin >= easy.XPMin || c.PDeath <= easy.PDeath {
+	if c := Of(camp, 5, 1, tb, AddCost); c.XPMin >= easy.XPMin || c.PDeath <= easy.PDeath {
 		t.Errorf("a camp (%.0f xp/min, death %.2f) should score below lone monsters (%.0f, %.2f)", c.XPMin, c.PDeath, easy.XPMin, easy.PDeath)
 	}
 	// Two deaths in two fights against monster 2 (same level): the measured risk wins over the model.
 	killer := base
 	killer.Entry, killer.MinLevel, killer.MaxLevel = 2, 5, 5
-	if k := Of(killer, 5, 1, tb); k.PDeath < 2.0/12 || k.Deaths != 2 || k.Chained != 1 {
+	if k := Of(killer, 5, 1, tb, AddCost); k.PDeath < 2.0/12 || k.Deaths != 2 || k.Chained != 1 {
 		t.Errorf("monster 2: death %.2f, measured %+v", k.PDeath, k)
 	}
 }

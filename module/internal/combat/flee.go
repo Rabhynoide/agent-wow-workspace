@@ -75,7 +75,7 @@ func (s *Service) lossLeft(me *statepb.SelfInfo, att []*statepb.Obj) float64 {
 			left[i] = float64(a.Hp) / float64(a.MaxHp)
 		}
 	}
-	return xpscore.LossLeftAt(levels, left, me.Level, me.ClassId, s.fights.Get(), s.tuneGet().AddCost)
+	return xpscore.LossLeft(levels, left, me.Level, me.ClassId, s.fights.Get(), s.tuneGet().AddCost)
 }
 
 // mustFlee tells whether the fight is expected to cost more health than we have (with fleeMargin),

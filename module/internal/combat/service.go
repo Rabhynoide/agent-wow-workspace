@@ -392,7 +392,6 @@ func (s *Service) gearIfLooted(ctx context.Context) {
 	s.mu.Unlock()
 	if len(g.Equipped) > 0 {
 		slog.Info("equipped after loot", "items", g.Equipped)
-		s.pullSize.gearUp(s.tuneGet())
 	}
 }
 
@@ -601,6 +600,7 @@ func (s *Service) buff(ctx context.Context, me *statepb.SelfInfo) {
 // mana uses its wand (Shoot) if one is equipped, else melee.
 func (s *Service) fight(ctx context.Context, j *job, guid uint64) (bool, string) {
 	rec := s.watchFight(ctx, guid)
+	s.pullSize.fightStart()
 	s.mu.Lock()
 	s.decision = nil
 	s.mu.Unlock()

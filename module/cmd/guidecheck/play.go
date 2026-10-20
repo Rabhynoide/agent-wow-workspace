@@ -269,7 +269,7 @@ func (c *checker) grindTargets(mapID uint32, x, y, radius float64, level, class 
 		}
 		m.RespawnS /= float64(m.Spawns)
 		m.Neighbours = float64(near[e]) / float64(m.Spawns)
-		all = append(all, ranked{m, xpscore.Of(*m, level, class, c.fights)})
+		all = append(all, ranked{m, xpscore.Of(*m, level, class, c.fights, tuning.NewSource(learnPath).Get().AddCost)})
 	}
 	sort.SliceStable(all, func(i, j int) bool { return all[i].s.XPMin > all[j].s.XPMin })
 	var out []uint32

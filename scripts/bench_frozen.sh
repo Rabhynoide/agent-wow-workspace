@@ -7,6 +7,10 @@
 set -u
 cd "$(dirname "$0")/.."
 commit=$1; runs=${2:-2}; target=${3:-8}; maxmin=${4:-70}; snap=${5:-warrior_human_6}
+# Both files must exist at <commit>: never bench with an empty learned table.
+for f in fights flee; do
+  git cat-file -e "$commit:journal/learn/$f.json" 2>/dev/null || { echo "no journal/learn/$f.json at $commit" >&2; exit 1; }
+done
 mkdir -p logs/learn_before_frozen logs/learn_after_frozen
 cp journal/learn/fights.json journal/learn/flee.json logs/learn_before_frozen/
 trap 'cp journal/learn/fights.json journal/learn/flee.json logs/learn_after_frozen/; cp logs/learn_before_frozen/*.json journal/learn/' EXIT
@@ -14,8 +18,10 @@ rm -f logs/bench_series.stop
 echo "$(date '+%F %T') frozen learning from $commit" >> logs/bench_series.log
 for i in $(seq 1 "$runs"); do
   [ -f logs/bench_series.stop ] && break
-  git show "$commit:journal/learn/fights.json" > journal/learn/fights.json
-  git show "$commit:journal/learn/flee.json" > journal/learn/flee.json
+  for f in fights flee; do
+    git show "$commit:journal/learn/$f.json" > "logs/learn_frozen_$f.json" && mv "logs/learn_frozen_$f.json" "journal/learn/$f.json" ||
+      { echo "$(date '+%F %T') frozen: cannot restore $f.json from $commit" >> logs/bench_series.log; exit 1; }
+  done
   scripts/bench_series.sh 1 "$target" "$maxmin" "$snap"
 done
 echo "$(date '+%F %T') frozen done" >> logs/bench_series.log

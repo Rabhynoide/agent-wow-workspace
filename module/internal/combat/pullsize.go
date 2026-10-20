@@ -38,6 +38,15 @@ type pullSizer struct {
 	size int // 0 until the first use: tuning PullSize
 	easy int // easy engagements of the full size in a row
 	cur  *engagement
+	// fighting: a fight runs (between fightStart and fightDone)
+	fighting bool
+}
+
+// fightStart marks a fight running: the engagement is not judged until it ends.
+func (p *pullSizer) fightStart() {
+	p.mu.Lock()
+	p.fighting = true
+	p.mu.Unlock()
 }
 
 // cap is the most monsters a pull may bring at once; 0 when the adaptive pull size is off.
@@ -47,6 +56,11 @@ func (p *pullSizer) cap(t tuning.Tuning) int {
 	}
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	// The engagement ended (no fight for engageGap): judge it before this pull uses the size. Not
+	// during a fight: the flight rule asks too, and the adds still hitting us belong to it.
+	if !p.fighting && p.cur != nil && time.Since(p.cur.end) > engageGap {
+		p.closeLocked(t)
+	}
 	return p.sizeLocked(t)
 }
 
@@ -60,11 +74,12 @@ func (p *pullSizer) sizeLocked(t tuning.Tuning) int {
 // fightDone adds a fight (its fightRecord, result as logged) to the engagement running, and closes
 // the previous one when this fight is a new engagement.
 func (p *pullSizer) fightDone(t tuning.Tuning, r *fightRecord, result string) {
-	if !t.PullAdapt {
-		return
-	}
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	p.fighting = false
+	if !t.PullAdapt || !r.sampled { // no health read during the fight: nothing to judge
+		return
+	}
 	start := r.start
 	if p.cur != nil && start.Sub(p.cur.end) > engageGap {
 		p.closeLocked(t)
@@ -108,20 +123,6 @@ func (p *pullSizer) closeLocked(t tuning.Tuning) {
 			p.size, p.easy = size+1, 0
 			p.logLocked("up", e)
 		}
-	}
-}
-
-// gearUp counts a better item equipped as an easy engagement: the next fights should cost less.
-func (p *pullSizer) gearUp(t tuning.Tuning) {
-	if !t.PullAdapt {
-		return
-	}
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	size := p.sizeLocked(t)
-	if p.easy++; p.easy >= max(t.PullUpAfter, 1) && size < t.PullSizeMax {
-		p.size, p.easy = size+1, 0
-		p.logLocked("up after gear", nil)
 	}
 }
 

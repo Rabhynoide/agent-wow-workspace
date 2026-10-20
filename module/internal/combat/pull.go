@@ -122,7 +122,7 @@ func (s *Service) pullFits(me *statepb.SelfInfo, maxPull float32) func(t *statep
 		for _, a := range adds {
 			levels = append(levels, a.Level)
 		}
-		loss := float32(xpscore.PullLossAt(levels, me.Level, me.ClassId, table, tune.AddCost))
+		loss := float32(xpscore.PullLoss(levels, me.Level, me.ClassId, table, tune.AddCost))
 		return loss <= limit && (size == 0 || len(levels) <= size), loss, limit
 	}
 }
@@ -182,9 +182,6 @@ func (s *Service) choosePull(ctx context.Context, j *job, me *statepb.SelfInfo, 
 		crowded = append(crowded, c)
 	}
 	if best != nil {
-		if extra := s.chainPull(ctx, j, me, best, hostile.Objs, fits); extra > 0 {
-			bestN += extra
-		}
 		if bestN > 1 {
 			slog.Info("group pull", "entry", best.Entry, "monsters", bestN, "dist", int(best.Dist), "size", s.pullSize.cap(s.tuneGet()))
 		}

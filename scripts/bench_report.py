@@ -48,8 +48,6 @@ group_fights = sum(1 for l in fights if not re.search(r"attackers_max=[01]\b", l
 zone_spawns = sum(1 for l in level_log if "near where we fled from" in l)
 # Adaptive pull size (combat/pullsize.go): size changes and pulls of several monsters on purpose.
 sizes = [m.group(1) + " (" + m.group(2).strip('"') + ")" for l in combat if (m := re.search(r'msg="pull size" size=(\d+) why=("[^"]*"|\S+)', l))]
-# Group pulls (combat/grouppull.go): "monsters/came" for each spot where we waited for several.
-chains = collections.Counter(m.group(1) + "/" + m.group(2) for l in combat if (m := re.search(r'msg="chain pull".* monsters=(\d+) came=("[^"]*"|\S+)', l)))
 group_pulls = collections.Counter(int(m.group(1)) for l in combat if (m := re.search(r'msg="group pull".* monsters=(\d+)', l)))
 # Caution knobs in effect (journal/learn/tuning.json) and borderline flight decisions (combat/flee.go).
 try:
@@ -88,7 +86,7 @@ lines = [f"# Bench {name} — {race} {cls} {first_level} → {target} ({date})",
          f"- Combats : {len(fights)} ; perdus : {len(lost)}"] + [f"  - {l}" for l in lost] + [
          f"- Fuites : {len(fled)} ; semées : {escaped}"] + [f"  - {l}" for l in fled] + [
          f"- Combats à plusieurs : {group_fights} ; changements de cible : {switches} ; sorts lancés à plusieurs : {dict(group_casts.most_common(8))}",
-         f"- Taille de pull : {len(sizes)} changements, finale {sizes[-1] if sizes else '—'} ; pulls de groupe (monstres: nombre) : {dict(sorted(group_pulls.items()))} ; attirés exprès (monstres/venus: nombre) : {dict(sorted(chains.items()))}",
+         f"- Taille de pull : {len(sizes)} changements, finale {sizes[-1] if sizes else '—'} ; pulls de groupe (monstres: nombre) : {dict(sorted(group_pulls.items()))}",
          f"- Zones fuies évitées : points d'apparition {zone_spawns} ; choix de pull {zone_pulls}",
          f"- Fin : {stops[-1] if stops else '?'}"]
 os.makedirs(os.path.join(root, "journal/bench"), exist_ok=True)

@@ -24,6 +24,7 @@ type fightRecord struct {
 	class    uint32
 	maxHP    uint32
 	hpStart  uint32
+	sampled  bool // hpStart, myLevel, class, maxHP are set
 	hpMin    uint32
 	hpEnd    uint32
 	most     int
@@ -40,8 +41,8 @@ func (s *Service) watchFight(ctx context.Context, guid uint64) *fightRecord {
 	r.wg.Add(1)
 	go func() {
 		defer r.wg.Done()
-		for first := true; ; first = false {
-			s.sampleFight(sub, r, first)
+		for {
+			s.sampleFight(sub, r)
 			if !sleep(sub, time.Second) {
 				return
 			}
@@ -50,7 +51,7 @@ func (s *Service) watchFight(ctx context.Context, guid uint64) *fightRecord {
 	return r
 }
 
-func (s *Service) sampleFight(ctx context.Context, r *fightRecord, first bool) {
+func (s *Service) sampleFight(ctx context.Context, r *fightRecord) {
 	b, err := s.api.Brief(ctx)
 	if err != nil || b.Self == nil {
 		return
@@ -60,7 +61,8 @@ func (s *Service) sampleFight(ctx context.Context, r *fightRecord, first bool) {
 	if me.Dead {
 		hp = 0
 	}
-	if first {
+	if !r.sampled { // the first sample that worked (a failed Brief left hp_start at 0)
+		r.sampled = true
 		r.hpStart, r.myLevel, r.class, r.maxHP = hp, me.Level, me.ClassId, me.MaxHp
 	}
 	r.hpMin, r.hpEnd = min(r.hpMin, hp), hp

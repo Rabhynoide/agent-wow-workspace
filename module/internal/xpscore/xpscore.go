@@ -142,13 +142,9 @@ func Risky(m Mob, level, class uint32, t *Table) string {
 }
 
 // PullLoss is the expected health loss (percent) of a fight against monsters of these levels at once
-// (the target and its adds), from the single fights: their average, times 1 + addCost per add.
-func PullLoss(levels []uint32, level, class uint32, t *Table) float64 {
-	return PullLossAt(levels, level, class, t, AddCost)
-}
-
-// PullLossAt is PullLoss with another extra loss per add (tuning.json add_cost).
-func PullLossAt(levels []uint32, level, class uint32, t *Table, addCost float64) float64 {
+// (the target and its adds), from the single fights: their average, times 1 + addCost per add
+// (tuning.json add_cost, AddCost by default).
+func PullLoss(levels []uint32, level, class uint32, t *Table, addCost float64) float64 {
 	if len(levels) == 0 {
 		return 0
 	}
@@ -163,12 +159,7 @@ func PullLossAt(levels []uint32, level, class uint32, t *Table, addCost float64)
 // LossLeft is the expected health loss (percent) still to come in a fight against these attackers,
 // each with the part of its health it has left (0-1): PullLoss with every single fight weighted by
 // what remains of it.
-func LossLeft(levels []uint32, left []float64, level, class uint32, t *Table) float64 {
-	return LossLeftAt(levels, left, level, class, t, AddCost)
-}
-
-// LossLeftAt is LossLeft with another extra loss per add (tuning.json add_cost).
-func LossLeftAt(levels []uint32, left []float64, level, class uint32, t *Table, addCost float64) float64 {
+func LossLeft(levels []uint32, left []float64, level, class uint32, t *Table, addCost float64) float64 {
 	if len(levels) == 0 {
 		return 0
 	}
@@ -180,8 +171,9 @@ func LossLeftAt(levels []uint32, left []float64, level, class uint32, t *Table, 
 	return sum / float64(len(levels)) * (1 + addCost*float64(len(levels)-1))
 }
 
-// Of scores a monster type for a character of this class and level.
-func Of(m Mob, level, class uint32, t *Table) Score {
+// Of scores a monster type for a character of this class and level; addCost is the extra loss per
+// add (tuning.json add_cost), as in the pull choice and the flight rule.
+func Of(m Mob, level, class uint32, t *Table, addCost float64) Score {
 	if m.MaxLevel < m.MinLevel {
 		m.MaxLevel = m.MinLevel
 	}
@@ -194,7 +186,7 @@ func Of(m Mob, level, class uint32, t *Table) Score {
 		single, _ := Single(m, lv, level, class, t)
 		kill := secs * hm
 		adds := addChance * m.Neighbours
-		loss := single * (1 + AddCost*adds)
+		loss := single * (1 + addCost*adds)
 		s.XP += float64(BaseGain(level, lv)) * exp
 		s.KillS += kill * (1 + adds)
 		s.Loss += loss

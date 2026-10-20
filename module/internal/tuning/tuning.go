@@ -48,9 +48,6 @@ type Tuning struct {
 	PullSize    int  `json:"pull_size"`
 	PullSizeMax int  `json:"pull_size_max"`
 	PullUpAfter int  `json:"pull_up_after"`
-	// ChainPull (with PullAdapt): bring idle monsters near the target along on purpose, up to the
-	// pull size, by standing where all of them see us (combat/grouppull.go).
-	ChainPull bool `json:"chain_pull"`
 }
 
 func Defaults() Tuning {
