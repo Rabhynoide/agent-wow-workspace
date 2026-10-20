@@ -152,11 +152,18 @@ func (r *run) hubQuests(req *pb.RunRequest) error {
 			break
 		}
 	}
+	// A quest still refused while another one of the batch failed is most likely its follow-up (61
+	// after 47): left for a later batch, neither done nor failed (reported, it was skipped for 6 h).
+	// Refused although all the others went through: a real failure.
+	othersFailed := first != nil
 	for _, q := range qs {
 		switch {
-		case q.state == hubTodo && q.acceptErr != nil:
+		case q.state != hubTodo:
+		case othersFailed:
+			r.note("quest %d left for later: %v", q.id, q.acceptErr)
+		case q.acceptErr != nil:
 			fail(q, q.acceptErr)
-		case q.state == hubTodo:
+		default:
 			fail(q, fmt.Errorf("not accepted"))
 		}
 	}
