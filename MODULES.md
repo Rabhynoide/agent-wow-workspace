@@ -18,7 +18,7 @@ Appels : `scripts/rpc.sh <module.methode> '<json>' [chemin]` ; jobs async : `scr
 ## state (paquets → état)
 - `state.brief {}` : self (pos, map, level, hp, power, xp, money, target, dead/ghost, class_id, race, talent_points, unit_flags, aura_state, auras), quêtes (id, state, counts), free_slots, durability_pct. À préférer.
 - `state.snapshot {}` : + objets portés (bag/bag_slot pour les paquets, durability/max_durability).
-- `state.nearby {kind, entry, radius, max(5), alive_only, npc_flags, hostile_only, with_auras}` : par distance ; `reaction` hostile/neutral/friendly (FactionTemplate.dbc), aura_state.
+- `state.nearby {kind, entry, radius, max(5), alive_only, npc_flags, hostile_only, with_auras}` : par distance ; `reaction` hostile/neutral/friendly (FactionTemplate.dbc), aura_state ; réaction vide pour les créatures non sélectionnables (UNIT_FLAG_NOT_SELECTABLE : déclencheurs d'événements, « bunnies »).
 - `state.get_obj {guid}` (avec auras, aura_state, reaction), `state.spells {}`, `state.set_pos`.
 - Auras : SMSG_AURA_UPDATE(_ALL) de toute unité visible (sort, charges, temps restant, `mine`, `positive`) ; UNIT_FIELD_AURASTATE = champ 61, bit n-1 = état n (10 Victory Rush sur nous, 2 « < 20 % » sur la cible).
 - Répond au serveur comme le client : MSG_MOVE_TELEPORT_ACK, MSG_MOVE_WORLDPORT_ACK, vitesses forcées, enracinement (sans eux le serveur ignorait nos mouvements après une mort).

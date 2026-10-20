@@ -192,3 +192,13 @@ func TestServerDrivenSelfMove(t *testing.T) {
 		t.Fatalf("self position = %v %v %v, want the charge destination", me.X, me.Y, me.Z)
 	}
 }
+
+func TestNotSelectableIsNoThreat(t *testing.T) {
+	st := NewStore(1)
+	me := st.obj(1, TypePlayer)
+	bunny := st.obj(42, TypeUnit)
+	bunny.F[fUnitFlags] = unitNotSelectable
+	if r := (&Service{}).reaction(bunny, me); r != "" {
+		t.Fatalf("flame bunny: %q", r)
+	}
+}

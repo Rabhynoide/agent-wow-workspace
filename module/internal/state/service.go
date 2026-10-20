@@ -249,7 +249,7 @@ func (s *Service) Nearby(_ context.Context, r *pb.NearbyRequest) (*pb.NearbyResp
 		}
 		p := o.toPB(me.X, me.Y, me.Z)
 		if o.Type == TypeUnit || o.Type == TypePlayer {
-			p.Reaction = s.factions.Reaction(o.u(fUnitFaction), me.u(fUnitFaction))
+			p.Reaction = s.reaction(o, me)
 		}
 		if r.HostileOnly && p.Reaction != "hostile" {
 			continue
@@ -293,7 +293,7 @@ func (s *Service) GetObj(_ context.Context, r *pb.GetObjRequest) (*pb.Obj, error
 	if o.Type == TypeUnit || o.Type == TypePlayer {
 		p.AuraState, p.Auras = o.u(fAuraState), aurasPB(o, st.self)
 		if me := st.objs[st.self]; me != nil {
-			p.Reaction = s.factions.Reaction(o.u(fUnitFaction), me.u(fUnitFaction))
+			p.Reaction = s.reaction(o, me)
 		}
 	}
 	return p, nil
@@ -308,4 +308,18 @@ func (s *Service) Spells(context.Context, *emptypb.Empty) (*pb.SpellsResponse, e
 	}
 	sort.Slice(out.Spells, func(i, j int) bool { return out.Spells[i] < out.Spells[j] })
 	return out, nil
+}
+
+// unitNotSelectable: UNIT_FLAG_NOT_SELECTABLE, set on the technical creatures of the server (event
+// triggers, "bunnies"): never a threat.
+const unitNotSelectable = 0x02000000
+
+// reaction of a unit to us; "" for the creatures nobody can target. The 35 Headless Horseman Flame
+// Bunnies (level 70, hostile faction) that Hallow's End puts in Goldshire blocked the paths to the
+// Fargodeep mine and made every 6 -> 8 bench of 2026-10-19/20 8-18 min slower.
+func (s *Service) reaction(o, me *Obj) string {
+	if o.u(fUnitFlags)&unitNotSelectable != 0 {
+		return ""
+	}
+	return s.factions.Reaction(o.u(fUnitFaction), me.u(fUnitFaction))
 }

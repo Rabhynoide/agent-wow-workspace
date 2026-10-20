@@ -28,6 +28,8 @@ Référence humaine (journal/sessions/20261014_humain_1-8.md) : **1 → 8 en ~60
 - [ ] Repos (5-7 %) : manger/boire dès le début du repos, Premiers soins (bandages) pour le guerrier.
 - [ ] Butin (2 %) et sacs : ne ramasser que ce qui vaut quelque chose quand les sacs sont presque pleins.
 
+- [ ] À REMESURER (2026-10-20) : les variantes G (positions interpolées partout), H (pull de groupe), I et K ont tourné pendant la Sanssaint, avec les flame bunnies de Goldshire pris pour des monstres de niveau 70 (corrigé) : leurs temps (51-68 min) ne jugent pas ces changements. Refaire I (référence), puis le pull de groupe (`pull_adapt` + `chain_pull`), puis éventuellement l'interpolation complète.
+
 ### Étape 2 : quitter Elwynn (niveaux 10-20)
 - [ ] Changer de zone : routes Zygor 13-20 (Westfall, Loch Modan, Redridge, Duskwood) dans `assets/routes/` ; voyages à pied d'une zone à l'autre, puis maîtres de vol (découverte, achat de trajets) et pierre de foyer (lier à l'auberge de la zone de quêtes).
 - [ ] Quête de classe guerrier 1640 « Beat Bartleby » (duel scripté) : débloque la Posture défensive ; puis postures dans la rotation si elles font gagner du temps.
