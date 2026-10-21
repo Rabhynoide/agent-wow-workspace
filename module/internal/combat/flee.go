@@ -114,15 +114,13 @@ type fleeDecision struct {
 
 // decide: the rule says flee. The learned table may say stay (its death rate is low enough for the
 // speedrun's costs); without enough fights, a borderline case where we are expected to survive is
-// explored (stay) with probability Explore. An exploration holds for the rest of the fight.
+// explored (stay) with probability Explore. An exploration holds for the rest of the fight, a learned
+// stay as long as the fight is expected to leave us some health (slack >= 0).
 func (s *Service) decide(me *statepb.SelfInfo, att []*statepb.Obj, loss float64) bool {
 	t := s.tuneGet()
 	s.mu.Lock()
 	d := s.decision
 	s.mu.Unlock()
-	if d != nil && d.how == "explore" && d.stayed {
-		return false
-	}
 	fresh := 0
 	for _, a := range att {
 		if a.MaxHp > 0 && 2*a.Hp > a.MaxHp {
@@ -130,6 +128,13 @@ func (s *Service) decide(me *statepb.SelfInfo, att []*statepb.Obj, loss float64)
 		}
 	}
 	slack := float64(pct(me.Hp, me.MaxHp)) - loss
+	// A learned stay holds too while we are still expected to survive: decided again each second, it
+	// fell into a cell with few fights (a fourth kobold, health 75-85 %) and the rule fled. Of the
+	// learned stays at 3 fresh attackers, all benches, 9 in 16 fled that way, while the explored stays
+	// of those cells, held to the end, won 33 times in 37.
+	if d != nil && d.stayed && (d.how == "explore" || slack >= 0) {
+		return false
+	}
 	key := tuning.Key(fresh, slack)
 	flee, how := true, "rule"
 	if s.fleeTab != nil {
