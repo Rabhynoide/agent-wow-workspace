@@ -61,6 +61,22 @@ potions = sum(1 for l in combat if "drinking potion" in l)
 buff_items = sum(1 for l in combat if "using buff item" in l)
 zone_pulls = sum(1 for l in combat if "msg=\"pull choice\"" in l and "in_fled_zone=" in l and not re.search(r"in_fled_zone=0\b", l))
 gave_up = sum(1 for l in combat if "giving up target" in l)
+# Chests, vendors on the way, junk thrown away (auto/chest.go, auto/town.go, town/room.go, 2026-10-23):
+# auto.log and town.log hold every run, keep the lines of this one by time.
+def in_run(l):
+    m = re.match(r"time=(\S+)", l)
+    if not m:
+        return False
+    t = datetime.datetime.fromisoformat(m.group(1).replace("Z", "+00:00")).timestamp()
+    return start <= t <= end
+auto_log = [l for l in read("logs/auto.log") if in_run(l)]
+town_log = [l for l in read("logs/town.log") if in_run(l)]
+chests_seen = sum(1 for l in auto_log if 'msg="chest seen"' in l)
+chests_opened = [re.sub(r'.*name="([^"]+)" items=(.*)', r'\1 \2', l) for l in auto_log if 'msg="chest opened"' in l]
+chests_skipped = sum(1 for l in auto_log if 'msg="chest skipped"' in l or 'msg="chest not opened"' in l)
+vendor_stops = sum(1 for l in auto_log if 'msg="vendor on the way"' in l)
+destroyed = sum(1 for l in town_log if 'msg="destroyed to make room"' in l)
+loot_left = sum(1 for l in combat if 'msg="loot left: bags full"' in l)
 # Time split (scripts/bench_sample.py: one activity every 5 s).
 samples = collections.Counter(l.split()[1] for l in read(f"logs/bench_{name}.samples") if len(l.split()) == 2)
 n_samples = sum(samples.values())
@@ -78,6 +94,8 @@ lines = [f"# Bench {name} — {race} {cls} {first_level} → {target} ({date})",
          f"- Réglages : {json.dumps(tuning, separators=(',', ':')) if isinstance(tuning, dict) else tuning}",
          f"- Décisions de fuite limites (comment/resté) : {dict(decisions)} ; combats restés : {len(stays)}, morts : {stay_deaths}",
          f"- Morts : {deaths} ; combats en marchant : {walk_fights} ; cibles abandonnées : {gave_up}",
+         f"- Coffres : {chests_seen} vus, {len(chests_opened)} ouverts, {chests_skipped} abandonnés" + (f" ({'; '.join(chests_opened)})" if chests_opened else ""),
+         f"- Sacs : {vendor_stops} arrêts chez un vendeur en passant, {destroyed} piles jetées pour faire de la place, {loot_left} butins laissés (sacs pleins)",
          f"- Quêtes faites ({len(done)}) : {done}",
          f"- Quêtes sautées ({len(skips)}) :"] + [f"  - {s}" for s in skips] + [
          f"- Grinds : {grinds} ; passages marchand/achat : {vendor} ; repas : {meals} ; potions bues : {potions} ; objets de buff : {buff_items}",

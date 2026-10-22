@@ -13,11 +13,12 @@ import (
 )
 
 type response struct {
-	guid  uint64
-	gold  uint32
-	slots []uint8
-	items []uint32
-	err   bool
+	guid   uint64
+	gold   uint32
+	slots  []uint8
+	items  []uint32
+	counts []uint32
+	err    bool
 }
 
 // Tracker receives SMSG_LOOT_RESPONSE packets.
@@ -43,9 +44,11 @@ func (t *Tracker) OnPacket(payload []byte) {
 		for i := 0; i < n && !r.Err; i++ {
 			slot := r.U8()
 			id := r.U32()
-			r.Skip(16 + 1)
+			count := r.U32()
+			r.Skip(12 + 1) // display id, random suffix and property, slot type
 			resp.slots = append(resp.slots, slot)
 			resp.items = append(resp.items, id)
+			resp.counts = append(resp.counts, count)
 		}
 	}
 	select {
@@ -57,7 +60,13 @@ func (t *Tracker) OnPacket(payload []byte) {
 type Result struct {
 	Gold  uint32
 	Items []uint32
+	// Left: items left in the loot because the bags were full and nothing was worth throwing away.
+	Left []uint32
 }
+
+// Room makes bag space for an item about to be taken (town.make_room: it may throw away the
+// cheapest junk); false leaves the item where it is.
+type Room func(ctx context.Context, entry, count uint32) bool
 
 func send(ctx context.Context, s modv1.SessionClient, op uint32, payload []byte) error {
 	_, err := s.SendPacket(ctx, &modv1.SendPacketRequest{Opcode: op, Payload: payload})
@@ -73,8 +82,8 @@ func (t *Tracker) Drain() {
 
 // Take loots everything from guid. The caller must already be within interaction range.
 // With open=false the server already sent the loot window (e.g. after using a chest).
-// wait bounds how long to wait for the loot window.
-func (t *Tracker) Take(ctx context.Context, s modv1.SessionClient, guid uint64, open bool, wait time.Duration) (Result, error) {
+// wait bounds how long to wait for the loot window. room (nil: none) is asked before each item.
+func (t *Tracker) Take(ctx context.Context, s modv1.SessionClient, guid uint64, open bool, wait time.Duration, room Room) (Result, error) {
 	if open {
 		t.Drain()
 		w := &wire.Writer{}
@@ -98,12 +107,18 @@ func (t *Tracker) Take(ctx context.Context, s modv1.SessionClient, guid uint64, 
 		_ = send(ctx, s, uint32(opcode.CMSGLootMoney), nil)
 		time.Sleep(150 * time.Millisecond)
 	}
-	for _, slot := range resp.slots {
+	res := Result{Gold: resp.gold}
+	for i, slot := range resp.slots {
+		if room != nil && !room(ctx, resp.items[i], resp.counts[i]) {
+			res.Left = append(res.Left, resp.items[i])
+			continue
+		}
 		_ = send(ctx, s, uint32(opcode.CMSGAutostoreLootItem), []byte{slot})
 		time.Sleep(150 * time.Millisecond)
+		res.Items = append(res.Items, resp.items[i])
 	}
 	rel := &wire.Writer{}
 	rel.U64(guid)
 	_ = send(ctx, s, uint32(opcode.CMSGLootRelease), rel.B)
-	return Result{Gold: resp.gold, Items: resp.items}, nil
+	return res, nil
 }

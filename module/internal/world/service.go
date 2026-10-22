@@ -218,6 +218,9 @@ func (s *Service) QuestInfo(ctx context.Context, r *pb.QuestInfoRequest) (*pb.Qu
 	for i := 1; i <= 6; i++ {
 		cols += fmt.Sprintf(", q.RewardChoiceItemID%d", i)
 	}
+	for i := 1; i <= 4; i++ {
+		cols += fmt.Sprintf(", q.RewardItem%d", i)
+	}
 	q := "SELECT " + cols + " FROM quest_template q LEFT JOIN quest_template_addon a ON a.ID=q.ID WHERE "
 	var args []any
 	if r.Id != 0 {
@@ -244,6 +247,7 @@ func (s *Service) QuestInfo(ctx context.Context, r *pb.QuestInfoRequest) (*pb.Qu
 		var item [6]uint32
 		var itemN [6]uint32
 		var choice [6]uint32
+		var fixed [4]uint32
 		var given [5]uint32 // StartItem, ItemDrop1-4: items handed out with the quest
 		dest := []any{&qi.Id, &qi.Title, &qi.Level, &qi.MinLevel, &qi.ZoneOrSort, &qi.PrevQuest, &qi.NextQuest, &qi.RewardXpId, &qi.RewardMoney, &qi.ObjectivesText, &qi.SpecialFlags}
 		for i := range given {
@@ -258,6 +262,9 @@ func (s *Service) QuestInfo(ctx context.Context, r *pb.QuestInfoRequest) (*pb.Qu
 		for i := 0; i < 6; i++ {
 			dest = append(dest, &choice[i])
 		}
+		for i := range fixed {
+			dest = append(dest, &fixed[i])
+		}
 		if err := rows.Scan(dest...); err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
@@ -266,6 +273,11 @@ func (s *Service) QuestInfo(ctx context.Context, r *pb.QuestInfoRequest) (*pb.Qu
 		for _, c := range choice {
 			if c != 0 {
 				qi.RewardChoices = append(qi.RewardChoices, c)
+			}
+		}
+		for _, f := range fixed {
+			if f != 0 {
+				qi.RewardItems = append(qi.RewardItems, f)
 			}
 		}
 		for i := 0; i < 4; i++ {
@@ -466,6 +478,24 @@ func (s *Service) ItemInfo(ctx context.Context, r *pb.ItemInfoRequest) (*pb.Item
 		out.Items = append(out.Items, it)
 	}
 	return out, rows.Err()
+}
+
+func (s *Service) GameObject(ctx context.Context, r *pb.GameObjectRequest) (*pb.GameObjectInfo, error) {
+	rows, err := s.query(ctx, "SELECT t.entry, t.name, t.type, t.Data0, t.Data1, t.Data8, "+
+		"(SELECT COUNT(*) FROM gameobject_loot_template l WHERE t.type=3 AND l.Entry=t.Data1 AND l.Entry<>0 AND l.QuestRequired=0) "+
+		"FROM gameobject_template t WHERE t.entry=?", r.Entry)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	if !rows.Next() {
+		return nil, status.Error(codes.NotFound, "no such game object")
+	}
+	g := &pb.GameObjectInfo{}
+	if err := rows.Scan(&g.Entry, &g.Name, &g.Type, &g.LockId, &g.LootId, &g.QuestId, &g.LootItems); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return g, nil
 }
 
 func (s *Service) Creature(ctx context.Context, r *pb.CreatureInfoRequest) (*pb.CreatureInfo, error) {

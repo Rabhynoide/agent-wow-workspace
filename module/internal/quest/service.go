@@ -30,6 +30,7 @@ type Service struct {
 	loot *loot.Tracker
 
 	mu        sync.Mutex
+	kinds     map[uint32]*chestKind // game object entry -> chest we open (nil: not one)
 	castCount uint8
 	failed    chan castFailed // SMSG_CAST_FAILED of our item uses
 }
@@ -41,7 +42,8 @@ type castFailed struct {
 }
 
 func Register(g grpc.ServiceRegistrar, s modv1.SessionClient) {
-	pb.RegisterQuestServer(g, &Service{s: s, api: api.C{S: s}, loot: loot.NewTracker(), failed: make(chan castFailed, 8)})
+	pb.RegisterQuestServer(g, &Service{s: s, api: api.C{S: s}, loot: loot.NewTracker(), failed: make(chan castFailed, 8),
+		kinds: map[uint32]*chestKind{}})
 }
 
 func (s *Service) OnPacket(_ context.Context, p *modv1.WorldPacket) (*emptypb.Empty, error) {
@@ -155,11 +157,32 @@ func (s *Service) TurnIn(ctx context.Context, r *pb.TurnInRequest) (*pb.QuestRes
 }
 
 func (s *Service) Use(ctx context.Context, r *pb.UseRequest) (*pb.QuestResult, error) {
-	o, err := s.find(ctx, "gameobject", r.Entry)
+	var o *statepb.Obj
+	var err error
+	if r.Guid != 0 {
+		if o, err = s.api.Obj(ctx, r.Guid); err == nil && o.Dist > interact {
+			err = fmt.Errorf("object %d is %.1f yards away (need <= %.0f)", r.Entry, o.Dist, interact)
+		}
+	} else {
+		o, err = s.find(ctx, "gameobject", r.Entry)
+	}
 	if err != nil {
 		return fail("%v", err)
 	}
 	s.loot.Drain()
+	room := s.api.Room
+	if r.OpenSpell != 0 {
+		// A locked chest: the client casts the lock's opening spell on it (Battered Chest: 3365,
+		// 5 s), then the server opens the loot window.
+		if err := s.castOn(ctx, r.OpenSpell, o.Guid); err != nil {
+			return fail("cast: %v", err)
+		}
+		res, err := s.loot.Take(ctx, s.s, o.Guid, false, loot.DefaultWait, room)
+		if err != nil {
+			return fail("open %d with spell %d: %v", r.Entry, r.OpenSpell, err)
+		}
+		return &pb.QuestResult{Ok: true, Items: res.Items}, nil
+	}
 	w := &wire.Writer{}
 	w.U64(o.Guid)
 	if err := moveio.Packet(ctx, s.s, uint32(opcode.CMSGGameobjUse), w.B); err != nil {
@@ -168,24 +191,29 @@ func (s *Service) Use(ctx context.Context, r *pb.UseRequest) (*pb.QuestResult, e
 	if !r.Loot {
 		return &pb.QuestResult{Ok: true}, nil
 	}
-	res, err := s.loot.Take(ctx, s.s, o.Guid, false, 1500*time.Millisecond)
+	res, err := s.loot.Take(ctx, s.s, o.Guid, false, 1500*time.Millisecond, room)
 	if err != nil {
 		// Locked objects need the client to cast the opening spell (22810) on them.
 		s.loot.Drain()
-		cw := &wire.Writer{}
-		cw.U8(1)
-		cw.U32(22810)
-		cw.U8(0)
-		cw.U32(0x800)
-		cw.PackedGUID(o.Guid)
-		if err := moveio.Packet(ctx, s.s, uint32(opcode.CMSGCastSpell), cw.B); err != nil {
+		if err := s.castOn(ctx, 22810, o.Guid); err != nil {
 			return fail("cast: %v", err)
 		}
-		if res, err = s.loot.Take(ctx, s.s, o.Guid, false, loot.DefaultWait); err != nil {
+		if res, err = s.loot.Take(ctx, s.s, o.Guid, false, loot.DefaultWait, room); err != nil {
 			return fail("loot: %v", err)
 		}
 	}
 	return &pb.QuestResult{Ok: true, Items: res.Items}, nil
+}
+
+// castOn casts a spell on a game object (CMSG_CAST_SPELL, target flag TARGET_FLAG_GAMEOBJECT).
+func (s *Service) castOn(ctx context.Context, spell uint32, guid uint64) error {
+	cw := &wire.Writer{}
+	cw.U8(1)
+	cw.U32(spell)
+	cw.U8(0)
+	cw.U32(0x800)
+	cw.PackedGUID(guid)
+	return moveio.Packet(ctx, s.s, uint32(opcode.CMSGCastSpell), cw.B)
 }
 
 // Explore tells the server the character stands inside an area trigger (the client normally sends

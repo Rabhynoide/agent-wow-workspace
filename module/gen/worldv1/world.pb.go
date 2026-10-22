@@ -725,7 +725,9 @@ type QuestInfo struct {
 	// Items offered as a choice at turn-in (index = reward argument of quest.turnin).
 	RewardChoices []uint32 `protobuf:"varint,14,rep,packed,name=reward_choices,json=rewardChoices,proto3" json:"reward_choices,omitempty"`
 	// quest_template_addon.SpecialFlags (0x2 exploration or event, 0x20 spell cast on a target).
-	SpecialFlags  uint32 `protobuf:"varint,15,opt,name=special_flags,json=specialFlags,proto3" json:"special_flags,omitempty"`
+	SpecialFlags uint32 `protobuf:"varint,15,opt,name=special_flags,json=specialFlags,proto3" json:"special_flags,omitempty"`
+	// Items always given at turn-in (RewardItem1-4).
+	RewardItems   []uint32 `protobuf:"varint,16,rep,packed,name=reward_items,json=rewardItems,proto3" json:"reward_items,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -863,6 +865,13 @@ func (x *QuestInfo) GetSpecialFlags() uint32 {
 		return x.SpecialFlags
 	}
 	return 0
+}
+
+func (x *QuestInfo) GetRewardItems() []uint32 {
+	if x != nil {
+		return x.RewardItems
+	}
+	return nil
 }
 
 type QuestInfoResponse struct {
@@ -2172,6 +2181,146 @@ func (x *ClassTrainersResponse) GetTrainers() []*ClassTrainer {
 	return nil
 }
 
+type GameObjectRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Entry         uint32                 `protobuf:"varint,1,opt,name=entry,proto3" json:"entry,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GameObjectRequest) Reset() {
+	*x = GameObjectRequest{}
+	mi := &file_world_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GameObjectRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GameObjectRequest) ProtoMessage() {}
+
+func (x *GameObjectRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_world_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GameObjectRequest.ProtoReflect.Descriptor instead.
+func (*GameObjectRequest) Descriptor() ([]byte, []int) {
+	return file_world_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *GameObjectRequest) GetEntry() uint32 {
+	if x != nil {
+		return x.Entry
+	}
+	return 0
+}
+
+// gameobject_template row (chest data fields for type 3).
+type GameObjectInfo struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Entry uint32                 `protobuf:"varint,1,opt,name=entry,proto3" json:"entry,omitempty"`
+	Name  string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// 3 = chest (herbs and veins too: their lock needs a profession).
+	Type uint32 `protobuf:"varint,3,opt,name=type,proto3" json:"type,omitempty"`
+	// Lock.dbc id (Data0), loot id (Data1) and the quest it needs (Data8) for a chest.
+	LockId  uint32 `protobuf:"varint,4,opt,name=lock_id,json=lockId,proto3" json:"lock_id,omitempty"`
+	LootId  uint32 `protobuf:"varint,5,opt,name=loot_id,json=lootId,proto3" json:"loot_id,omitempty"`
+	QuestId uint32 `protobuf:"varint,6,opt,name=quest_id,json=questId,proto3" json:"quest_id,omitempty"`
+	// Loot entries anyone gets (QuestRequired = 0): crates have a few, treasure chests tens.
+	LootItems     uint32 `protobuf:"varint,7,opt,name=loot_items,json=lootItems,proto3" json:"loot_items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GameObjectInfo) Reset() {
+	*x = GameObjectInfo{}
+	mi := &file_world_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GameObjectInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GameObjectInfo) ProtoMessage() {}
+
+func (x *GameObjectInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_world_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GameObjectInfo.ProtoReflect.Descriptor instead.
+func (*GameObjectInfo) Descriptor() ([]byte, []int) {
+	return file_world_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *GameObjectInfo) GetEntry() uint32 {
+	if x != nil {
+		return x.Entry
+	}
+	return 0
+}
+
+func (x *GameObjectInfo) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *GameObjectInfo) GetType() uint32 {
+	if x != nil {
+		return x.Type
+	}
+	return 0
+}
+
+func (x *GameObjectInfo) GetLockId() uint32 {
+	if x != nil {
+		return x.LockId
+	}
+	return 0
+}
+
+func (x *GameObjectInfo) GetLootId() uint32 {
+	if x != nil {
+		return x.LootId
+	}
+	return 0
+}
+
+func (x *GameObjectInfo) GetQuestId() uint32 {
+	if x != nil {
+		return x.QuestId
+	}
+	return 0
+}
+
+func (x *GameObjectInfo) GetLootItems() uint32 {
+	if x != nil {
+		return x.LootItems
+	}
+	return 0
+}
+
 var File_world_proto protoreflect.FileDescriptor
 
 const file_world_proto_rawDesc = "" +
@@ -2242,7 +2391,7 @@ const file_world_proto_rawDesc = "" +
 	"\vuse_on_kind\x18\x0f \x01(\tR\tuseOnKind\"4\n" +
 	"\bItemStat\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\rR\x04type\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x05R\x05value\"\xaf\x04\n" +
+	"\x05value\x18\x02 \x01(\x05R\x05value\"\xd2\x04\n" +
 	"\tQuestInfo\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\rR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x14\n" +
@@ -2265,7 +2414,8 @@ const file_world_proto_rawDesc = "" +
 	"\x06enders\x18\f \x03(\v2\x1b.wowagent.world.v1.QuestNpcR\x06enders\x12'\n" +
 	"\x0fobjectives_text\x18\r \x01(\tR\x0eobjectivesText\x12%\n" +
 	"\x0ereward_choices\x18\x0e \x03(\rR\rrewardChoices\x12#\n" +
-	"\rspecial_flags\x18\x0f \x01(\rR\fspecialFlags\"I\n" +
+	"\rspecial_flags\x18\x0f \x01(\rR\fspecialFlags\x12!\n" +
+	"\freward_items\x18\x10 \x03(\rR\vrewardItems\"I\n" +
 	"\x11QuestInfoResponse\x124\n" +
 	"\x06quests\x18\x01 \x03(\v2\x1c.wowagent.world.v1.QuestInfoR\x06quests\"+\n" +
 	"\x13QuestsForNpcRequest\x12\x14\n" +
@@ -2372,7 +2522,18 @@ const file_world_proto_rawDesc = "" +
 	"trainer_id\x18\b \x01(\rR\ttrainerId\x127\n" +
 	"\x06spells\x18\t \x03(\v2\x1f.wowagent.world.v1.TrainerSpellR\x06spells\"T\n" +
 	"\x15ClassTrainersResponse\x12;\n" +
-	"\btrainers\x18\x01 \x03(\v2\x1f.wowagent.world.v1.ClassTrainerR\btrainers2\x8d\x06\n" +
+	"\btrainers\x18\x01 \x03(\v2\x1f.wowagent.world.v1.ClassTrainerR\btrainers\")\n" +
+	"\x11GameObjectRequest\x12\x14\n" +
+	"\x05entry\x18\x01 \x01(\rR\x05entry\"\xba\x01\n" +
+	"\x0eGameObjectInfo\x12\x14\n" +
+	"\x05entry\x18\x01 \x01(\rR\x05entry\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
+	"\x04type\x18\x03 \x01(\rR\x04type\x12\x17\n" +
+	"\alock_id\x18\x04 \x01(\rR\x06lockId\x12\x17\n" +
+	"\aloot_id\x18\x05 \x01(\rR\x06lootId\x12\x19\n" +
+	"\bquest_id\x18\x06 \x01(\rR\aquestId\x12\x1d\n" +
+	"\n" +
+	"loot_items\x18\a \x01(\rR\tlootItems2\xe4\x06\n" +
 	"\x05World\x12\\\n" +
 	"\vItemSources\x12%.wowagent.world.v1.ItemSourcesRequest\x1a&.wowagent.world.v1.ItemSourcesResponse\x12P\n" +
 	"\aFindNpc\x12!.wowagent.world.v1.FindNpcRequest\x1a\".wowagent.world.v1.FindNpcResponse\x12V\n" +
@@ -2381,7 +2542,9 @@ const file_world_proto_rawDesc = "" +
 	"\x06Spawns\x12 .wowagent.world.v1.SpawnsRequest\x1a!.wowagent.world.v1.SpawnsResponse\x12S\n" +
 	"\bItemInfo\x12\".wowagent.world.v1.ItemInfoRequest\x1a#.wowagent.world.v1.ItemInfoResponse\x12S\n" +
 	"\bCreature\x12&.wowagent.world.v1.CreatureInfoRequest\x1a\x1f.wowagent.world.v1.CreatureInfo\x12b\n" +
-	"\rClassTrainers\x12'.wowagent.world.v1.ClassTrainersRequest\x1a(.wowagent.world.v1.ClassTrainersResponse\x12>\n" +
+	"\rClassTrainers\x12'.wowagent.world.v1.ClassTrainersRequest\x1a(.wowagent.world.v1.ClassTrainersResponse\x12U\n" +
+	"\n" +
+	"GameObject\x12$.wowagent.world.v1.GameObjectRequest\x1a!.wowagent.world.v1.GameObjectInfo\x12>\n" +
 	"\fBeforeLogout\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.EmptyB\x1eZ\x1cwowagent/gen/worldv1;worldv1b\x06proto3"
 
 var (
@@ -2396,7 +2559,7 @@ func file_world_proto_rawDescGZIP() []byte {
 	return file_world_proto_rawDescData
 }
 
-var file_world_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
+var file_world_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
 var file_world_proto_goTypes = []any{
 	(*FindNpcRequest)(nil),        // 0: wowagent.world.v1.FindNpcRequest
 	(*Spawn)(nil),                 // 1: wowagent.world.v1.Spawn
@@ -2424,7 +2587,9 @@ var file_world_proto_goTypes = []any{
 	(*TrainerSpell)(nil),          // 23: wowagent.world.v1.TrainerSpell
 	(*ClassTrainer)(nil),          // 24: wowagent.world.v1.ClassTrainer
 	(*ClassTrainersResponse)(nil), // 25: wowagent.world.v1.ClassTrainersResponse
-	(*emptypb.Empty)(nil),         // 26: google.protobuf.Empty
+	(*GameObjectRequest)(nil),     // 26: wowagent.world.v1.GameObjectRequest
+	(*GameObjectInfo)(nil),        // 27: wowagent.world.v1.GameObjectInfo
+	(*emptypb.Empty)(nil),         // 28: google.protobuf.Empty
 }
 var file_world_proto_depIdxs = []int32{
 	1,  // 0: wowagent.world.v1.FindNpcResponse.spawns:type_name -> wowagent.world.v1.Spawn
@@ -2447,18 +2612,20 @@ var file_world_proto_depIdxs = []int32{
 	14, // 17: wowagent.world.v1.World.ItemInfo:input_type -> wowagent.world.v1.ItemInfoRequest
 	17, // 18: wowagent.world.v1.World.Creature:input_type -> wowagent.world.v1.CreatureInfoRequest
 	22, // 19: wowagent.world.v1.World.ClassTrainers:input_type -> wowagent.world.v1.ClassTrainersRequest
-	26, // 20: wowagent.world.v1.World.BeforeLogout:input_type -> google.protobuf.Empty
-	21, // 21: wowagent.world.v1.World.ItemSources:output_type -> wowagent.world.v1.ItemSourcesResponse
-	2,  // 22: wowagent.world.v1.World.FindNpc:output_type -> wowagent.world.v1.FindNpcResponse
-	8,  // 23: wowagent.world.v1.World.QuestInfo:output_type -> wowagent.world.v1.QuestInfoResponse
-	11, // 24: wowagent.world.v1.World.QuestsForNpc:output_type -> wowagent.world.v1.QuestsForNpcResponse
-	13, // 25: wowagent.world.v1.World.Spawns:output_type -> wowagent.world.v1.SpawnsResponse
-	16, // 26: wowagent.world.v1.World.ItemInfo:output_type -> wowagent.world.v1.ItemInfoResponse
-	18, // 27: wowagent.world.v1.World.Creature:output_type -> wowagent.world.v1.CreatureInfo
-	25, // 28: wowagent.world.v1.World.ClassTrainers:output_type -> wowagent.world.v1.ClassTrainersResponse
-	26, // 29: wowagent.world.v1.World.BeforeLogout:output_type -> google.protobuf.Empty
-	21, // [21:30] is the sub-list for method output_type
-	12, // [12:21] is the sub-list for method input_type
+	26, // 20: wowagent.world.v1.World.GameObject:input_type -> wowagent.world.v1.GameObjectRequest
+	28, // 21: wowagent.world.v1.World.BeforeLogout:input_type -> google.protobuf.Empty
+	21, // 22: wowagent.world.v1.World.ItemSources:output_type -> wowagent.world.v1.ItemSourcesResponse
+	2,  // 23: wowagent.world.v1.World.FindNpc:output_type -> wowagent.world.v1.FindNpcResponse
+	8,  // 24: wowagent.world.v1.World.QuestInfo:output_type -> wowagent.world.v1.QuestInfoResponse
+	11, // 25: wowagent.world.v1.World.QuestsForNpc:output_type -> wowagent.world.v1.QuestsForNpcResponse
+	13, // 26: wowagent.world.v1.World.Spawns:output_type -> wowagent.world.v1.SpawnsResponse
+	16, // 27: wowagent.world.v1.World.ItemInfo:output_type -> wowagent.world.v1.ItemInfoResponse
+	18, // 28: wowagent.world.v1.World.Creature:output_type -> wowagent.world.v1.CreatureInfo
+	25, // 29: wowagent.world.v1.World.ClassTrainers:output_type -> wowagent.world.v1.ClassTrainersResponse
+	27, // 30: wowagent.world.v1.World.GameObject:output_type -> wowagent.world.v1.GameObjectInfo
+	28, // 31: wowagent.world.v1.World.BeforeLogout:output_type -> google.protobuf.Empty
+	22, // [22:32] is the sub-list for method output_type
+	12, // [12:22] is the sub-list for method input_type
 	12, // [12:12] is the sub-list for extension type_name
 	12, // [12:12] is the sub-list for extension extendee
 	0,  // [0:12] is the sub-list for field type_name
@@ -2475,7 +2642,7 @@ func file_world_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_world_proto_rawDesc), len(file_world_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   26,
+			NumMessages:   28,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

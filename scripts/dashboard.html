@@ -114,6 +114,7 @@ td.wrap { white-space: normal; min-width: 220px; }
     <section class="card s7">
       <h2>Derniers combats</h2>
       <div class="muted" id="pullsize" style="margin-bottom:8px"></div>
+      <div class="muted" id="bags" style="margin-bottom:8px"></div>
       <div class="scroll"><table id="fights"></table></div>
     </section>
     <section class="card s5">
@@ -338,6 +339,12 @@ function render(d) {
   document.getElementById('pullsize').textContent = ps.length
     ? `Taille de pull : ${ps[0].size} (${ps[0].why} à ${ps[0].time}) — historique : ` + ps.map(p => p.size).reverse().join(' → ')
     : 'Taille de pull : fixe (pull_adapt désactivé ou pas encore changée)';
+  const BAGMSG = { 'chest opened': 'coffre ouvert', 'chest skipped': 'coffre abandonné', 'chest not opened': 'coffre non ouvert',
+    'vendor on the way': 'vendeur en passant', 'destroyed to make room': 'jeté pour faire de la place' };
+  const bg = d.bags || [];
+  document.getElementById('bags').textContent = bg.length
+    ? 'Coffres et sacs : ' + bg.map(e => `${e.time} ${BAGMSG[e.msg] || e.msg} ${e.name}${e.items ? ' ' + e.items : ''}${e.copper ? ' (' + e.copper + ' pc)' : ''}`).join(' · ')
+    : 'Coffres et sacs : rien encore';
   table('fights', ['Heure', 'Résultat', 'Cible', 'Niv.', 'Écart', 'PV début', 'PV min', 'Attaquants', 'Durée'],
     d.fights.map(f => ({ died: f.result === 'died', fled: f.result === 'fled', cells: [f.time, RESULT[f.result] || f.result, mob(f.target), f.level, (f.gap > 0 ? '+' : '') + f.gap, f.hp_start + ' %', f.hp_min + ' %', f.attackers, f.s + ' s'] })),
     r => r.died ? 'died' : r.fled ? 'fled' : '');

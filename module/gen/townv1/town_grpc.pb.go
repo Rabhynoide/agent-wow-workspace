@@ -24,6 +24,7 @@ const (
 	Town_SellJunk_FullMethodName     = "/wowagent.town.v1.Town/SellJunk"
 	Town_Repair_FullMethodName       = "/wowagent.town.v1.Town/Repair"
 	Town_Restock_FullMethodName      = "/wowagent.town.v1.Town/Restock"
+	Town_MakeRoom_FullMethodName     = "/wowagent.town.v1.Town/MakeRoom"
 	Town_OnPacket_FullMethodName     = "/wowagent.town.v1.Town/OnPacket"
 	Town_BeforeLogout_FullMethodName = "/wowagent.town.v1.Town/BeforeLogout"
 )
@@ -37,6 +38,9 @@ type TownClient interface {
 	Repair(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*RepairResult, error)
 	// Buys food and drink at the vendor within 5 yards (best usable at our level, within budget).
 	Restock(ctx context.Context, in *RestockRequest, opts ...grpc.CallOption) (*RestockResult, error)
+	// Room for an item when the bags are full: throws away the cheapest stack the sell rules would
+	// sell, if the item is worth more (or is a quest item, an upgrade, rare or better).
+	MakeRoom(ctx context.Context, in *RoomRequest, opts ...grpc.CallOption) (*RoomResult, error)
 	OnPacket(ctx context.Context, in *v1.WorldPacket, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	BeforeLogout(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
@@ -79,6 +83,16 @@ func (c *townClient) Restock(ctx context.Context, in *RestockRequest, opts ...gr
 	return out, nil
 }
 
+func (c *townClient) MakeRoom(ctx context.Context, in *RoomRequest, opts ...grpc.CallOption) (*RoomResult, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RoomResult)
+	err := c.cc.Invoke(ctx, Town_MakeRoom_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *townClient) OnPacket(ctx context.Context, in *v1.WorldPacket, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -108,6 +122,9 @@ type TownServer interface {
 	Repair(context.Context, *emptypb.Empty) (*RepairResult, error)
 	// Buys food and drink at the vendor within 5 yards (best usable at our level, within budget).
 	Restock(context.Context, *RestockRequest) (*RestockResult, error)
+	// Room for an item when the bags are full: throws away the cheapest stack the sell rules would
+	// sell, if the item is worth more (or is a quest item, an upgrade, rare or better).
+	MakeRoom(context.Context, *RoomRequest) (*RoomResult, error)
 	OnPacket(context.Context, *v1.WorldPacket) (*emptypb.Empty, error)
 	BeforeLogout(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	mustEmbedUnimplementedTownServer()
@@ -128,6 +145,9 @@ func (UnimplementedTownServer) Repair(context.Context, *emptypb.Empty) (*RepairR
 }
 func (UnimplementedTownServer) Restock(context.Context, *RestockRequest) (*RestockResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Restock not implemented")
+}
+func (UnimplementedTownServer) MakeRoom(context.Context, *RoomRequest) (*RoomResult, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method MakeRoom not implemented")
 }
 func (UnimplementedTownServer) OnPacket(context.Context, *v1.WorldPacket) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method OnPacket not implemented")
@@ -210,6 +230,24 @@ func _Town_Restock_Handler(srv interface{}, ctx context.Context, dec func(interf
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Town_MakeRoom_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RoomRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TownServer).MakeRoom(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Town_MakeRoom_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TownServer).MakeRoom(ctx, req.(*RoomRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Town_OnPacket_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(v1.WorldPacket)
 	if err := dec(in); err != nil {
@@ -264,6 +302,10 @@ var Town_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Restock",
 			Handler:    _Town_Restock_Handler,
+		},
+		{
+			MethodName: "MakeRoom",
+			Handler:    _Town_MakeRoom_Handler,
 		},
 		{
 			MethodName: "OnPacket",

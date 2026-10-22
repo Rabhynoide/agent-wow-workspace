@@ -332,3 +332,43 @@ func (c C) SellJunk(ctx context.Context) (*townpb.SellResult, error) {
 	err := invoke.Call(ctx, c.S, "town", "sell_junk", &townpb.SellRequest{}, &r)
 	return &r, err
 }
+
+// MakeRoom asks town for a bag slot for an item about to be taken (entry 0: a quest reward).
+func (c C) MakeRoom(ctx context.Context, entry, count uint32) (*townpb.RoomResult, error) {
+	var r townpb.RoomResult
+	err := invoke.Call(ctx, c.S, "town", "make_room", &townpb.RoomRequest{Entry: entry, Count: count}, &r)
+	return &r, err
+}
+
+// Room is a loot.Room backed by town.make_room.
+func (c C) Room(ctx context.Context, entry, count uint32) bool {
+	r, err := c.MakeRoom(ctx, entry, count)
+	return err == nil && r.Ok
+}
+
+func (c C) GameObject(ctx context.Context, entry uint32) (*worldpb.GameObjectInfo, error) {
+	var r worldpb.GameObjectInfo
+	err := invoke.Call(ctx, c.S, "world", "game_object", &worldpb.GameObjectRequest{Entry: entry}, &r)
+	return &r, err
+}
+
+// Chests lists the chests within radius yards that any character may open now (quest.chests).
+func (c C) Chests(ctx context.Context, radius float32) ([]*questpb.Chest, error) {
+	var r questpb.ChestsResponse
+	err := invoke.Call(ctx, c.S, "quest", "chests", &questpb.ChestsRequest{Radius: radius}, &r)
+	return r.Chests, err
+}
+
+// OpenChest opens a chest (quest.use with its guid and opening spell) and takes the loot.
+func (c C) OpenChest(ctx context.Context, ch *questpb.Chest) (*questpb.QuestResult, error) {
+	var r questpb.QuestResult
+	err := invoke.Call(ctx, c.S, "quest", "use", &questpb.UseRequest{Entry: ch.Entry, Guid: ch.Guid, OpenSpell: ch.OpenSpell, Loot: true}, &r)
+	return &r, err
+}
+
+// SellPlan reports what sell_junk would sell (dry run), without a vendor.
+func (c C) SellPlan(ctx context.Context) (*townpb.SellResult, error) {
+	var r townpb.SellResult
+	err := invoke.Call(ctx, c.S, "town", "sell_junk", &townpb.SellRequest{DryRun: true}, &r)
+	return &r, err
+}

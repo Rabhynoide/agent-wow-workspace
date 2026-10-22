@@ -107,6 +107,18 @@ def pull_size():
     return out[::-1]
 
 
+def bags_events():
+    """Chests and bag room (auto/chest.go, auto/town.go, town/room.go): the last events, newest first."""
+    keep = ('msg="chest opened"', 'msg="chest skipped"', 'msg="chest not opened"', 'msg="vendor on the way"')
+    out = []
+    for name, ok in (("auto.log", lambda l: any(k in l for k in keep)), ("town.log", lambda l: 'msg="destroyed to make room"' in l)):
+        for line in tail(path("logs", name), 6, ok):
+            f = {k: v.strip('"') for k, v in FIELD.findall(line)}
+            out.append({"time": f.get("time", "")[11:19], "msg": f.get("msg", ""), "name": f.get("name") or f.get("entry", ""),
+                        "items": f.get("items", ""), "err": f.get("err", "") or f.get("reason", ""), "copper": f.get("copper", "")})
+    return sorted(out, key=lambda e: e["time"], reverse=True)[:8]
+
+
 def learned():
     try:
         with open(path("journal", "learn", "fights.json")) as f:
@@ -282,7 +294,7 @@ def data():
     snap = rpc("state.snapshot")
     run = current_run()
     return {"live": brief, "zones": combat.get("avoid", []), "gear": gear(snap), "doing": combat.get("doing", ""), "run": run,
-            "quests": quests(snap, run), "fights": fights(), "pull_size": pull_size(), "learned": learned(), "benches": benches()}
+            "quests": quests(snap, run), "fights": fights(), "pull_size": pull_size(), "bags": bags_events(), "learned": learned(), "benches": benches()}
 
 
 class Handler(BaseHTTPRequestHandler):

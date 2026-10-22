@@ -28,6 +28,7 @@ const (
 	World_ItemInfo_FullMethodName      = "/wowagent.world.v1.World/ItemInfo"
 	World_Creature_FullMethodName      = "/wowagent.world.v1.World/Creature"
 	World_ClassTrainers_FullMethodName = "/wowagent.world.v1.World/ClassTrainers"
+	World_GameObject_FullMethodName    = "/wowagent.world.v1.World/GameObject"
 	World_BeforeLogout_FullMethodName  = "/wowagent.world.v1.World/BeforeLogout"
 )
 
@@ -43,6 +44,7 @@ type WorldClient interface {
 	ItemInfo(ctx context.Context, in *ItemInfoRequest, opts ...grpc.CallOption) (*ItemInfoResponse, error)
 	Creature(ctx context.Context, in *CreatureInfoRequest, opts ...grpc.CallOption) (*CreatureInfo, error)
 	ClassTrainers(ctx context.Context, in *ClassTrainersRequest, opts ...grpc.CallOption) (*ClassTrainersResponse, error)
+	GameObject(ctx context.Context, in *GameObjectRequest, opts ...grpc.CallOption) (*GameObjectInfo, error)
 	BeforeLogout(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
@@ -134,6 +136,16 @@ func (c *worldClient) ClassTrainers(ctx context.Context, in *ClassTrainersReques
 	return out, nil
 }
 
+func (c *worldClient) GameObject(ctx context.Context, in *GameObjectRequest, opts ...grpc.CallOption) (*GameObjectInfo, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GameObjectInfo)
+	err := c.cc.Invoke(ctx, World_GameObject_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *worldClient) BeforeLogout(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -156,6 +168,7 @@ type WorldServer interface {
 	ItemInfo(context.Context, *ItemInfoRequest) (*ItemInfoResponse, error)
 	Creature(context.Context, *CreatureInfoRequest) (*CreatureInfo, error)
 	ClassTrainers(context.Context, *ClassTrainersRequest) (*ClassTrainersResponse, error)
+	GameObject(context.Context, *GameObjectRequest) (*GameObjectInfo, error)
 	BeforeLogout(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	mustEmbedUnimplementedWorldServer()
 }
@@ -190,6 +203,9 @@ func (UnimplementedWorldServer) Creature(context.Context, *CreatureInfoRequest) 
 }
 func (UnimplementedWorldServer) ClassTrainers(context.Context, *ClassTrainersRequest) (*ClassTrainersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ClassTrainers not implemented")
+}
+func (UnimplementedWorldServer) GameObject(context.Context, *GameObjectRequest) (*GameObjectInfo, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GameObject not implemented")
 }
 func (UnimplementedWorldServer) BeforeLogout(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method BeforeLogout not implemented")
@@ -359,6 +375,24 @@ func _World_ClassTrainers_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
+func _World_GameObject_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GameObjectRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorldServer).GameObject(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: World_GameObject_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorldServer).GameObject(ctx, req.(*GameObjectRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _World_BeforeLogout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
@@ -415,6 +449,10 @@ var World_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ClassTrainers",
 			Handler:    _World_ClassTrainers_Handler,
+		},
+		{
+			MethodName: "GameObject",
+			Handler:    _World_GameObject_Handler,
 		},
 		{
 			MethodName: "BeforeLogout",

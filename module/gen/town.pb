@@ -31,7 +31,7 @@ EmptyProtoPZ.google.golang.org/protobuf/types/known/emptypbø¢GPBªGoogle.P
 SendPacket%.agentwow.module.v1.SendPacketRequest.google.protobuf.EmptyE
 GetClock.google.protobuf.Empty!.agentwow.module.v1.ClockResponsea
 InvokeModule'.agentwow.module.v1.InvokeModuleRequest(.agentwow.module.v1.InvokeModuleResponseB5Z3github.com/agent-wow/agent-wow/pkg/modules/v1;modv1bproto3
-«
+Î
 
 town.protowowagent.town.v1api/module/v1/session.protogoogle/protobuf/empty.proto"^
 SellRequest
@@ -77,10 +77,22 @@ max_copper (R	maxCopper
 reason (	Rreason1
 bought (2.wowagent.town.v1.BuyLineRbought
 copper (Rcopper
-vendor (	Rvendor2ä
+vendor (	Rvendor"9
+RoomRequest
+entry (Rentry
+count (Rcount"œ
+
+RoomResult
+ok (Rok
+reason (	Rreason
+	destroyed (R	destroyed)
+destroyed_copper (RdestroyedCopper
+
+free_slots (R	freeSlots2­
 TownG
 SellJunk.wowagent.town.v1.SellRequest.wowagent.town.v1.SellResult@
 Repair.google.protobuf.Empty.wowagent.town.v1.RepairResultL
-Restock .wowagent.town.v1.RestockRequest.wowagent.town.v1.RestockResultC
+Restock .wowagent.town.v1.RestockRequest.wowagent.town.v1.RestockResultG
+MakeRoom.wowagent.town.v1.RoomRequest.wowagent.town.v1.RoomResultC
 OnPacket.agentwow.module.v1.WorldPacket.google.protobuf.Empty>
 BeforeLogout.google.protobuf.Empty.google.protobuf.EmptyBZwowagent/gen/townv1;townv1bproto3

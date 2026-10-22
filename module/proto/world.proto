@@ -113,6 +113,8 @@ message QuestInfo {
   repeated uint32 reward_choices = 14;
   // quest_template_addon.SpecialFlags (0x2 exploration or event, 0x20 spell cast on a target).
   uint32 special_flags = 15;
+  // Items always given at turn-in (RewardItem1-4).
+  repeated uint32 reward_items = 16;
 }
 
 message QuestInfoResponse {
@@ -261,6 +263,24 @@ message ClassTrainersResponse {
   repeated ClassTrainer trainers = 1;
 }
 
+message GameObjectRequest {
+  uint32 entry = 1;
+}
+
+// gameobject_template row (chest data fields for type 3).
+message GameObjectInfo {
+  uint32 entry = 1;
+  string name = 2;
+  // 3 = chest (herbs and veins too: their lock needs a profession).
+  uint32 type = 3;
+  // Lock.dbc id (Data0), loot id (Data1) and the quest it needs (Data8) for a chest.
+  uint32 lock_id = 4;
+  uint32 loot_id = 5;
+  uint32 quest_id = 6;
+  // Loot entries anyone gets (QuestRequired = 0): crates have a few, treasure chests tens.
+  uint32 loot_items = 7;
+}
+
 service World {
   rpc ItemSources(ItemSourcesRequest) returns (ItemSourcesResponse);
   rpc FindNpc(FindNpcRequest) returns (FindNpcResponse);
@@ -270,5 +290,6 @@ service World {
   rpc ItemInfo(ItemInfoRequest) returns (ItemInfoResponse);
   rpc Creature(CreatureInfoRequest) returns (CreatureInfo);
   rpc ClassTrainers(ClassTrainersRequest) returns (ClassTrainersResponse);
+  rpc GameObject(GameObjectRequest) returns (GameObjectInfo);
   rpc BeforeLogout(google.protobuf.Empty) returns (google.protobuf.Empty);
 }

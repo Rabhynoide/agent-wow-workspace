@@ -130,3 +130,23 @@ func TestWarriorKeepsTwoHanderUpgrade(t *testing.T) {
 		t.Fatalf("an intellect robe is no upgrade for a warrior: %+v", m[2])
 	}
 }
+
+func TestPrized(t *testing.T) {
+	c := ctx()
+	c.QuestItems[772] = true
+	c.Equipped[1] = nil
+	for _, x := range []struct {
+		it   *I
+		want bool
+	}{
+		{&I{Entry: 772, Quality: 1, Class: 5, SellPrice: 5}, true},                                                                               // quest item
+		{&I{Entry: 5, Quality: 1, Class: 4, Subclass: 1, InventoryType: 6, SellPrice: 6, Armor: 2, AllowableClass: -1, AllowableRace: -1}, true}, // upgrade
+		{&I{Entry: 7, Quality: 3, Class: 4, Subclass: 6, InventoryType: 14, SellPrice: 900, AllowableClass: -1, AllowableRace: -1}, true},        // rare
+		{&I{Entry: 1, Quality: 0, SellPrice: 3}, false},                                                                                          // gray: by its price
+		{&I{Entry: 17029, Quality: 1, Class: 5, SellPrice: 25}, false},                                                                           // kept, but by its price
+	} {
+		if got := Prized(Stack{Entry: x.it.Entry, Count: 1, Info: x.it}, c); got != x.want {
+			t.Errorf("item %d: prized=%v, want %v", x.it.Entry, got, x.want)
+		}
+	}
+}

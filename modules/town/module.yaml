@@ -14,6 +14,7 @@ rpc:
   sell_junk: /wowagent.town.v1.Town/SellJunk
   repair: /wowagent.town.v1.Town/Repair
   restock: /wowagent.town.v1.Town/Restock
+  make_room: /wowagent.town.v1.Town/MakeRoom
 packets:
   SMSG_LIST_INVENTORY: /wowagent.town.v1.Town/OnPacket
 lifecycle:

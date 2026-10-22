@@ -4,7 +4,7 @@
 EmptyB}
 com.google.protobufB
 EmptyProtoPZ.google.golang.org/protobuf/types/known/emptypbø¢GPBªGoogle.Protobuf.WellKnownTypesbproto3
-Â)
+¤,
 world.protowowagent.world.v1google/protobuf/empty.proto"¨
 FindNpcRequest
 name (	Rname
@@ -71,7 +71,7 @@ creditFrom
 use_on_kind (	R	useOnKind"4
 ItemStat
 type (Rtype
-value (Rvalue"¯
+value (Rvalue"Ò
 	QuestInfo
 id (Rid
 title (	Rtitle
@@ -94,7 +94,8 @@ objectives7
 enders (2.wowagent.world.v1.QuestNpcRenders'
 objectives_text (	RobjectivesText%
 reward_choices (RrewardChoices#
-special_flags (RspecialFlags"I
+special_flags (RspecialFlags!
+reward_items (RrewardItems"I
 QuestInfoResponse4
 quests (2.wowagent.world.v1.QuestInfoRquests"+
 QuestsForNpcRequest
@@ -201,7 +202,18 @@ reqAbility"à
 trainer_id (R	trainerId7
 spells	 (2.wowagent.world.v1.TrainerSpellRspells"T
 ClassTrainersResponse;
-trainers (2.wowagent.world.v1.ClassTrainerRtrainers2
+trainers (2.wowagent.world.v1.ClassTrainerRtrainers")
+GameObjectRequest
+entry (Rentry"º
+GameObjectInfo
+entry (Rentry
+name (	Rname
+type (Rtype
+lock_id (RlockId
+loot_id (RlootId
+quest_id (RquestId
+
+loot_items (R	lootItems2ä
 World\
 ItemSources%.wowagent.world.v1.ItemSourcesRequest&.wowagent.world.v1.ItemSourcesResponseP
 FindNpc!.wowagent.world.v1.FindNpcRequest".wowagent.world.v1.FindNpcResponseV
@@ -210,5 +222,7 @@ trainer_id (R	trainerId7
 Spawns .wowagent.world.v1.SpawnsRequest!.wowagent.world.v1.SpawnsResponseS
 ItemInfo".wowagent.world.v1.ItemInfoRequest#.wowagent.world.v1.ItemInfoResponseS
 Creature&.wowagent.world.v1.CreatureInfoRequest.wowagent.world.v1.CreatureInfob
-ClassTrainers'.wowagent.world.v1.ClassTrainersRequest(.wowagent.world.v1.ClassTrainersResponse>
+ClassTrainers'.wowagent.world.v1.ClassTrainersRequest(.wowagent.world.v1.ClassTrainersResponseU
+
+GameObject$.wowagent.world.v1.GameObjectRequest!.wowagent.world.v1.GameObjectInfo>
 BeforeLogout.google.protobuf.Empty.google.protobuf.EmptyBZwowagent/gen/worldv1;worldv1bproto3

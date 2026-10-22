@@ -26,6 +26,7 @@ const (
 	Quest_Use_FullMethodName          = "/wowagent.quest.v1.Quest/Use"
 	Quest_Explore_FullMethodName      = "/wowagent.quest.v1.Quest/Explore"
 	Quest_UseItem_FullMethodName      = "/wowagent.quest.v1.Quest/UseItem"
+	Quest_Chests_FullMethodName       = "/wowagent.quest.v1.Quest/Chests"
 	Quest_OnPacket_FullMethodName     = "/wowagent.quest.v1.Quest/OnPacket"
 	Quest_BeforeLogout_FullMethodName = "/wowagent.quest.v1.Quest/BeforeLogout"
 )
@@ -39,6 +40,7 @@ type QuestClient interface {
 	Use(ctx context.Context, in *UseRequest, opts ...grpc.CallOption) (*QuestResult, error)
 	Explore(ctx context.Context, in *ExploreRequest, opts ...grpc.CallOption) (*QuestResult, error)
 	UseItem(ctx context.Context, in *UseItemRequest, opts ...grpc.CallOption) (*QuestResult, error)
+	Chests(ctx context.Context, in *ChestsRequest, opts ...grpc.CallOption) (*ChestsResponse, error)
 	OnPacket(ctx context.Context, in *v1.WorldPacket, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	BeforeLogout(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
@@ -101,6 +103,16 @@ func (c *questClient) UseItem(ctx context.Context, in *UseItemRequest, opts ...g
 	return out, nil
 }
 
+func (c *questClient) Chests(ctx context.Context, in *ChestsRequest, opts ...grpc.CallOption) (*ChestsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ChestsResponse)
+	err := c.cc.Invoke(ctx, Quest_Chests_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *questClient) OnPacket(ctx context.Context, in *v1.WorldPacket, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -130,6 +142,7 @@ type QuestServer interface {
 	Use(context.Context, *UseRequest) (*QuestResult, error)
 	Explore(context.Context, *ExploreRequest) (*QuestResult, error)
 	UseItem(context.Context, *UseItemRequest) (*QuestResult, error)
+	Chests(context.Context, *ChestsRequest) (*ChestsResponse, error)
 	OnPacket(context.Context, *v1.WorldPacket) (*emptypb.Empty, error)
 	BeforeLogout(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	mustEmbedUnimplementedQuestServer()
@@ -156,6 +169,9 @@ func (UnimplementedQuestServer) Explore(context.Context, *ExploreRequest) (*Ques
 }
 func (UnimplementedQuestServer) UseItem(context.Context, *UseItemRequest) (*QuestResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UseItem not implemented")
+}
+func (UnimplementedQuestServer) Chests(context.Context, *ChestsRequest) (*ChestsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Chests not implemented")
 }
 func (UnimplementedQuestServer) OnPacket(context.Context, *v1.WorldPacket) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method OnPacket not implemented")
@@ -274,6 +290,24 @@ func _Quest_UseItem_Handler(srv interface{}, ctx context.Context, dec func(inter
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Quest_Chests_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ChestsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QuestServer).Chests(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Quest_Chests_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QuestServer).Chests(ctx, req.(*ChestsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Quest_OnPacket_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(v1.WorldPacket)
 	if err := dec(in); err != nil {
@@ -336,6 +370,10 @@ var Quest_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UseItem",
 			Handler:    _Quest_UseItem_Handler,
+		},
+		{
+			MethodName: "Chests",
+			Handler:    _Quest_Chests_Handler,
 		},
 		{
 			MethodName: "OnPacket",

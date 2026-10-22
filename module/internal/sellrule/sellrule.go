@@ -3,6 +3,7 @@ package sellrule
 
 import (
 	"sort"
+	"strings"
 
 	"google.golang.org/protobuf/proto"
 
@@ -212,4 +213,15 @@ func itoa(n uint32) string {
 		b = append([]byte{byte('0' + n%10)}, b...)
 	}
 	return string(b)
+}
+
+// Prized tells whether an item deserves a bag slot whatever its price (full bags: town.make_room
+// throws away the cheapest junk for it): quest items, rare or better, upgrades now or soon, bags.
+func Prized(s Stack, c Ctx) bool {
+	d := decide(s, c)
+	if d.Sell {
+		return false
+	}
+	r := d.Reason
+	return r == "quest item" || r == "rare or better" || strings.HasPrefix(r, "upgrade") || strings.HasPrefix(r, "bag")
 }

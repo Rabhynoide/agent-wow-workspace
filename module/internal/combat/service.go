@@ -485,9 +485,6 @@ func (s *Service) kill(ctx context.Context, j *job, r *pb.KillRequest) (string, 
 			}
 			continue
 		}
-		if !r.NoLoot && snap.FreeSlots < 1 {
-			return "failed", "bags full"
-		}
 		me := snap.Self
 		// Classes without a heal need more health before the next pull.
 		restBelow := uint32(55)
@@ -829,9 +826,12 @@ func (s *Service) lootCorpse(ctx context.Context, j *job, guid uint64) {
 		return
 	}
 	for i := 0; i < 2; i++ {
-		res, err := s.loot.Take(ctx, s.s, guid, true, loot.DefaultWait)
+		res, err := s.loot.Take(ctx, s.s, guid, true, loot.DefaultWait, s.api.Room)
 		if err == nil {
 			slog.Info("looted", "entry", t.Entry, "gold", res.Gold, "items", res.Items)
+			if len(res.Left) > 0 {
+				slog.Info("loot left: bags full", "entry", t.Entry, "items", res.Left)
+			}
 			for _, e := range res.Items {
 				// Weapon, armor or bag: checked before the next pull (gearIfLooted).
 				if in := s.itemInfo(ctx, e); in != nil && (in.Class == 2 || in.Class == 4 || in.Class == 1) {

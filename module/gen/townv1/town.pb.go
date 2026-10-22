@@ -559,6 +559,138 @@ func (x *RestockResult) GetVendor() string {
 	return ""
 }
 
+type RoomRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The item about to be taken (looted or a quest reward) and its count; entry 0 = make room
+	// whatever comes (a quest reward chosen by its value).
+	Entry         uint32 `protobuf:"varint,1,opt,name=entry,proto3" json:"entry,omitempty"`
+	Count         uint32 `protobuf:"varint,2,opt,name=count,proto3" json:"count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RoomRequest) Reset() {
+	*x = RoomRequest{}
+	mi := &file_town_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RoomRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RoomRequest) ProtoMessage() {}
+
+func (x *RoomRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_town_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RoomRequest.ProtoReflect.Descriptor instead.
+func (*RoomRequest) Descriptor() ([]byte, []int) {
+	return file_town_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *RoomRequest) GetEntry() uint32 {
+	if x != nil {
+		return x.Entry
+	}
+	return 0
+}
+
+func (x *RoomRequest) GetCount() uint32 {
+	if x != nil {
+		return x.Count
+	}
+	return 0
+}
+
+type RoomResult struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// There is room now (a free slot, a stack to add to, or a stack thrown away).
+	Ok     bool   `protobuf:"varint,1,opt,name=ok,proto3" json:"ok,omitempty"`
+	Reason string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	// The stack thrown away (0 = none) and its vendor price.
+	Destroyed       uint32 `protobuf:"varint,3,opt,name=destroyed,proto3" json:"destroyed,omitempty"`
+	DestroyedCopper uint32 `protobuf:"varint,4,opt,name=destroyed_copper,json=destroyedCopper,proto3" json:"destroyed_copper,omitempty"`
+	FreeSlots       uint32 `protobuf:"varint,5,opt,name=free_slots,json=freeSlots,proto3" json:"free_slots,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *RoomResult) Reset() {
+	*x = RoomResult{}
+	mi := &file_town_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RoomResult) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RoomResult) ProtoMessage() {}
+
+func (x *RoomResult) ProtoReflect() protoreflect.Message {
+	mi := &file_town_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RoomResult.ProtoReflect.Descriptor instead.
+func (*RoomResult) Descriptor() ([]byte, []int) {
+	return file_town_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *RoomResult) GetOk() bool {
+	if x != nil {
+		return x.Ok
+	}
+	return false
+}
+
+func (x *RoomResult) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *RoomResult) GetDestroyed() uint32 {
+	if x != nil {
+		return x.Destroyed
+	}
+	return 0
+}
+
+func (x *RoomResult) GetDestroyedCopper() uint32 {
+	if x != nil {
+		return x.DestroyedCopper
+	}
+	return 0
+}
+
+func (x *RoomResult) GetFreeSlots() uint32 {
+	if x != nil {
+		return x.FreeSlots
+	}
+	return 0
+}
+
 var File_town_proto protoreflect.FileDescriptor
 
 const file_town_proto_rawDesc = "" +
@@ -608,11 +740,23 @@ const file_town_proto_rawDesc = "" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x121\n" +
 	"\x06bought\x18\x03 \x03(\v2\x19.wowagent.town.v1.BuyLineR\x06bought\x12\x16\n" +
 	"\x06copper\x18\x04 \x01(\rR\x06copper\x12\x16\n" +
-	"\x06vendor\x18\x05 \x01(\tR\x06vendor2\xe4\x02\n" +
+	"\x06vendor\x18\x05 \x01(\tR\x06vendor\"9\n" +
+	"\vRoomRequest\x12\x14\n" +
+	"\x05entry\x18\x01 \x01(\rR\x05entry\x12\x14\n" +
+	"\x05count\x18\x02 \x01(\rR\x05count\"\x9c\x01\n" +
+	"\n" +
+	"RoomResult\x12\x0e\n" +
+	"\x02ok\x18\x01 \x01(\bR\x02ok\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x1c\n" +
+	"\tdestroyed\x18\x03 \x01(\rR\tdestroyed\x12)\n" +
+	"\x10destroyed_copper\x18\x04 \x01(\rR\x0fdestroyedCopper\x12\x1d\n" +
+	"\n" +
+	"free_slots\x18\x05 \x01(\rR\tfreeSlots2\xad\x03\n" +
 	"\x04Town\x12G\n" +
 	"\bSellJunk\x12\x1d.wowagent.town.v1.SellRequest\x1a\x1c.wowagent.town.v1.SellResult\x12@\n" +
 	"\x06Repair\x12\x16.google.protobuf.Empty\x1a\x1e.wowagent.town.v1.RepairResult\x12L\n" +
-	"\aRestock\x12 .wowagent.town.v1.RestockRequest\x1a\x1f.wowagent.town.v1.RestockResult\x12C\n" +
+	"\aRestock\x12 .wowagent.town.v1.RestockRequest\x1a\x1f.wowagent.town.v1.RestockResult\x12G\n" +
+	"\bMakeRoom\x12\x1d.wowagent.town.v1.RoomRequest\x1a\x1c.wowagent.town.v1.RoomResult\x12C\n" +
 	"\bOnPacket\x12\x1f.agentwow.module.v1.WorldPacket\x1a\x16.google.protobuf.Empty\x12>\n" +
 	"\fBeforeLogout\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.EmptyB\x1cZ\x1awowagent/gen/townv1;townv1b\x06proto3"
 
@@ -628,7 +772,7 @@ func file_town_proto_rawDescGZIP() []byte {
 	return file_town_proto_rawDescData
 }
 
-var file_town_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_town_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_town_proto_goTypes = []any{
 	(*SellRequest)(nil),    // 0: wowagent.town.v1.SellRequest
 	(*SellLine)(nil),       // 1: wowagent.town.v1.SellLine
@@ -637,27 +781,31 @@ var file_town_proto_goTypes = []any{
 	(*RestockRequest)(nil), // 4: wowagent.town.v1.RestockRequest
 	(*BuyLine)(nil),        // 5: wowagent.town.v1.BuyLine
 	(*RestockResult)(nil),  // 6: wowagent.town.v1.RestockResult
-	(*emptypb.Empty)(nil),  // 7: google.protobuf.Empty
-	(*v1.WorldPacket)(nil), // 8: agentwow.module.v1.WorldPacket
+	(*RoomRequest)(nil),    // 7: wowagent.town.v1.RoomRequest
+	(*RoomResult)(nil),     // 8: wowagent.town.v1.RoomResult
+	(*emptypb.Empty)(nil),  // 9: google.protobuf.Empty
+	(*v1.WorldPacket)(nil), // 10: agentwow.module.v1.WorldPacket
 }
 var file_town_proto_depIdxs = []int32{
-	1, // 0: wowagent.town.v1.SellResult.lines:type_name -> wowagent.town.v1.SellLine
-	5, // 1: wowagent.town.v1.RestockResult.bought:type_name -> wowagent.town.v1.BuyLine
-	0, // 2: wowagent.town.v1.Town.SellJunk:input_type -> wowagent.town.v1.SellRequest
-	7, // 3: wowagent.town.v1.Town.Repair:input_type -> google.protobuf.Empty
-	4, // 4: wowagent.town.v1.Town.Restock:input_type -> wowagent.town.v1.RestockRequest
-	8, // 5: wowagent.town.v1.Town.OnPacket:input_type -> agentwow.module.v1.WorldPacket
-	7, // 6: wowagent.town.v1.Town.BeforeLogout:input_type -> google.protobuf.Empty
-	2, // 7: wowagent.town.v1.Town.SellJunk:output_type -> wowagent.town.v1.SellResult
-	3, // 8: wowagent.town.v1.Town.Repair:output_type -> wowagent.town.v1.RepairResult
-	6, // 9: wowagent.town.v1.Town.Restock:output_type -> wowagent.town.v1.RestockResult
-	7, // 10: wowagent.town.v1.Town.OnPacket:output_type -> google.protobuf.Empty
-	7, // 11: wowagent.town.v1.Town.BeforeLogout:output_type -> google.protobuf.Empty
-	7, // [7:12] is the sub-list for method output_type
-	2, // [2:7] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	1,  // 0: wowagent.town.v1.SellResult.lines:type_name -> wowagent.town.v1.SellLine
+	5,  // 1: wowagent.town.v1.RestockResult.bought:type_name -> wowagent.town.v1.BuyLine
+	0,  // 2: wowagent.town.v1.Town.SellJunk:input_type -> wowagent.town.v1.SellRequest
+	9,  // 3: wowagent.town.v1.Town.Repair:input_type -> google.protobuf.Empty
+	4,  // 4: wowagent.town.v1.Town.Restock:input_type -> wowagent.town.v1.RestockRequest
+	7,  // 5: wowagent.town.v1.Town.MakeRoom:input_type -> wowagent.town.v1.RoomRequest
+	10, // 6: wowagent.town.v1.Town.OnPacket:input_type -> agentwow.module.v1.WorldPacket
+	9,  // 7: wowagent.town.v1.Town.BeforeLogout:input_type -> google.protobuf.Empty
+	2,  // 8: wowagent.town.v1.Town.SellJunk:output_type -> wowagent.town.v1.SellResult
+	3,  // 9: wowagent.town.v1.Town.Repair:output_type -> wowagent.town.v1.RepairResult
+	6,  // 10: wowagent.town.v1.Town.Restock:output_type -> wowagent.town.v1.RestockResult
+	8,  // 11: wowagent.town.v1.Town.MakeRoom:output_type -> wowagent.town.v1.RoomResult
+	9,  // 12: wowagent.town.v1.Town.OnPacket:output_type -> google.protobuf.Empty
+	9,  // 13: wowagent.town.v1.Town.BeforeLogout:output_type -> google.protobuf.Empty
+	8,  // [8:14] is the sub-list for method output_type
+	2,  // [2:8] is the sub-list for method input_type
+	2,  // [2:2] is the sub-list for extension type_name
+	2,  // [2:2] is the sub-list for extension extendee
+	0,  // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_town_proto_init() }
@@ -671,7 +819,7 @@ func file_town_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_town_proto_rawDesc), len(file_town_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

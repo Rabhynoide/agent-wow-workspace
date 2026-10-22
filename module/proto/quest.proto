@@ -29,6 +29,32 @@ message UseRequest {
   uint32 entry = 1;
   // Take all loot opened by the object.
   bool loot = 2;
+  // This object (0: the nearest with the entry).
+  uint64 guid = 3;
+  // Spell that opens its lock (quest.chests); 0 = use it, then cast 22810 when it is locked.
+  uint32 open_spell = 4;
+}
+
+message ChestsRequest {
+  float radius = 1;
+}
+
+// A chest in sight that any character opens (no key, profession or quest needed).
+message Chest {
+  uint64 guid = 1;
+  uint32 entry = 2;
+  string name = 3;
+  float x = 4;
+  float y = 5;
+  float z = 6;
+  float dist = 7;
+  // 0 = no lock (plain use).
+  uint32 open_spell = 8;
+  uint32 loot_items = 9;
+}
+
+message ChestsResponse {
+  repeated Chest chests = 1;
 }
 
 message ExploreRequest {
@@ -53,6 +79,7 @@ service Quest {
   rpc Use(UseRequest) returns (QuestResult);
   rpc Explore(ExploreRequest) returns (QuestResult);
   rpc UseItem(UseItemRequest) returns (QuestResult);
+  rpc Chests(ChestsRequest) returns (ChestsResponse);
   rpc OnPacket(agentwow.module.v1.WorldPacket) returns (google.protobuf.Empty);
   rpc BeforeLogout(google.protobuf.Empty) returns (google.protobuf.Empty);
 }

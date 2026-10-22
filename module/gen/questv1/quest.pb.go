@@ -201,7 +201,11 @@ type UseRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Entry uint32                 `protobuf:"varint,1,opt,name=entry,proto3" json:"entry,omitempty"`
 	// Take all loot opened by the object.
-	Loot          bool `protobuf:"varint,2,opt,name=loot,proto3" json:"loot,omitempty"`
+	Loot bool `protobuf:"varint,2,opt,name=loot,proto3" json:"loot,omitempty"`
+	// This object (0: the nearest with the entry).
+	Guid uint64 `protobuf:"varint,3,opt,name=guid,proto3" json:"guid,omitempty"`
+	// Spell that opens its lock (quest.chests); 0 = use it, then cast 22810 when it is locked.
+	OpenSpell     uint32 `protobuf:"varint,4,opt,name=open_spell,json=openSpell,proto3" json:"open_spell,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -250,6 +254,218 @@ func (x *UseRequest) GetLoot() bool {
 	return false
 }
 
+func (x *UseRequest) GetGuid() uint64 {
+	if x != nil {
+		return x.Guid
+	}
+	return 0
+}
+
+func (x *UseRequest) GetOpenSpell() uint32 {
+	if x != nil {
+		return x.OpenSpell
+	}
+	return 0
+}
+
+type ChestsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Radius        float32                `protobuf:"fixed32,1,opt,name=radius,proto3" json:"radius,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ChestsRequest) Reset() {
+	*x = ChestsRequest{}
+	mi := &file_quest_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChestsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChestsRequest) ProtoMessage() {}
+
+func (x *ChestsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_quest_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChestsRequest.ProtoReflect.Descriptor instead.
+func (*ChestsRequest) Descriptor() ([]byte, []int) {
+	return file_quest_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ChestsRequest) GetRadius() float32 {
+	if x != nil {
+		return x.Radius
+	}
+	return 0
+}
+
+// A chest in sight that any character opens (no key, profession or quest needed).
+type Chest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Guid  uint64                 `protobuf:"varint,1,opt,name=guid,proto3" json:"guid,omitempty"`
+	Entry uint32                 `protobuf:"varint,2,opt,name=entry,proto3" json:"entry,omitempty"`
+	Name  string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	X     float32                `protobuf:"fixed32,4,opt,name=x,proto3" json:"x,omitempty"`
+	Y     float32                `protobuf:"fixed32,5,opt,name=y,proto3" json:"y,omitempty"`
+	Z     float32                `protobuf:"fixed32,6,opt,name=z,proto3" json:"z,omitempty"`
+	Dist  float32                `protobuf:"fixed32,7,opt,name=dist,proto3" json:"dist,omitempty"`
+	// 0 = no lock (plain use).
+	OpenSpell     uint32 `protobuf:"varint,8,opt,name=open_spell,json=openSpell,proto3" json:"open_spell,omitempty"`
+	LootItems     uint32 `protobuf:"varint,9,opt,name=loot_items,json=lootItems,proto3" json:"loot_items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Chest) Reset() {
+	*x = Chest{}
+	mi := &file_quest_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Chest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Chest) ProtoMessage() {}
+
+func (x *Chest) ProtoReflect() protoreflect.Message {
+	mi := &file_quest_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Chest.ProtoReflect.Descriptor instead.
+func (*Chest) Descriptor() ([]byte, []int) {
+	return file_quest_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *Chest) GetGuid() uint64 {
+	if x != nil {
+		return x.Guid
+	}
+	return 0
+}
+
+func (x *Chest) GetEntry() uint32 {
+	if x != nil {
+		return x.Entry
+	}
+	return 0
+}
+
+func (x *Chest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Chest) GetX() float32 {
+	if x != nil {
+		return x.X
+	}
+	return 0
+}
+
+func (x *Chest) GetY() float32 {
+	if x != nil {
+		return x.Y
+	}
+	return 0
+}
+
+func (x *Chest) GetZ() float32 {
+	if x != nil {
+		return x.Z
+	}
+	return 0
+}
+
+func (x *Chest) GetDist() float32 {
+	if x != nil {
+		return x.Dist
+	}
+	return 0
+}
+
+func (x *Chest) GetOpenSpell() uint32 {
+	if x != nil {
+		return x.OpenSpell
+	}
+	return 0
+}
+
+func (x *Chest) GetLootItems() uint32 {
+	if x != nil {
+		return x.LootItems
+	}
+	return 0
+}
+
+type ChestsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Chests        []*Chest               `protobuf:"bytes,1,rep,name=chests,proto3" json:"chests,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ChestsResponse) Reset() {
+	*x = ChestsResponse{}
+	mi := &file_quest_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChestsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChestsResponse) ProtoMessage() {}
+
+func (x *ChestsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_quest_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChestsResponse.ProtoReflect.Descriptor instead.
+func (*ChestsResponse) Descriptor() ([]byte, []int) {
+	return file_quest_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ChestsResponse) GetChests() []*Chest {
+	if x != nil {
+		return x.Chests
+	}
+	return nil
+}
+
 type ExploreRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Area trigger id (world.quest_info objective "explore"); the character must stand inside it.
@@ -260,7 +476,7 @@ type ExploreRequest struct {
 
 func (x *ExploreRequest) Reset() {
 	*x = ExploreRequest{}
-	mi := &file_quest_proto_msgTypes[4]
+	mi := &file_quest_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -272,7 +488,7 @@ func (x *ExploreRequest) String() string {
 func (*ExploreRequest) ProtoMessage() {}
 
 func (x *ExploreRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quest_proto_msgTypes[4]
+	mi := &file_quest_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -285,7 +501,7 @@ func (x *ExploreRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExploreRequest.ProtoReflect.Descriptor instead.
 func (*ExploreRequest) Descriptor() ([]byte, []int) {
-	return file_quest_proto_rawDescGZIP(), []int{4}
+	return file_quest_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ExploreRequest) GetTrigger() uint32 {
@@ -311,7 +527,7 @@ type UseItemRequest struct {
 
 func (x *UseItemRequest) Reset() {
 	*x = UseItemRequest{}
-	mi := &file_quest_proto_msgTypes[5]
+	mi := &file_quest_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -323,7 +539,7 @@ func (x *UseItemRequest) String() string {
 func (*UseItemRequest) ProtoMessage() {}
 
 func (x *UseItemRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quest_proto_msgTypes[5]
+	mi := &file_quest_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -336,7 +552,7 @@ func (x *UseItemRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UseItemRequest.ProtoReflect.Descriptor instead.
 func (*UseItemRequest) Descriptor() ([]byte, []int) {
-	return file_quest_proto_rawDescGZIP(), []int{5}
+	return file_quest_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *UseItemRequest) GetItemEntry() uint32 {
@@ -382,11 +598,30 @@ const file_quest_proto_rawDesc = "" +
 	"\rTurnInRequest\x12\x1b\n" +
 	"\tnpc_entry\x18\x01 \x01(\rR\bnpcEntry\x12\x19\n" +
 	"\bquest_id\x18\x02 \x01(\rR\aquestId\x12\x16\n" +
-	"\x06reward\x18\x03 \x01(\rR\x06reward\"6\n" +
+	"\x06reward\x18\x03 \x01(\rR\x06reward\"i\n" +
 	"\n" +
 	"UseRequest\x12\x14\n" +
 	"\x05entry\x18\x01 \x01(\rR\x05entry\x12\x12\n" +
-	"\x04loot\x18\x02 \x01(\bR\x04loot\"*\n" +
+	"\x04loot\x18\x02 \x01(\bR\x04loot\x12\x12\n" +
+	"\x04guid\x18\x03 \x01(\x04R\x04guid\x12\x1d\n" +
+	"\n" +
+	"open_spell\x18\x04 \x01(\rR\topenSpell\"'\n" +
+	"\rChestsRequest\x12\x16\n" +
+	"\x06radius\x18\x01 \x01(\x02R\x06radius\"\xc1\x01\n" +
+	"\x05Chest\x12\x12\n" +
+	"\x04guid\x18\x01 \x01(\x04R\x04guid\x12\x14\n" +
+	"\x05entry\x18\x02 \x01(\rR\x05entry\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12\f\n" +
+	"\x01x\x18\x04 \x01(\x02R\x01x\x12\f\n" +
+	"\x01y\x18\x05 \x01(\x02R\x01y\x12\f\n" +
+	"\x01z\x18\x06 \x01(\x02R\x01z\x12\x12\n" +
+	"\x04dist\x18\a \x01(\x02R\x04dist\x12\x1d\n" +
+	"\n" +
+	"open_spell\x18\b \x01(\rR\topenSpell\x12\x1d\n" +
+	"\n" +
+	"loot_items\x18\t \x01(\rR\tlootItems\"B\n" +
+	"\x0eChestsResponse\x120\n" +
+	"\x06chests\x18\x01 \x03(\v2\x18.wowagent.quest.v1.ChestR\x06chests\"*\n" +
 	"\x0eExploreRequest\x12\x18\n" +
 	"\atrigger\x18\x01 \x01(\rR\atrigger\"\x89\x01\n" +
 	"\x0eUseItemRequest\x12\x1d\n" +
@@ -395,13 +630,14 @@ const file_quest_proto_rawDesc = "" +
 	"\ftarget_entry\x18\x02 \x01(\rR\vtargetEntry\x12\x1f\n" +
 	"\vtarget_kind\x18\x03 \x01(\tR\n" +
 	"targetKind\x12\x14\n" +
-	"\x05spell\x18\x04 \x01(\rR\x05spell2\x86\x04\n" +
+	"\x05spell\x18\x04 \x01(\rR\x05spell2\xd5\x04\n" +
 	"\x05Quest\x12J\n" +
 	"\x06Accept\x12 .wowagent.quest.v1.AcceptRequest\x1a\x1e.wowagent.quest.v1.QuestResult\x12J\n" +
 	"\x06TurnIn\x12 .wowagent.quest.v1.TurnInRequest\x1a\x1e.wowagent.quest.v1.QuestResult\x12D\n" +
 	"\x03Use\x12\x1d.wowagent.quest.v1.UseRequest\x1a\x1e.wowagent.quest.v1.QuestResult\x12L\n" +
 	"\aExplore\x12!.wowagent.quest.v1.ExploreRequest\x1a\x1e.wowagent.quest.v1.QuestResult\x12L\n" +
-	"\aUseItem\x12!.wowagent.quest.v1.UseItemRequest\x1a\x1e.wowagent.quest.v1.QuestResult\x12C\n" +
+	"\aUseItem\x12!.wowagent.quest.v1.UseItemRequest\x1a\x1e.wowagent.quest.v1.QuestResult\x12M\n" +
+	"\x06Chests\x12 .wowagent.quest.v1.ChestsRequest\x1a!.wowagent.quest.v1.ChestsResponse\x12C\n" +
 	"\bOnPacket\x12\x1f.agentwow.module.v1.WorldPacket\x1a\x16.google.protobuf.Empty\x12>\n" +
 	"\fBeforeLogout\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.EmptyB\x1eZ\x1cwowagent/gen/questv1;questv1b\x06proto3"
 
@@ -417,37 +653,43 @@ func file_quest_proto_rawDescGZIP() []byte {
 	return file_quest_proto_rawDescData
 }
 
-var file_quest_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_quest_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_quest_proto_goTypes = []any{
 	(*QuestResult)(nil),    // 0: wowagent.quest.v1.QuestResult
 	(*AcceptRequest)(nil),  // 1: wowagent.quest.v1.AcceptRequest
 	(*TurnInRequest)(nil),  // 2: wowagent.quest.v1.TurnInRequest
 	(*UseRequest)(nil),     // 3: wowagent.quest.v1.UseRequest
-	(*ExploreRequest)(nil), // 4: wowagent.quest.v1.ExploreRequest
-	(*UseItemRequest)(nil), // 5: wowagent.quest.v1.UseItemRequest
-	(*v1.WorldPacket)(nil), // 6: agentwow.module.v1.WorldPacket
-	(*emptypb.Empty)(nil),  // 7: google.protobuf.Empty
+	(*ChestsRequest)(nil),  // 4: wowagent.quest.v1.ChestsRequest
+	(*Chest)(nil),          // 5: wowagent.quest.v1.Chest
+	(*ChestsResponse)(nil), // 6: wowagent.quest.v1.ChestsResponse
+	(*ExploreRequest)(nil), // 7: wowagent.quest.v1.ExploreRequest
+	(*UseItemRequest)(nil), // 8: wowagent.quest.v1.UseItemRequest
+	(*v1.WorldPacket)(nil), // 9: agentwow.module.v1.WorldPacket
+	(*emptypb.Empty)(nil),  // 10: google.protobuf.Empty
 }
 var file_quest_proto_depIdxs = []int32{
-	1, // 0: wowagent.quest.v1.Quest.Accept:input_type -> wowagent.quest.v1.AcceptRequest
-	2, // 1: wowagent.quest.v1.Quest.TurnIn:input_type -> wowagent.quest.v1.TurnInRequest
-	3, // 2: wowagent.quest.v1.Quest.Use:input_type -> wowagent.quest.v1.UseRequest
-	4, // 3: wowagent.quest.v1.Quest.Explore:input_type -> wowagent.quest.v1.ExploreRequest
-	5, // 4: wowagent.quest.v1.Quest.UseItem:input_type -> wowagent.quest.v1.UseItemRequest
-	6, // 5: wowagent.quest.v1.Quest.OnPacket:input_type -> agentwow.module.v1.WorldPacket
-	7, // 6: wowagent.quest.v1.Quest.BeforeLogout:input_type -> google.protobuf.Empty
-	0, // 7: wowagent.quest.v1.Quest.Accept:output_type -> wowagent.quest.v1.QuestResult
-	0, // 8: wowagent.quest.v1.Quest.TurnIn:output_type -> wowagent.quest.v1.QuestResult
-	0, // 9: wowagent.quest.v1.Quest.Use:output_type -> wowagent.quest.v1.QuestResult
-	0, // 10: wowagent.quest.v1.Quest.Explore:output_type -> wowagent.quest.v1.QuestResult
-	0, // 11: wowagent.quest.v1.Quest.UseItem:output_type -> wowagent.quest.v1.QuestResult
-	7, // 12: wowagent.quest.v1.Quest.OnPacket:output_type -> google.protobuf.Empty
-	7, // 13: wowagent.quest.v1.Quest.BeforeLogout:output_type -> google.protobuf.Empty
-	7, // [7:14] is the sub-list for method output_type
-	0, // [0:7] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	5,  // 0: wowagent.quest.v1.ChestsResponse.chests:type_name -> wowagent.quest.v1.Chest
+	1,  // 1: wowagent.quest.v1.Quest.Accept:input_type -> wowagent.quest.v1.AcceptRequest
+	2,  // 2: wowagent.quest.v1.Quest.TurnIn:input_type -> wowagent.quest.v1.TurnInRequest
+	3,  // 3: wowagent.quest.v1.Quest.Use:input_type -> wowagent.quest.v1.UseRequest
+	7,  // 4: wowagent.quest.v1.Quest.Explore:input_type -> wowagent.quest.v1.ExploreRequest
+	8,  // 5: wowagent.quest.v1.Quest.UseItem:input_type -> wowagent.quest.v1.UseItemRequest
+	4,  // 6: wowagent.quest.v1.Quest.Chests:input_type -> wowagent.quest.v1.ChestsRequest
+	9,  // 7: wowagent.quest.v1.Quest.OnPacket:input_type -> agentwow.module.v1.WorldPacket
+	10, // 8: wowagent.quest.v1.Quest.BeforeLogout:input_type -> google.protobuf.Empty
+	0,  // 9: wowagent.quest.v1.Quest.Accept:output_type -> wowagent.quest.v1.QuestResult
+	0,  // 10: wowagent.quest.v1.Quest.TurnIn:output_type -> wowagent.quest.v1.QuestResult
+	0,  // 11: wowagent.quest.v1.Quest.Use:output_type -> wowagent.quest.v1.QuestResult
+	0,  // 12: wowagent.quest.v1.Quest.Explore:output_type -> wowagent.quest.v1.QuestResult
+	0,  // 13: wowagent.quest.v1.Quest.UseItem:output_type -> wowagent.quest.v1.QuestResult
+	6,  // 14: wowagent.quest.v1.Quest.Chests:output_type -> wowagent.quest.v1.ChestsResponse
+	10, // 15: wowagent.quest.v1.Quest.OnPacket:output_type -> google.protobuf.Empty
+	10, // 16: wowagent.quest.v1.Quest.BeforeLogout:output_type -> google.protobuf.Empty
+	9,  // [9:17] is the sub-list for method output_type
+	1,  // [1:9] is the sub-list for method input_type
+	1,  // [1:1] is the sub-list for extension type_name
+	1,  // [1:1] is the sub-list for extension extendee
+	0,  // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_quest_proto_init() }
@@ -461,7 +703,7 @@ func file_quest_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_quest_proto_rawDesc), len(file_quest_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

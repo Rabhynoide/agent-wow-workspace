@@ -73,12 +73,32 @@ message RestockResult {
   string vendor = 5;
 }
 
+message RoomRequest {
+  // The item about to be taken (looted or a quest reward) and its count; entry 0 = make room
+  // whatever comes (a quest reward chosen by its value).
+  uint32 entry = 1;
+  uint32 count = 2;
+}
+
+message RoomResult {
+  // There is room now (a free slot, a stack to add to, or a stack thrown away).
+  bool ok = 1;
+  string reason = 2;
+  // The stack thrown away (0 = none) and its vendor price.
+  uint32 destroyed = 3;
+  uint32 destroyed_copper = 4;
+  uint32 free_slots = 5;
+}
+
 service Town {
   rpc SellJunk(SellRequest) returns (SellResult);
   // Repairs all items at a repair vendor within 5 yards.
   rpc Repair(google.protobuf.Empty) returns (RepairResult);
   // Buys food and drink at the vendor within 5 yards (best usable at our level, within budget).
   rpc Restock(RestockRequest) returns (RestockResult);
+  // Room for an item when the bags are full: throws away the cheapest stack the sell rules would
+  // sell, if the item is worth more (or is a quest item, an upgrade, rare or better).
+  rpc MakeRoom(RoomRequest) returns (RoomResult);
   rpc OnPacket(agentwow.module.v1.WorldPacket) returns (google.protobuf.Empty);
   rpc BeforeLogout(google.protobuf.Empty) returns (google.protobuf.Empty);
 }

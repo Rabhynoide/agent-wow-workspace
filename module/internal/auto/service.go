@@ -19,6 +19,7 @@ import (
 
 	pb "wowagent/gen/autov1"
 	combatpb "wowagent/gen/combatv1"
+	questpb "wowagent/gen/questv1"
 	statepb "wowagent/gen/statev1"
 	worldpb "wowagent/gen/worldv1"
 	"wowagent/internal/api"
@@ -65,12 +66,17 @@ type Service struct {
 	fights *xpscore.File
 	// caution and play knobs (journal/learn/tuning.json): quest_hub
 	tune *tuning.Source
+
+	mu sync.Mutex
+	// chests we went to (guid -> when): not tried again for chestRetry
+	chestTried map[uint64]time.Time
 }
 
 func Register(g grpc.ServiceRegistrar, s modv1.SessionClient) {
 	runner := jobs.NewRunner(&pb.AutoStatus{State: "idle"})
 	runner.Decorate = func(j *job, st *pb.AutoStatus) { st.ElapsedS = uint32(time.Since(j.Start).Seconds()) }
-	svc := &Service{sess: s, corpse: make(chan [4]float32, 4), api: api.C{S: s}, jobs: runner, fights: xpscore.LearnedFile(), tune: tuning.NewSource("")}
+	svc := &Service{sess: s, corpse: make(chan [4]float32, 4), api: api.C{S: s}, jobs: runner, fights: xpscore.LearnedFile(), tune: tuning.NewSource(""),
+		chestTried: map[uint64]time.Time{}}
 	pb.RegisterAutoServer(g, svc)
 	go svc.guardLoop()
 }
@@ -382,6 +388,10 @@ type run struct {
 	s   *Service
 	j   *job
 	ctx context.Context
+	// detour: on the way to a chest or a vendor (no other detour from there)
+	detour bool
+	// lastShop: last vendor visit or check on the way (shop); lastChestCheck: last chest lookup
+	lastShop, lastChestCheck, lastVendorCheck time.Time
 }
 
 func (r *run) step(format string, a ...any) {
@@ -466,6 +476,7 @@ func (r *run) progress() {
 			break
 		}
 	}
+	defer r.shop(false) // at the trainer or wherever progress runs: a vendor near is visited
 	chk, err := r.s.api.TrainCheck(r.ctx)
 	if err != nil || chk.Count == 0 || chk.Dist > maxTrainerDist {
 		return
@@ -547,8 +558,16 @@ func (r *run) walk(x, y, z, radius float32) error {
 		r.restBelow(walkRestBelow)
 		st, err := r.s.api.Goto(r.ctx, x, y, z, radius, 2)
 		attacked := false
+		var chest *questpb.Chest
+		var vendor *statepb.Obj
 		for err == nil && st.State == "moving" {
 			if attacked = r.inCombat(); attacked {
+				break
+			}
+			if chest = r.chestInSight(); chest != nil {
+				break
+			}
+			if vendor = r.vendorOnTheWay(); vendor != nil {
 				break
 			}
 			if time.Now().After(deadline) {
@@ -559,6 +578,16 @@ func (r *run) walk(x, y, z, radius float32) error {
 		}
 		if err != nil {
 			return err
+		}
+		if chest != nil || vendor != nil {
+			_ = r.s.api.MoveStop(r.ctx)
+			if chest != nil {
+				r.openChest(chest)
+			} else {
+				r.visit(vendor)
+			}
+			deadline = deadline.Add(60 * time.Second)
+			continue
 		}
 		if !attacked {
 			if st.State != "arrived" {
@@ -678,6 +707,7 @@ func (r *run) acceptQuest(id uint32, info *worldpb.QuestInfo) error {
 	if res, err := r.s.api.Accept(r.ctx, st.Entry, id); err != nil || !res.Ok {
 		return fmt.Errorf("accept failed: %v %s", err, res.GetReason())
 	}
+	r.shop(false) // quest givers stand in town
 	return nil
 }
 
@@ -711,9 +741,8 @@ func (r *run) completeQuest(id uint32, info *worldpb.QuestInfo) error {
 
 // turnInQuest goes to the nearest ender of a complete quest and turns it in.
 func (r *run) turnInQuest(id uint32, info *worldpb.QuestInfo, reward uint32, chosen bool) error {
-	// Item rewards need bag space, or the turn-in is refused.
-	if err := r.ensureSpace(); err != nil {
-		r.step("could not make bag space: %v", err)
+	if err := r.ensureRepair(); err != nil {
+		r.step("could not repair: %v", err)
 	}
 	snap, err := r.snapshot()
 	if err != nil {
@@ -727,6 +756,12 @@ func (r *run) turnInQuest(id uint32, info *worldpb.QuestInfo, reward uint32, cho
 	r.step("turn in '%s' at %s", info.Title, en.Name)
 	if err := r.approachNpc(en.Entry, en.X, en.Y, en.Z); err != nil {
 		return err
+	}
+	// Item rewards need bag space, or the turn-in is refused: sell at a vendor near the ender, else
+	// throw away the cheapest junk.
+	r.shop(true)
+	if n := len(info.RewardItems) + min(len(info.RewardChoices), 1); n > 0 {
+		r.rewardRoom(n)
 	}
 	if !chosen && len(info.RewardChoices) > 1 {
 		if pick, err := r.s.api.PickReward(r.ctx, info.RewardChoices); err == nil {
@@ -1108,176 +1143,46 @@ func (r *run) supplies(me *statepb.SelfInfo) (food, drink, potions uint32) {
 	return food, drink, potions
 }
 
-// ensureSpace visits the nearest vendor when the bags are nearly full or the gear is worn out:
-// it sells what the rules allow and repairs when the vendor can.
-func (r *run) ensureSpace() error {
-	snap, err := r.snapshot()
-	if err != nil {
-		return err
-	}
-	me := snap.Self
-	food, drink, potions := r.supplies(me)
-	wantDrink := uint32(0)
-	if me.PowerType == 0 {
-		wantDrink = drinkWanted
-	}
-	needSell, needRepair := snap.FreeSlots < 3, snap.DurabilityPct < repairBelow
-	if failed := r.s.repairFailedAt.Load(); failed > 0 && me.Money < failed+100 {
-		needRepair = false
-	}
-	needFood := (food < suppliesLow || (wantDrink > 0 && drink < suppliesLow)) && me.Money >= minMoneyForFood &&
-		snap.DurabilityPct >= repairBelow // repairs first: a broken weapon is worse than no food
-	if failed := r.s.foodFailedAt.Load(); failed > 0 && me.Money < failed+100 {
-		needFood = false
-	}
-	// No healing potion left: the looted ones ran out and food vendors sell none (Benchtrhoxd died in a
-	// flight with an empty bag, 2026-10-13). A vendor selling potions (category 4) within 500 yards.
-	needPotion := potions == 0 && me.Level >= 3 && me.Money >= minMoneyForPotions && snap.DurabilityPct >= repairBelow
-	if failed := r.s.potionFailedAt.Load(); failed > 0 && me.Money < failed+100 {
-		needPotion = false
-	}
-	if !needSell && !needRepair && !needFood && !needPotion {
-		return nil
-	}
-	const vendorFlag, repairFlag = 128, 4096
-	var vendors []*worldpb.Spawn
-	if needSell || needRepair {
-		flags := uint32(vendorFlag)
-		if needRepair {
-			flags = repairFlag
-		}
-		r.step("visiting a vendor (free slots %d, durability %d%%)", snap.FreeSlots, snap.DurabilityPct)
-		vendors, err = r.s.api.FindVendor(r.ctx, me.Map, me.X, me.Y, flags)
-	} else {
-		category := uint32(categoryFood)
-		if food >= suppliesLow {
-			category = categoryDrink
-		}
-		if !needFood {
-			category = categoryPotion
-		}
-		r.step("buying food and drink (food %d, drink %d, potions %d)", food, drink, potions)
-		vendors, err = r.s.api.FindFoodVendor(r.ctx, me.Map, me.X, me.Y, category, me.Level)
-		if lv := r.s.lastVendor.Load(); err == nil && len(vendors) == 0 && lv != nil && uint32(lv[0]) == me.Map {
-			// Not a wider search: at 1200 yards of east Elwynn it found Darkshire and Lakeshire, and the
-			// bot died twice on the way (bench of 2026-10-14). Around the town we already went to.
-			vendors, err = r.s.api.FindFoodVendor(r.ctx, me.Map, lv[1], lv[2], category, me.Level)
-		}
-		if err == nil && len(vendors) == 0 {
-			r.note("no food vendor within 500 yards (nor near the last vendor)")
-			if !needFood {
-				r.s.potionFailedAt.Store(max(me.Money, 1))
-			}
-			return nil
-		}
-	}
-	if err != nil {
-		return err
-	}
-	// The server only accepts a sale within 5.5 yards: follow the vendor if it moved.
-	var npc *statepb.Obj
-	var lastErr error
-	for _, v := range vendors {
-		if len(v.Name) == 0 || v.Name[0] == '[' {
-			continue
-		}
-		var o *statepb.Obj
-		err := r.approachNpc(v.Entry, v.X, v.Y, v.Z)
-		if err == nil {
-			if vis, e := r.s.api.Nearby(r.ctx, &statepb.NearbyRequest{Kind: "unit", Entry: v.Entry, Radius: 8, Max: 1}); e == nil && len(vis.Objs) > 0 {
-				o = vis.Objs[0]
-			}
-		}
-		switch {
-		case err != nil:
-			lastErr = err
-		case o == nil || o.Dist > 5:
-			lastErr = fmt.Errorf("%s not found at its spawn", v.Name)
-		default:
-			npc = o
-		}
-		if npc != nil {
-			break
-		}
-	}
-	if npc == nil {
-		if !needSell && !needRepair {
-			if !needFood {
-				r.s.potionFailedAt.Store(max(me.Money, 1))
-			}
-			r.note("food vendor unreachable: %v", lastErr)
-			return nil
-		}
-		return fmt.Errorf("no reachable vendor (%d candidates): %v", len(vendors), lastErr)
-	}
-	r.s.lastVendor.Store(&[3]float32{float32(me.Map), npc.X, npc.Y})
-	if needSell || npc.NpcFlags&vendorFlag != 0 {
-		res, err := r.s.api.SellJunk(r.ctx)
-		if err != nil || !res.Ok {
-			return fmt.Errorf("sell: %v %s", err, res.GetReason())
-		}
-		if res.Sold > 0 {
-			r.note("sold %d stacks for %d copper (%d free slots)", res.Sold, res.Copper, res.FreeSlots)
-		}
-		if needSell && res.FreeSlots < 2 {
-			return fmt.Errorf("bags still full after selling %d items: nothing else may be sold (see town.sell_junk with dry_run and show_kept)", res.Sold)
-		}
-	}
-	if npc.NpcFlags&vendorFlag != 0 && snap.DurabilityPct >= repairBelow && (food < foodWanted/2 || (wantDrink > 0 && drink < wantDrink/2) || potions < potionsWanted) {
-		if res, err := r.s.api.Restock(r.ctx, foodWanted, wantDrink, potionsWanted); err == nil && res.Ok && len(res.Bought) > 0 {
-			r.s.foodFailedAt.Store(0)
-			var what []string
-			for _, b := range res.Bought {
-				what = append(what, fmt.Sprintf("%d %s", b.Count, b.Name))
-			}
-			r.note("bought %s for %d copper", strings.Join(what, ", "), res.Copper)
-		} else if !needFood && needPotion {
-			r.note("no healing potion bought: %v %s", err, res.GetReason())
-			r.s.potionFailedAt.Store(max(me.Money, 1))
-		} else if food < foodWanted/2 || (wantDrink > 0 && drink < wantDrink/2) {
-			r.note("restock: nothing bought %v %s", err, res.GetReason())
-			r.s.foodFailedAt.Store(max(me.Money, 1))
-		} // only potions wanted: most food vendors sell none
-	}
-	if npc.NpcFlags&repairFlag != 0 && snap.DurabilityPct < 100 {
-		if res, err := r.s.api.Repair(r.ctx); err == nil && res.Ok {
-			r.s.repairFailedAt.Store(0)
-			r.note("repaired for %d copper (durability %d%%)", res.Copper, res.DurabilityPct)
-		} else {
-			// Not enough money: play on with worn gear, the next sales pay for it.
-			r.note("could not repair: %v %s", err, res.GetReason())
-			r.s.repairFailedAt.Store(max(me.Money, 1))
-		}
-	}
-	return nil
-}
-
-// fightJob runs combat.kill until it ends and returns the kills made (over the bags-full retries too).
+// fightJob runs combat.kill until it ends and returns the kills made (over the chest detours too: a
+// chest in sight stops the hunt, the fight under way ends, the chest is opened, the hunt resumes).
 func (r *run) fightJob(req *combatpb.KillRequest) (uint32, error) {
 	var total uint32
-	for attempt := 0; ; attempt++ {
-		if err := r.ensureSpace(); err != nil {
+	for chests := 0; ; {
+		if err := r.ensureRepair(); err != nil {
 			return total, err
 		}
 		st, err := r.s.api.CombatKill(r.ctx, req)
+		var chest *questpb.Chest
 		for err == nil && st.State == "running" {
 			r.step("combat: kills=%d items=%d hp=%d%% mana=%d%%", total+st.Kills, st.Items, st.HpPct, st.ManaPct)
 			if r.ctx.Err() != nil {
 				_ = r.s.api.CombatStop(context.Background())
 				return total + st.Kills, r.ctx.Err()
 			}
-			st, err = r.s.api.CombatStatus(r.ctx, 20)
+			if chests < 5 {
+				if chest = r.chestInSight(); chest != nil {
+					_ = r.s.api.CombatStop(r.ctx)
+					st, err = r.s.api.CombatStatus(r.ctx, 0)
+					break
+				}
+			}
+			st, err = r.s.api.CombatStatus(r.ctx, 5)
 		}
 		if err != nil {
 			return total, err
 		}
 		total += st.Kills
 		switch {
-		case st.State == "failed" && st.Reason == "bags full" && attempt < 2:
+		case chest != nil:
+			chests++
 			if req.Count > 0 {
-				req.Count -= min(req.Count, st.Kills)
+				if req.Count -= min(req.Count, st.Kills); req.Count == 0 {
+					r.openChest(chest)
+					return total, nil
+				}
 			}
-			continue // sell and resume
+			r.openChest(chest)
+			continue // resume the hunt
 		case st.State == "failed" && st.Reason != "time limit":
 			return total, fmt.Errorf("combat: %s", st.Reason)
 		}

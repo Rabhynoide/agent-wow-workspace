@@ -108,15 +108,12 @@ func sellable(items []*statepb.Item) []*statepb.Item {
 	return out
 }
 
-func (s *Service) SellJunk(ctx context.Context, r *pb.SellRequest) (*pb.SellResult, error) {
-	snap, err := s.api.Snapshot(ctx)
-	if err != nil || snap.Self == nil {
-		return fail("state unavailable: %v", err)
-	}
+// rules builds what the sell rules need: the character, and the stacks of the backpack and bags.
+func (s *Service) rules(ctx context.Context, snap *statepb.SnapshotResponse) (sellrule.Ctx, []*statepb.Item, []sellrule.Stack, error) {
 	me := snap.Self
 	known, err := s.api.Spells(ctx)
 	if err != nil {
-		return fail("spells unavailable: %v", err)
+		return sellrule.Ctx{}, nil, nil, fmt.Errorf("spells unavailable: %v", err)
 	}
 	c := sellrule.Ctx{Class: me.ClassId, Race: me.Race, Level: me.Level, Known: known,
 		Equipped: map[int]*worldpb.ItemInfo{}, QuestItems: s.questItems(ctx, snap.Quests)}
@@ -129,6 +126,19 @@ func (s *Service) SellJunk(ctx context.Context, r *pb.SellRequest) (*pb.SellResu
 	in := make([]sellrule.Stack, len(stacks))
 	for i, it := range stacks {
 		in[i] = sellrule.Stack{Entry: it.Entry, Count: it.Count, Info: s.itemInfo(ctx, it.Entry)}
+	}
+	return c, stacks, in, nil
+}
+
+func (s *Service) SellJunk(ctx context.Context, r *pb.SellRequest) (*pb.SellResult, error) {
+	snap, err := s.api.Snapshot(ctx)
+	if err != nil || snap.Self == nil {
+		return fail("state unavailable: %v", err)
+	}
+	me := snap.Self
+	c, stacks, in, err := s.rules(ctx, snap)
+	if err != nil {
+		return fail("%v", err)
 	}
 	// Plan keeps the input order only within equal verdicts: map decisions back by index.
 	byEntry := map[uint32][]*statepb.Item{}

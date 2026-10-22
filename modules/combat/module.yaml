@@ -5,6 +5,7 @@ requires:
   - state
   - move
   - world
+  - town
 compose:
   file: compose.yaml
   service: module
