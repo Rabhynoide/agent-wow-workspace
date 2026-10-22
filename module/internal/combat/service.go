@@ -942,6 +942,13 @@ func (s *Service) fightWarrior(ctx context.Context, j *job, guid uint64) (bool, 
 		if force {
 			lastFace = now
 		}
+		// Right above or below the target (the stacked floors of Fargodeep Mine: dist 0-1, dz 5-9),
+		// walking brings us no closer, so we walked on the spot without a swing until noProgress fled
+		// (32 times in the benches) while its blows reached us: the server's melee reach (5 yards plus
+		// both combat reaches) is longer than ours. Swing and let the server judge (tooFar).
+		if dist < 2 && !tooFar && dist3 > meleeRange {
+			dist3 = meleeRange
+		}
 		s.checkWeapon(ctx)
 		// The table at any distance: Charge opens from afar, melee spells wait for the range check.
 		if rot != nil {
