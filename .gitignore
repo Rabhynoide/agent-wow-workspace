@@ -54,3 +54,4 @@ logs/*.log
 logs/*.hex
 .env
 modules/*/.env
+logs/bench_*
