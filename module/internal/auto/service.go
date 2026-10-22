@@ -763,6 +763,11 @@ func (r *run) turnInQuest(id uint32, info *worldpb.QuestInfo, reward uint32, cho
 	if n := len(info.RewardItems) + min(len(info.RewardChoices), 1); n > 0 {
 		r.rewardRoom(n)
 	}
+	// Back from the vendor: the server takes the quest within 5.5 yards of the ender (Benchurodky
+	// skipped four turn-ins 8-14 yards away, 2026-10-23).
+	if err := r.approachNpc(en.Entry, en.X, en.Y, en.Z); err != nil {
+		return err
+	}
 	if !chosen && len(info.RewardChoices) > 1 {
 		if pick, err := r.s.api.PickReward(r.ctx, info.RewardChoices); err == nil {
 			reward = pick.Index
