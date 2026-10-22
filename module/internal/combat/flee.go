@@ -115,7 +115,8 @@ type fleeDecision struct {
 // decide: the rule says flee. The learned table may say stay (its death rate is low enough for the
 // speedrun's costs); without enough fights, a borderline case where we are expected to survive is
 // explored (stay) with probability Explore. An exploration holds for the rest of the fight, a learned
-// stay as long as the fight is expected to leave us some health (slack >= 0).
+// stay as long as the fight is expected to leave us some health (slack >= 0). Where fleeing itself
+// kills often (tuning.FleeDeath), staying is explored without slack too.
 func (s *Service) decide(me *statepb.SelfInfo, att []*statepb.Obj, loss float64) bool {
 	t := s.tuneGet()
 	s.mu.Lock()
@@ -140,7 +141,8 @@ func (s *Service) decide(me *statepb.SelfInfo, att []*statepb.Obj, loss float64)
 	if s.fleeTab != nil {
 		if f, learned := tuning.Decide(s.fleeTab.Get(), key, t); learned {
 			flee, how = f, "learned"
-		} else if slack > 0 && rand.Float64() < t.Explore {
+		} else if (slack > 0 || (t.ExploreFleeDeath > 0 && tuning.FleeDeath(s.fleeTab.Get(), key, t) >= t.ExploreFleeDeath)) &&
+			rand.Float64() < t.Explore {
 			flee, how = false, "explore"
 		}
 	}

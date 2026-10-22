@@ -69,6 +69,7 @@ type Service struct {
 	abandoned    map[uint64]time.Time // targets given up (no damage dealt): not picked again for a while
 	crowded      map[uint64]time.Time // targets skipped for their adds: not pulled for a while, still fought back
 	fledAt       time.Time            // last flight (flee.go)
+	restHitAt    time.Time            // last rest broken by a blow (aggressor then takes any attacker)
 	zones        []fledZone           // places we fled from (zones.go)
 	trail        *trail               // our recent positions, run back along when fleeing (trail.go)
 	items        map[uint32]*worldpb.ItemInfo
@@ -328,6 +329,7 @@ func (s *Service) rest(ctx context.Context, j *job, hpTarget, manaTarget uint32,
 			}
 		}
 		if hp+5 < startHP && me.UnitFlags&unitInCombat != 0 { // in combat: not a false high reading
+			s.mark(&s.restHitAt)
 			return "done", "attacked while resting"
 		}
 		startHP = max(startHP, hp)
@@ -361,6 +363,30 @@ func (s *Service) aggressor(ctx context.Context, me *statepb.SelfInfo) *statepb.
 		// "not on the navmesh" killed us while we ate, 6 → 10 bench of 2026-10-13).
 		if o.Target == me.Guid && o.UnitFlags&unitInCombat != 0 && (!s.wasAbandoned(o.Guid) || atMelee(me, o)) {
 			att = append(att, o)
+		}
+	}
+	// Hit while eating and no attacker seen: we ate again and again from 40 % down to 5 % between
+	// blows, then fled too late and died (df9cb0c series, 2026-10-22). Right after such a blow, any
+	// unit in combat on us counts, given up or not, and else the closest unit in combat within melee
+	// reach whatever its target (the server's target field lags).
+	if len(att) == 0 && s.since(&s.restHitAt) < 5*time.Second {
+		var near *statepb.Obj
+		nearD := 8.0
+		for _, o := range r.Objs {
+			if o.UnitFlags&unitInCombat == 0 || o.Guid == me.Guid {
+				continue
+			}
+			if o.Target == me.Guid {
+				att = append(att, o)
+			} else if d := math.Hypot(float64(o.X-me.X), float64(o.Y-me.Y)); d < nearD && math.Abs(float64(o.Z-me.Z)) <= 4 {
+				near, nearD = o, d
+			}
+		}
+		if len(att) == 0 && near != nil {
+			att = append(att, near)
+		}
+		if len(att) > 0 {
+			slog.Info("attacker after a broken rest", "entry", att[0].Entry, "on_me", att[0].Target == me.Guid, "abandoned", s.wasAbandoned(att[0].Guid))
 		}
 	}
 	return pickAttacker(att) // the weakest within reach first (focus.go)

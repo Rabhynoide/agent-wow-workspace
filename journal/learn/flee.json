@@ -1,57 +1,130 @@
 {
  "until": "2026-10-22T12:34:36.315Z",
+ "flee_until": "2026-10-22T12:10:04.646Z",
  "cells": {
+  "1:-10": {
+   "n": 0,
+   "deaths": 0,
+   "flee_n": 6,
+   "flee_deaths": 4
+  },
+  "1:-20": {
+   "n": 0,
+   "deaths": 0,
+   "flee_n": 1
+  },
+  "1:-30": {
+   "n": 0,
+   "deaths": 0,
+   "flee_n": 1
+  },
   "1:0": {
    "n": 7,
-   "deaths": 2
+   "deaths": 2,
+   "flee_n": 12,
+   "flee_deaths": 3
   },
   "1:10": {
    "n": 15,
-   "deaths": 1
+   "deaths": 1,
+   "flee_n": 9
   },
   "1:20": {
    "n": 8,
-   "deaths": 0
+   "deaths": 0,
+   "flee_n": 22
+  },
+  "2:-10": {
+   "n": 0,
+   "deaths": 0,
+   "flee_n": 14,
+   "flee_deaths": 1
+  },
+  "2:-20": {
+   "n": 0,
+   "deaths": 0,
+   "flee_n": 4,
+   "flee_deaths": 1
+  },
+  "2:-30": {
+   "n": 0,
+   "deaths": 0,
+   "flee_n": 4,
+   "flee_deaths": 2
   },
   "2:0": {
    "n": 8,
-   "deaths": 0
+   "deaths": 0,
+   "flee_n": 6
   },
   "2:10": {
    "n": 15,
-   "deaths": 0
+   "deaths": 0,
+   "flee_n": 16,
+   "flee_deaths": 1
   },
   "2:20": {
    "n": 25,
-   "deaths": 1
+   "deaths": 1,
+   "flee_n": 11
+  },
+  "2:30": {
+   "n": 0,
+   "deaths": 0,
+   "flee_n": 1
+  },
+  "3:-10": {
+   "n": 0,
+   "deaths": 0,
+   "flee_n": 13,
+   "flee_deaths": 2
+  },
+  "3:-20": {
+   "n": 0,
+   "deaths": 0,
+   "flee_n": 4
+  },
+  "3:-30": {
+   "n": 0,
+   "deaths": 0,
+   "flee_n": 12,
+   "flee_deaths": 3
   },
   "3:0": {
    "n": 5,
-   "deaths": 1
+   "deaths": 1,
+   "flee_n": 16
   },
   "3:10": {
    "n": 9,
-   "deaths": 2
+   "deaths": 2,
+   "flee_n": 13
   },
   "3:20": {
    "n": 8,
-   "deaths": 0
+   "deaths": 0,
+   "flee_n": 22,
+   "flee_deaths": 1
   },
   "3:30": {
    "n": 19,
-   "deaths": 1
+   "deaths": 1,
+   "flee_n": 19
   },
   "3:40": {
    "n": 27,
-   "deaths": 1
+   "deaths": 1,
+   "flee_n": 12
   },
   "3:50": {
    "n": 16,
-   "deaths": 0
+   "deaths": 0,
+   "flee_n": 9
   },
   "3:60": {
    "n": 2,
-   "deaths": 0
+   "deaths": 0,
+   "flee_n": 11
   }
  }
 }

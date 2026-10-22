@@ -20,7 +20,7 @@ time=2026-10-14T10:01:00Z level=INFO msg="flee outcome" key=2:10 stayed=true how
 time=2026-10-14T10:02:00Z level=INFO msg="flee outcome" key=2:10 stayed=false how=rule hp=50 slack=12 result=fled
 time=2026-10-14T10:03:00Z level=INFO msg="flee outcome" key=2:10 stayed=true how=learned hp=50 slack=12 result=fled
 `
-	if n := f.Learn(strings.NewReader(log)); n != 2 || f.Cells["2:10"].N != 2 || f.Cells["2:10"].Deaths != 1 {
+	if n := f.Learn(strings.NewReader(log)); n != 3 || f.Cells["2:10"].N != 2 || f.Cells["2:10"].Deaths != 1 || f.Cells["2:10"].FleeN != 1 {
 		t.Fatalf("learned %d: %+v", n, f.Cells["2:10"])
 	}
 	if n := f.Learn(strings.NewReader(log)); n != 0 {
@@ -34,9 +34,17 @@ time=2026-10-14T10:03:00Z level=INFO msg="flee outcome" key=2:10 stayed=true how
 	if flee, learned := Decide(f, "2:10", d); flee || !learned {
 		t.Errorf("low death rate: stay")
 	}
-	f.Cells["1:-10"] = &Cell{N: 10, Deaths: 6} // p = 7/12: 105 s vs 90 s: flee
+	f.Cells["1:-10"] = &Cell{N: 10, Deaths: 8} // p = 9/12: 135 s vs 90 s + 0.1 × 180 s: flee
 	if flee, _ := Decide(f, "1:-10", d); !flee {
 		t.Errorf("high death rate: flee")
+	}
+	// Flights that die: p flight = (4 + 0.4) / 10, 90 + 79 s against 9/12 × 180 = 135 s: stay.
+	f.Cells["1:-10"] = &Cell{N: 10, Deaths: 8, FleeN: 6, FleeDeaths: 4}
+	if flee, _ := Decide(f, "1:-10", d); flee {
+		t.Errorf("deadly flights: stay")
+	}
+	if p := FleeDeath(f, "9:9", d); p != d.FleeDeathPrior {
+		t.Errorf("unknown cell: prior, got %v", p)
 	}
 	if k := Key(5, -45); k != "3:-30" {
 		t.Errorf("key %s", k)

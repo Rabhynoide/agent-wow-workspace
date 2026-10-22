@@ -36,6 +36,12 @@ type Tuning struct {
 	MinFights  float64 `json:"min_fights"`
 	DeathCostS float64 `json:"death_cost_s"` // run to the corpse, rest, durability
 	FleeCostS  float64 `json:"flee_cost_s"`  // run, rest, the quest or spot left
+	// A flight can kill too: since 2026-10-21, 8 of the 19 flights the rule ordered died, nearly all
+	// with no health slack left. The learned death rate of the flights of a case (prior FleeDeathPrior,
+	// worth fleePriorN flights) adds P(death) × DeathCostS to FleeCostS. Where it reaches
+	// ExploreFleeDeath, staying is explored even without slack (the rule never stays there).
+	FleeDeathPrior   float64 `json:"flee_death_prior"`
+	ExploreFleeDeath float64 `json:"explore_flee_death"` // 0: no exploration without slack
 	// Extra health loss per add, times the single fight (xpscore.AddCost): the pull choice and the
 	// flight rule. Engagements of 2026-10-13/14 (levels 6-9, won, started at 90 %+): 2 monsters lost
 	// 1.5 times a single fight, 3 monsters 1.7 times (about 0.5 per add, but the lost ones are missing).
@@ -56,6 +62,7 @@ type Tuning struct {
 func Defaults() Tuning {
 	return Tuning{FleeMargin: 15, HighMargin: 10, ChaseMargin: 10, CrowdFlee: 3, CrowdLoss: 30, Avoid: false,
 		PostponeAfterFlights: 1, Explore: 0.25, Learn: true, MinFights: 6, DeathCostS: 180, FleeCostS: 90,
+		FleeDeathPrior: 0.1, ExploreFleeDeath: 0.2,
 		AddCost: 1.5, PullAdapt: false, PullSize: 2, PullSizeMax: 4, PullUpAfter: 2}
 }
 
@@ -111,16 +118,31 @@ func (s *Source) Get() Tuning { return s.c.get() }
 
 // ---- learned borderline fights ----
 
-// Cell counts the fights we stayed in, from a borderline decision.
+// Cell counts the fights we stayed in, from a borderline decision, and the flights.
 type Cell struct {
-	N      float64 `json:"n"`
-	Deaths float64 `json:"deaths"`
+	N          float64 `json:"n"`
+	Deaths     float64 `json:"deaths"`
+	FleeN      float64 `json:"flee_n,omitempty"`
+	FleeDeaths float64 `json:"flee_deaths,omitempty"`
+}
+
+// fleePriorN: weight of FleeDeathPrior, in flights.
+const fleePriorN = 4.0
+
+// FleeDeath is the death rate of the flights of a case (prior FleeDeathPrior).
+func FleeDeath(f *Flee, key string, t Tuning) float64 {
+	c := f.Cells[key]
+	if !t.Learn || c == nil {
+		return t.FleeDeathPrior
+	}
+	return (c.FleeDeaths + fleePriorN*t.FleeDeathPrior) / (c.FleeN + fleePriorN)
 }
 
 // Flee is journal/learn/flee.json.
 type Flee struct {
-	Until string           `json:"until"` // time of the last log line learned
-	Cells map[string]*Cell `json:"cells"`
+	Until     string           `json:"until"`      // time of the last stay learned
+	FleeUntil string           `json:"flee_until"` // time of the last flight learned (empty: the whole log)
+	Cells     map[string]*Cell `json:"cells"`
 }
 
 // Key of a decision: fresh attackers (1, 2, 3+) and health slack (effective health minus expected
@@ -150,21 +172,23 @@ func NewFleeTable(dir string) *FleeTable {
 
 func (t *FleeTable) Get() *Flee { return t.c.get() }
 
-// Decide returns whether to flee in a case the rule would flee from, from the learned death rate
-// (with one death in two fights as prior), and whether the table decided (enough fights).
+// Decide returns whether to flee in a case the rule would flee from, from the learned death rates
+// of staying (with one death in two fights as prior) and of fleeing, and whether the table decided
+// (enough fights).
 func Decide(f *Flee, key string, t Tuning) (flee, learned bool) {
 	c := f.Cells[key]
 	if !t.Learn || c == nil || c.N < t.MinFights {
 		return true, false
 	}
 	p := (c.Deaths + 1) / (c.N + 2)
-	return p*t.DeathCostS > t.FleeCostS, true
+	return p*t.DeathCostS > t.FleeCostS+FleeDeath(f, key, t)*t.DeathCostS, true
 }
 
 // outcome reads the "flee outcome" lines of logs/combat.log (combat/flee.go).
 var outcome = regexp.MustCompile(`^time=(\S+) .*msg="flee outcome" key=(\S+) stayed=(true|false) .*result=(\w+)`)
 
-// Learn adds the outcomes of the stays logged after Until; returns how many.
+// Learn adds the outcomes of the stays logged after Until and of the flights logged after
+// FleeUntil; returns how many.
 func (f *Flee) Learn(r io.Reader) int {
 	if f.Cells == nil {
 		f.Cells = map[string]*Cell{}
@@ -174,18 +198,41 @@ func (f *Flee) Learn(r io.Reader) int {
 	sc.Buffer(make([]byte, 1<<20), 1<<20)
 	for sc.Scan() {
 		m := outcome.FindStringSubmatch(sc.Text())
-		if m == nil || m[1] <= f.Until {
+		if m == nil {
+			continue
+		}
+		cell := func() *Cell {
+			c := f.Cells[m[2]]
+			if c == nil {
+				c = &Cell{}
+				f.Cells[m[2]] = c
+			}
+			return c
+		}
+		if m[3] == "false" {
+			// The rule fled: died on the way or got away.
+			if m[1] <= f.FleeUntil {
+				continue
+			}
+			f.FleeUntil = m[1]
+			if m[4] != "won" {
+				c := cell()
+				c.FleeN++
+				if m[4] == "died" {
+					c.FleeDeaths++
+				}
+				n++
+			}
+			continue
+		}
+		if m[1] <= f.Until {
 			continue
 		}
 		f.Until = m[1]
-		if m[3] != "true" || m[4] == "fled" {
-			continue // fled (at once, or later in the fight): says nothing about staying to the end
+		if m[4] == "fled" {
+			continue // fled later in the fight: says nothing about staying to the end
 		}
-		c := f.Cells[m[2]]
-		if c == nil {
-			c = &Cell{}
-			f.Cells[m[2]] = c
-		}
+		c := cell()
 		c.N++
 		if m[4] == "died" {
 			c.Deaths++
@@ -221,11 +268,12 @@ func (f *Flee) Save(path string) error {
 	return os.WriteFile(path, b, 0o644)
 }
 
-// Summary: "2:0 6/1" per cell (fights, deaths).
+// Summary: "2:0 6/1 flee 4/2" per cell (fights, deaths; flights, deaths).
 func (f *Flee) Summary() []string {
 	var out []string
+	ff := func(v float64) string { return strconv.FormatFloat(v, 'f', 0, 64) }
 	for k, c := range f.Cells {
-		out = append(out, k+" "+strconv.FormatFloat(c.N, 'f', 0, 64)+"/"+strconv.FormatFloat(c.Deaths, 'f', 0, 64))
+		out = append(out, k+" "+ff(c.N)+"/"+ff(c.Deaths)+" flee "+ff(c.FleeN)+"/"+ff(c.FleeDeaths))
 	}
 	return out
 }
