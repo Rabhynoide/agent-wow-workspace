@@ -874,7 +874,7 @@ func (s *Service) fightWarrior(ctx context.Context, j *job, guid uint64) (bool, 
 	rot := s.fightTable(warrior.ClassID, known)
 	var lastSwing, lastFace, fleeCheck, focusCheck time.Time
 	progress, lastHP := time.Now(), uint32(0)
-	selected := false
+	selected, steppedAside := false, false
 	started := time.Now()
 	for time.Since(started) < 120*time.Second {
 		if ctx.Err() != nil {
@@ -948,6 +948,18 @@ func (s *Service) fightWarrior(ctx context.Context, j *job, guid uint64) (bool, 
 		// both combat reaches) is longer than ours. Swing and let the server judge (tooFar).
 		if dist < 2 && !tooFar && dist3 > meleeRange {
 			dist3 = meleeRange
+		}
+		// The server refuses those swings without a word after the first (one NOTINRANGE until a blow
+		// lands), so the case came back once a run (AC08 series). Once per fight, step away: the target
+		// follows us onto our floor.
+		if dist < 2 && math.Abs(float64(t.Z-me.Z)) > 4 && now.Sub(progress) > 6*time.Second && !steppedAside {
+			steppedAside = true
+			slog.Info("target above or below, stepping aside", "entry", t.Entry, "dz", int(t.Z-me.Z))
+			if sp, err := s.api.SafePoint(ctx, me.X, me.Y, me.Z, 8, false); err == nil && sp.Ok {
+				_, _ = s.api.GotoWait(ctx, sp.X, sp.Y, sp.Z, 2, 6)
+			}
+			progress = time.Now()
+			continue
 		}
 		s.checkWeapon(ctx)
 		// The table at any distance: Charge opens from afar, melee spells wait for the range check.
