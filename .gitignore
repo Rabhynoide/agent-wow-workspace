@@ -50,8 +50,7 @@ compile_commands.json
 coverage.out
 coverage/
 assets/
-logs/*.log
-logs/*.hex
+logs/*
+!logs/.gitkeep
 .env
 modules/*/.env
-logs/bench_*
