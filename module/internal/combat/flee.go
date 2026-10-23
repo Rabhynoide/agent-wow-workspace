@@ -22,33 +22,14 @@ import (
 // and give up 30 yards from where they were pulled (CreatureLeashRadius), so running away works as
 // long as no spell slows us.
 
-// The margins below are the defaults of journal/learn/tuning.json (internal/tuning), which overrides
-// them without a rebuild; borderline cases are explored and learned (fleeDecision).
+// The flight margins are in journal/learn/tuning.json (internal/tuning, defaults and their reasons
+// there); borderline cases are explored and learned (fleeDecision).
 const (
-	// fleeMargin: health (percent) we want left when the fight is expected to end. A fight can cost
-	// twice its average; a death (150 s, durability) costs far more than a flight (a kill lost).
-	fleeMargin = 15.0
 	// fleeEvery: no new flight this soon after one (no flight loop). 90 s at first: both deaths of the
 	// 2026-10-13 bench came 40-60 s after a successful flight, when the same wolves caught up again.
 	fleeEvery = 15 * time.Second
 	fleeMaxS  = 40 // running time before fighting again
 	fleeDist  = 35 // yards per leg of the run (safe point search radius)
-	// crowdFlee: this many attackers with more than half their health and we run whatever our health.
-	// The flight only works while few monsters chase us: with 5-6 kobolds of a pack (Fargodeep mine,
-	// 6 → 10 bench of 2026-10-13) the ones still on us at the start of the run killed us twice.
-	crowdFlee = 3
-	// crowdLoss: ... as long as they are expected to cost this much (percent). Three kobolds two levels
-	// below (19 %) made us flee at 92 % health and postponed the mine quest level after level (bench of
-	// 2026-10-13: 0 quests in 100 minutes).
-	crowdLoss = 30.0
-	// highMargin: added to fleeMargin per attacker at least 2 levels above us: its hits in the first
-	// seconds of the run cost more (two deaths to a level-10 Riverpaw Outrunner at level 8, flights
-	// started at 44 and 20 %).
-	highMargin = 10.0
-	// chaseMargin: added per fresh attacker (more than half its health) beyond the first: each keeps
-	// hitting us while we run (Prowler + Young Forest Bear at level 9: flight started at 34 %, dead 8 s
-	// later, bench of 2026-10-13).
-	chaseMargin = 10.0
 )
 
 // onMe lists the units in combat that target us within 30 yards.
@@ -206,15 +187,19 @@ func (s *Service) losing(me *statepb.SelfInfo, att []*statepb.Obj) (bool, float6
 	return (crowded && loss > t.CrowdLoss) || loss > float64(pct(me.Hp, me.MaxHp))-margin, loss
 }
 
-// crowd tells whether at least crowdFlee attackers have more than half their health.
-func crowd(att []*statepb.Obj) bool {
-	n := 0
+// crowd tells whether at least n attackers (tuning crowd_flee, 0 = no crowd rule) have more than half
+// their health.
+func crowd(att []*statepb.Obj, n int) bool {
+	if n <= 0 {
+		return false
+	}
+	fresh := 0
 	for _, a := range att {
 		if a.MaxHp > 0 && 2*a.Hp > a.MaxHp {
-			n++
+			fresh++
 		}
 	}
-	return n >= crowdFlee
+	return fresh >= n
 }
 
 // flee runs back along our trail (trail.go), then from safe spot to safe spot, until nothing targets
@@ -238,7 +223,7 @@ func (s *Service) flee(ctx context.Context, j *job, me *statepb.SelfInfo, att []
 	if len(legs) > 0 {
 		way = "trail"
 	}
-	slog.Info("fleeing", "hp", pct(me.Hp, me.MaxHp), "loss_left", int(loss), "attackers", entries, "crowd", crowd(att),
+	slog.Info("fleeing", "hp", pct(me.Hp, me.MaxHp), "loss_left", int(loss), "attackers", entries, "crowd", crowd(att, s.tuneGet().CrowdFlee),
 		"zone", [2]int{int(z.x), int(z.y)}, "way", way, "legs", len(legs))
 	j.Update(func(st *pb.CombatStatus) { st.Doing = "fleeing" })
 	s.trail.pause(true)

@@ -69,6 +69,9 @@ func (s *Service) MakeRoom(ctx context.Context, r *pb.RoomRequest) (*pb.RoomResu
 			it = st
 		}
 	}
+	if it == nil {
+		return &pb.RoomResult{Reason: fmt.Sprintf("item %d no longer in the bags", cheapest.Entry)}, nil
+	}
 	// CMSG_DESTROYITEM: bag, slot, count (0 = the whole stack), three unused bytes.
 	if err := moveio.Packet(ctx, s.s, uint32(opcode.CMSGDestroyitem), []byte{byte(it.Bag), byte(it.BagSlot), 0, 0, 0, 0}); err != nil {
 		return &pb.RoomResult{Reason: "send: " + err.Error()}, nil

@@ -582,12 +582,11 @@ func (c *checker) printIDs(from, to int) {
 	fmt.Println(string(b))
 }
 
-// route is one accepted quest of a route in order, with the steps that follow it.
+// routeQuest is one accepted quest of a route in order.
 type routeQuest struct {
-	id    uint32
-	steps []string
-	only  []only
-	gate  uint32 // a "reach this level" step (no quest): level to reach before going on
+	id   uint32
+	only []only
+	gate uint32 // a "reach this level" step (no quest): level to reach before going on
 }
 
 // printPlan lists the next quests of the route this character has not rewarded yet.

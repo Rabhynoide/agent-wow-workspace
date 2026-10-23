@@ -125,8 +125,10 @@ func (r *run) shopTarget(force bool) *statepb.Obj {
 	// A repairer when repairing, else one that sells what we need (the innkeeper, not the smith), else
 	// the nearest.
 	npc := vis.Objs[0]
-	if want := r.supplyVendor(me, vis.Objs, needFood); !repair && (needFood || needPotion) && want != nil {
-		npc = want
+	if !repair && (needFood || needPotion) {
+		if want := r.supplyVendor(me, vis.Objs, needFood); want != nil {
+			npc = want
+		}
 	}
 	for _, o := range vis.Objs {
 		if repair && o.NpcFlags&repairFlag != 0 {
