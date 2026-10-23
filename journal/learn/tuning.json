@@ -16,7 +16,7 @@
  "pull_size": 2,
  "pull_size_max": 4,
  "pull_up_after": 2,
- "warrior_rest_below": 75,
+ "warrior_rest_below": 55,
  "quest_defer": 0,
  "quest_defer_min": 4
 }
