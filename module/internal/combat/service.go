@@ -489,7 +489,7 @@ func (s *Service) kill(ctx context.Context, j *job, r *pb.KillRequest) (string, 
 		// Classes without a heal need more health before the next pull.
 		restBelow := uint32(55)
 		if me.ClassId == warrior.ClassID {
-			restBelow = 75
+			restBelow = s.tuneGet().WarriorRestBelow
 		}
 		if pct(me.Hp, me.MaxHp) < restBelow || (me.PowerType == 0 && pct(me.Power, me.MaxPower) < 25) {
 			if st, why := s.rest(ctx, j, 90, 70, 90); st != "done" {

@@ -57,13 +57,17 @@ type Tuning struct {
 	// QuestHub: auto.run takes all the quests of its batch first, works on their objectives, then
 	// turns them in, by rounds (auto/hub.go), instead of accept, objectives, turn-in one by one.
 	QuestHub bool `json:"quest_hub"`
+	// WarriorRestBelow: a kill job rests (and eats) before the next pull below this health (percent)
+	// for a warrior; the classes with a heal rest below 55.
+	WarriorRestBelow uint32 `json:"warrior_rest_below"`
 }
 
 func Defaults() Tuning {
 	return Tuning{FleeMargin: 15, HighMargin: 10, ChaseMargin: 10, CrowdFlee: 3, CrowdLoss: 30, Avoid: false,
 		PostponeAfterFlights: 1, Explore: 0.25, Learn: true, MinFights: 6, DeathCostS: 180, FleeCostS: 90,
 		FleeDeathPrior: 0.1, ExploreFleeDeath: 0.2,
-		AddCost: 1.5, PullAdapt: false, PullSize: 2, PullSizeMax: 4, PullUpAfter: 2}
+		AddCost: 1.5, PullAdapt: false, PullSize: 2, PullSizeMax: 4, PullUpAfter: 2,
+		WarriorRestBelow: 75}
 }
 
 // cached reads a JSON file again when it changes (looked at every 10 s at most).
