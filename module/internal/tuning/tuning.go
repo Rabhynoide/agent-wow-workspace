@@ -60,6 +60,13 @@ type Tuning struct {
 	// WarriorRestBelow: a kill job rests (and eats) before the next pull below this health (percent)
 	// for a warrior; the classes with a heal rest below 55.
 	WarriorRestBelow uint32 `json:"warrior_rest_below"`
+	// SafeRestBelow: below this health (percent), a rest first walks to the spot within 40 yards
+	// farthest from the hostile monsters when one stands closer than safeRestClear (combat/saferest.go).
+	// 0 = rest where we stand.
+	SafeRestBelow uint32 `json:"safe_rest_below"`
+	// VerticalGiveUp: a target right above or below that our walk to its floor did not reach is given
+	// up at once, without a flight (combat fightWarrior). false = the old way (step aside, then flee).
+	VerticalGiveUp bool `json:"vertical_give_up"`
 	// QuestDefer: guidecheck passes over a quest whose learned failure rate at our level
 	// (journal/learn/quests.json) reaches this, after QuestDeferMin tries; it is tried when nothing
 	// else is left. 0 = off.
@@ -82,7 +89,7 @@ func Defaults() Tuning {
 		PostponeAfterFlights: 1, Explore: 0.25, Learn: true, MinFights: 6, DeathCostS: 180, FleeCostS: 90,
 		FleeDeathPrior: 0.1, ExploreFleeDeath: 0.2,
 		AddCost: 1.5, PullAdapt: false, PullSize: 2, PullSizeMax: 4, PullUpAfter: 2,
-		WarriorRestBelow: 55, QuestDefer: 0, QuestDeferMin: 4}
+		WarriorRestBelow: 55, SafeRestBelow: 40, VerticalGiveUp: true, QuestDefer: 0, QuestDeferMin: 4}
 }
 
 // cached reads a JSON file again when it changes (looked at every 10 s at most).

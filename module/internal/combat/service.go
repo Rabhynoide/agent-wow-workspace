@@ -303,6 +303,9 @@ func (s *Service) refresh(ctx context.Context, j *job) (*statepb.BriefResponse, 
 func (s *Service) rest(ctx context.Context, j *job, hpTarget, manaTarget uint32, maxS int) (string, string) {
 	j.Update(func(st *pb.CombatStatus) { st.Doing = "resting" })
 	defer s.stand(context.Background(), 0)
+	if b, err := s.refresh(ctx, j); err == nil && b.Self != nil && !b.Self.Dead {
+		s.restSpot(ctx, b.Self) // low among monsters: away from them first (saferest.go)
+	}
 	startHP, reached := uint32(0), 0
 	for i := 0; i < maxS; i++ {
 		snap, err := s.refresh(ctx, j)
@@ -989,6 +992,13 @@ func (s *Service) fightWarrior(ctx context.Context, j *job, guid uint64) (bool, 
 			after, _ := s.api.Brief(ctx)
 			slog.Info("target above or below, walking to its floor", "entry", t.Entry, "dz", int(t.Z-me.Z), "x", int(t.X), "y", int(t.Y),
 				"z", int(t.Z), "my_z", int(me.Z), "state", st.GetState(), "reason", st.GetReason(), "err", err, "z_after", int(after.GetSelf().GetZ()))
+			// The navmesh links the two floors directly there: the walk "arrives" without changing floor
+			// (z_after = my_z), then stepping aside and noProgress cost 25 s more, and the flight of
+			// giveUp ran back through the mine into 5 kobolds (death at 94 % health, RB75 series run 3).
+			// Such a kobold hardly hurts us: give it up at once, without a flight.
+			if a := after.GetSelf(); a != nil && s.tuneGet().VerticalGiveUp && math.Abs(float64(a.Z-me.Z)) < 2 {
+				return false, s.giveUpVertical(ctx, a, t)
+			}
 			progress = time.Now()
 			continue
 		}

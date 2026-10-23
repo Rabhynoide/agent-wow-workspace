@@ -304,5 +304,17 @@ func (s *Service) giveUp(ctx context.Context, j *job, me *statepb.SelfInfo, t *s
 	return unhittable
 }
 
+// giveUpVertical abandons a target on another floor that we cannot reach, without fleeing: its blows
+// reach us rarely (94 % health after 30 s against it, RB75 series run 3) and the flight is what killed
+// us. We step out of its reach so that it follows us onto our floor (then aggressor fights it back:
+// atMelee) or stays below.
+func (s *Service) giveUpVertical(ctx context.Context, me *statepb.SelfInfo, t *statepb.Obj) string {
+	s.abandon(t.Guid, "on another floor, not reached", t.Entry)
+	if sp, err := s.api.SafePoint(ctx, me.X, me.Y, me.Z, 15, true); err == nil && sp.Ok {
+		_, _ = s.api.GotoWait(ctx, sp.X, sp.Y, sp.Z, 2, 8)
+	}
+	return unhittable
+}
+
 // unhittable ends a fight against a target given up (giveUp): another one is picked, the job goes on.
 const unhittable = "unhittable"
