@@ -46,7 +46,7 @@ time=2026-10-14T10:03:00Z level=INFO msg="flee outcome" key=2:10 stayed=true how
 	if p := FleeDeath(f, "9:9", d); p != d.FleeDeathPrior {
 		t.Errorf("unknown cell: prior, got %v", p)
 	}
-	if k := Key(5, -45); k != "3:-30" {
+	if k := Key(5, -45); k != "4:-30" {
 		t.Errorf("key %s", k)
 	}
 }

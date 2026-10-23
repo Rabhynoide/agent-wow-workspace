@@ -164,12 +164,14 @@ type Flee struct {
 	Cells     map[string]*Cell `json:"cells"`
 }
 
-// Key of a decision: fresh attackers (1, 2, 3+) and health slack (effective health minus expected
-// loss) in 10 % steps, from -30 to +60.
+// Key of a decision: fresh attackers (1, 2, 3, 4+) and health slack (effective health minus expected
+// loss) in 10 % steps, from -30 to +60. 4+ apart since 2026-10-23: the stays learned against 3 held
+// against 6 kobolds of a Fargodeep pack (two of the three deaths of the first QD60 run); its cells
+// start empty, so the rule decides until they are learned.
 func Key(fresh int, slack float64) string {
 	b := int(math.Floor(slack/10)) * 10
 	b = max(-30, min(60, b))
-	return fmt.Sprintf("%d:%d", max(1, min(fresh, 3)), b)
+	return fmt.Sprintf("%d:%d", max(1, min(fresh, 4)), b)
 }
 
 // FleeTable gives the learned table ($LEARN_DIR/flee.json).
