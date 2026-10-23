@@ -70,8 +70,10 @@ type Service struct {
 	crowded      map[uint64]time.Time // targets skipped for their adds: not pulled for a while, still fought back
 	fledAt       time.Time            // last flight (flee.go)
 	restHitAt    time.Time            // last rest broken by a blow (aggressor then takes any attacker)
-	zones        []fledZone           // places we fled from (zones.go)
-	trail        *trail               // our recent positions, run back along when fleeing (trail.go)
+	defense      string               // last "defense" line logged (shield, Parry known; defense.go)
+	defenseAt    time.Time
+	zones        []fledZone // places we fled from (zones.go)
+	trail        *trail     // our recent positions, run back along when fleeing (trail.go)
 	items        map[uint32]*worldpb.ItemInfo
 	buffTried    map[uint32]time.Time // buff item spell -> last use (buffitems.go)
 	gearDue      bool                 // a weapon, armor or bag was looted since the last gear check
@@ -300,13 +302,21 @@ func (s *Service) refresh(ctx context.Context, j *job) (*statepb.BriefResponse, 
 	return b, nil
 }
 
-func (s *Service) rest(ctx context.Context, j *job, hpTarget, manaTarget uint32, maxS int) (string, string) {
+func (s *Service) rest(ctx context.Context, j *job, hpTarget, manaTarget uint32, maxS int) (st, why string) {
 	j.Update(func(st *pb.CombatStatus) { st.Doing = "resting" })
 	defer s.stand(context.Background(), 0)
 	if b, err := s.refresh(ctx, j); err == nil && b.Self != nil && !b.Self.Dead {
 		s.restSpot(ctx, b.Self) // low among monsters: away from them first (saferest.go)
 	}
 	startHP, reached := uint32(0), 0
+	// One line per rest (measure of 2026-10-24): how fast health comes back at each level, with and
+	// without food, to decide whether eating is worth it at low level.
+	began, first, last, ate, level := time.Now(), uint32(0), uint32(0), false, uint32(0)
+	defer func() {
+		if first > 0 {
+			slog.Info("rest", "level", level, "hp_from", first, "hp_to", last, "s", int(time.Since(began).Seconds()), "ate", ate, "end", st+" "+why)
+		}
+	}()
 	for i := 0; i < maxS; i++ {
 		snap, err := s.refresh(ctx, j)
 		if err != nil || snap.Self == nil {
@@ -318,9 +328,10 @@ func (s *Service) rest(ctx context.Context, j *job, hpTarget, manaTarget uint32,
 			return "failed", "dead"
 		}
 		hp := pct(me.Hp, me.MaxHp)
+		last = hp
 		if i == 0 {
-			startHP = hp
-			if s.eatAndDrink(ctx, me) {
+			startHP, first, level = hp, max(hp, 1), me.Level
+			if ate = s.eatAndDrink(ctx, me); ate {
 				j.Update(func(st *pb.CombatStatus) { st.Doing = "eating / drinking" })
 			} else {
 				s.stand(ctx, 1)
@@ -632,7 +643,7 @@ func (s *Service) fight(ctx context.Context, j *job, guid uint64) (bool, string)
 	s.decision = nil
 	s.mu.Unlock()
 	dead, why := s.fightClass(ctx, j, guid)
-	s.pullSize.fightDone(s.tuneGet(), rec, rec.done(dead, why))
+	s.pullSize.fightDone(s.tuneGet(), rec, rec.done(s, dead, why))
 	s.logOutcome(why)
 	if why == "switched" { // not a failure: the caller picks a target again
 		return false, ""
@@ -902,6 +913,7 @@ func (s *Service) fightWarrior(ctx context.Context, j *job, guid uint64) (bool, 
 		return false, "spells unavailable"
 	}
 	rot := s.fightTable(warrior.ClassID, known)
+	s.logDefense(ctx, known)
 	var lastSwing, lastFace, fleeCheck, focusCheck time.Time
 	progress, lastHP := time.Now(), uint32(0)
 	selected, steppedAside, droppedTo := false, false, false

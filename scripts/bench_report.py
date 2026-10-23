@@ -61,6 +61,27 @@ potions = sum(1 for l in combat if "drinking potion" in l)
 buff_items = sum(1 for l in combat if "using buff item" in l)
 zone_pulls = sum(1 for l in combat if "msg=\"pull choice\"" in l and "in_fled_zone=" in l and not re.search(r"in_fled_zone=0\b", l))
 gave_up = sum(1 for l in combat if "giving up target" in l)
+# Blows taken by side (front / back / unknown): blows, damage, dodged, parried, blocked, missed (melee.go).
+blows = {k: [0] * 6 for k in ("front", "back", "unknown")}
+for l in combat:
+    if 'msg="blows taken"' in l:
+        for k in blows:
+            if m := re.search(k + r"=\"?\[([\d ]+)\]", l):
+                blows[k] = [a + int(b) for a, b in zip(blows[k], m.group(1).split())]
+def blow_line(k):
+    b = blows[k]
+    avoided = b[2] + b[3] + b[4] + b[5]
+    return f"{k} {b[0]} coups ({b[1]} dégâts, évités {avoided} : esquive {b[2]}, parade {b[3]}, blocage {b[4]}, raté {b[5]})"
+defense = [re.sub(r'.*msg=defense ', '', l) for l in combat if "msg=defense " in l]
+# Rests: one line each (combat rest): level, health from/to, seconds, food.
+rests = [m for l in combat if (m := re.search(r'msg=rest level=(\d+) hp_from=(\d+) hp_to=(\d+) s=(\d+) ate=(\w+)', l))]
+def rest_line(ate):
+    r = [m for m in rests if m.group(5) == ate]
+    if not r:
+        return f"{'avec' if ate == 'true' else 'sans'} repas 0"
+    gain = sum(int(m.group(3)) - int(m.group(2)) for m in r)
+    secs = sum(int(m.group(4)) for m in r)
+    return f"{'avec' if ate == 'true' else 'sans'} repas {len(r)} ({secs} s, {gain / max(secs, 1):.1f} points/s)"
 # Chests, vendors on the way, junk thrown away (auto/chest.go, auto/town.go, town/room.go, 2026-10-23):
 # auto.log and town.log hold every run, keep the lines of this one by time.
 def in_run(l):
@@ -106,6 +127,9 @@ lines = [f"# Bench {name} — {race} {cls} {first_level} → {target} ({date})",
          f"- Combats à plusieurs : {group_fights} ; changements de cible : {switches} ; sorts lancés à plusieurs : {dict(group_casts.most_common(8))}",
          f"- Taille de pull : {len(sizes)} changements, finale {sizes[-1] if sizes else '—'} ; pulls de groupe (monstres: nombre) : {dict(sorted(group_pulls.items()))}",
          f"- Zones fuies évitées : points d'apparition {zone_spawns} ; choix de pull {zone_pulls}",
+         f"- Coups reçus par côté : {' ; '.join(blow_line(k) for k in blows)}",
+         f"- Défense : {defense[-1] if defense else '—'}",
+         f"- Repos : {rest_line('false')} ; {rest_line('true')}",
          f"- Fin : {stops[-1] if stops else '?'}"]
 os.makedirs(os.path.join(root, "journal/bench"), exist_ok=True)
 fname = f"journal/bench/{datetime.datetime.fromtimestamp(start).strftime('%Y%m%d_%H%M')}_{name}.md"

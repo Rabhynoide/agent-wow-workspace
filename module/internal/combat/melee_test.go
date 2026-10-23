@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	statepb "wowagent/gen/statev1"
 	"wowagent/internal/wire"
 )
 
@@ -43,7 +44,28 @@ func TestAttackerState(t *testing.T) {
 	if !m.lastHit(other).IsZero() {
 		t.Fatal("unrelated target recorded")
 	}
-	if a, tg, d, st, ok := parseAttackerState(attackPacket(0x10, me, mob, 0, 0)); !ok || a != me || tg != mob || d != 0 || st != 0 {
+	if _, a, tg, d, st, ok := parseAttackerState(attackPacket(0x10, me, mob, 0, 0)); !ok || a != me || tg != mob || d != 0 || st != 0 {
 		t.Fatalf("miss: %v %x %d %d", ok, tg, d, st)
+	}
+}
+
+// Sides: facing east (O 0), a unit east is in front, west behind; blows count by the side last seen.
+func TestBlowsBySide(t *testing.T) {
+	me := &statepb.SelfInfo{X: 0, Y: 0, O: 0}
+	if !inFront(me, &statepb.Obj{X: 3, Y: 1}) || inFront(me, &statepb.Obj{X: -3, Y: 1}) || !inFront(me, &statepb.Obj{X: 0.1, Y: -3}) {
+		t.Fatal("front half")
+	}
+	if !inFront(&statepb.SelfInfo{O: 6.2}, &statepb.Obj{X: 3, Y: 0.5}) {
+		t.Fatal("orientation near 2 pi")
+	}
+	m := newMeleeLog()
+	m.saw(1, true)
+	m.saw(2, false)
+	m.takeBlow(1, 0, 0, victimParry)
+	m.takeBlow(2, 0, 12, 1)
+	m.takeBlow(3, hitMiss, 0, 0)
+	got := m.takenSoFar()
+	if got[sideFront].Parry != 1 || got[sideBack].Damage != 12 || got[sideUnknown].Miss != 1 {
+		t.Fatalf("taken %+v", got)
 	}
 }

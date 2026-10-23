@@ -29,10 +29,11 @@ type fightRecord struct {
 	hpEnd    uint32
 	most     int
 	attacker map[uint32]bool // entries that targeted us
+	taken    [3]sideStats    // melee.taken at the start (blows by side, melee.go)
 }
 
 func (s *Service) watchFight(ctx context.Context, guid uint64) *fightRecord {
-	r := &fightRecord{start: time.Now(), target: guid, hpMin: 100, attacker: map[uint32]bool{}}
+	r := &fightRecord{start: time.Now(), target: guid, hpMin: 100, attacker: map[uint32]bool{}, taken: s.melee.takenSoFar()}
 	if t, err := s.api.Obj(ctx, guid); err == nil {
 		r.entry, r.level = t.Entry, t.Level
 	}
@@ -75,12 +76,13 @@ func (s *Service) sampleFight(ctx context.Context, r *fightRecord) {
 		if o.Target == me.Guid && o.UnitFlags&unitInCombat != 0 {
 			count++
 			r.attacker[o.Entry] = true
+			s.melee.saw(o.Guid, inFront(me, o))
 		}
 	}
 	r.most = max(r.most, count)
 }
 
-func (r *fightRecord) done(dead bool, why string) string {
+func (r *fightRecord) done(s *Service, dead bool, why string) string {
 	r.stop()
 	r.wg.Wait()
 	var entries []uint32
@@ -100,5 +102,15 @@ func (r *fightRecord) done(dead bool, why string) string {
 	slog.Info("fight", "result", result, "target", r.entry, "target_level", r.level, "level", r.myLevel, "class", r.class, "max_hp", r.maxHP,
 		"hp_start", r.hpStart, "hp_min", r.hpMin, "hp_end", r.hpEnd, "attackers_max", r.most,
 		"attackers", entries, "s", int(time.Since(r.start).Seconds()))
+	// Blows taken in this fight by side ("front" = blows, damage, dodged, parried, blocked, missed).
+	now := s.melee.takenSoFar()
+	var side [3][6]uint32
+	for i := range side {
+		a, b := now[i], r.taken[i]
+		side[i] = [6]uint32{a.Blows - b.Blows, a.Damage - b.Damage, a.Dodge - b.Dodge, a.Parry - b.Parry, a.Block - b.Block, a.Miss - b.Miss}
+	}
+	if side[0][0]+side[1][0]+side[2][0] > 0 {
+		slog.Info("blows taken", "target", r.entry, "attackers_max", r.most, "front", side[sideFront], "back", side[sideBack], "unknown", side[sideUnknown])
+	}
 	return result
 }
