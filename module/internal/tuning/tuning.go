@@ -77,7 +77,7 @@ func Defaults() Tuning {
 		PostponeAfterFlights: 1, Explore: 0.25, Learn: true, MinFights: 6, DeathCostS: 180, FleeCostS: 90,
 		FleeDeathPrior: 0.1, ExploreFleeDeath: 0.2,
 		AddCost: 1.5, PullAdapt: false, PullSize: 2, PullSizeMax: 4, PullUpAfter: 2,
-		WarriorRestBelow: 75}
+		WarriorRestBelow: 55}
 }
 
 // cached reads a JSON file again when it changes (looked at every 10 s at most).
