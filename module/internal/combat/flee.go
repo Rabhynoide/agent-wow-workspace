@@ -149,8 +149,8 @@ func (s *Service) logOutcome(why string) {
 	switch why {
 	case "dead":
 		res = "died"
-	case "fled":
-		res = "fled"
+	case "fled", unhittable:
+		res = "fled" // says nothing about staying to the end
 	}
 	slog.Info("flee outcome", "key", d.key, "stayed", d.stayed, "how", d.how, "hp", d.hp, "slack", int(d.slack), "result", res)
 }
@@ -280,8 +280,8 @@ func (s *Service) flee(ctx context.Context, j *job, me *statepb.SelfInfo, att []
 // giveUp abandons a target we have not damaged for noProgress. When it keeps hitting us, staying
 // meant dying: the attackers given up are not fought back (aggressor skips them) and no fight is
 // running to flee from it (two deaths to a Defias Cutpurse, bench of 2026-10-13). So we run away;
-// it gives up 30 yards from where it was pulled. It returns the fight's end reason ("" or "fled",
-// "dead").
+// it gives up 30 yards from where it was pulled. It returns the fight's end reason ("", "unhittable"
+// or "dead"): not "fled", the quest goes on (13 mine quests postponed for such a run, 2026-10-21/23).
 func (s *Service) giveUp(ctx context.Context, j *job, me *statepb.SelfInfo, t *statepb.Obj) string {
 	s.abandon(t.Guid, "no damage dealt", t.Entry)
 	if t.Target != me.Guid {
@@ -301,5 +301,8 @@ func (s *Service) giveUp(ctx context.Context, j *job, me *statepb.SelfInfo, t *s
 	if _, why := s.rest(ctx, j, 90, 70, 90); why == "dead" {
 		return "dead"
 	}
-	return "fled"
+	return unhittable
 }
+
+// unhittable ends a fight against a target given up (giveUp): another one is picked, the job goes on.
+const unhittable = "unhittable"

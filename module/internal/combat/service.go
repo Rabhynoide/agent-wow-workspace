@@ -266,7 +266,7 @@ func (s *Service) defend(ctx context.Context, j *job) (string, string) {
 		}
 		j.Update(func(st *pb.CombatStatus) { st.Doing = fmt.Sprintf("defending vs %d", a.Entry) })
 		dead, why := s.fight(ctx, j, a.Guid)
-		if why != "" && why != "fled" { // after a flight, fight them back if they catch up
+		if why != "" && why != "fled" && why != unhittable { // after a flight, fight them back if they catch up
 			return "failed", why
 		}
 		if dead {
@@ -467,6 +467,9 @@ func (s *Service) kill(ctx context.Context, j *job, r *pb.KillRequest) (string, 
 			if why == "fled" {
 				return "failed", fledReason(a.Entry)
 			}
+			if why == unhittable {
+				continue // given up: another target
+			}
 			if why != "" {
 				return "failed", why
 			}
@@ -522,6 +525,9 @@ func (s *Service) kill(ctx context.Context, j *job, r *pb.KillRequest) (string, 
 		unreachable = 0
 		if why == "fled" {
 			return "failed", fledReason(t.Entry)
+		}
+		if why == unhittable {
+			continue // given up: another target
 		}
 		if why != "" {
 			return "failed", why
@@ -895,7 +901,7 @@ func (s *Service) fightWarrior(ctx context.Context, j *job, guid uint64) (bool, 
 	rot := s.fightTable(warrior.ClassID, known)
 	var lastSwing, lastFace, fleeCheck, focusCheck time.Time
 	progress, lastHP := time.Now(), uint32(0)
-	selected, steppedAside := false, false
+	selected, steppedAside, droppedTo := false, false, false
 	started := time.Now()
 	for time.Since(started) < 120*time.Second {
 		if ctx.Err() != nil {
@@ -971,8 +977,21 @@ func (s *Service) fightWarrior(ctx context.Context, j *job, guid uint64) (bool, 
 			dist3 = meleeRange
 		}
 		// The server refuses those swings without a word after the first (one NOTINRANGE until a blow
-		// lands), so the case came back once a run (AC08 series). Once per fight, step away: the target
-		// follows us onto our floor.
+		// lands), so the case came back once a run (AC08 series). In Fargodeep Mine the navmesh has
+		// a single floor there: the kobold stands at the foot of a steep slope (z 19.6 under our 27.8,
+		// 2-3 yards away) and the path to it is direct, but we never walked it (dist3 forced to melee
+		// range above); 13 flights of a quest postponed for a monster that could not hurt us
+		// (2026-10-21/23). First walk to its exact position, then step away as a last resort: the
+		// target follows us onto our floor.
+		if dist < 2 && math.Abs(float64(t.Z-me.Z)) > 4 && now.Sub(progress) > 3*time.Second && !droppedTo {
+			droppedTo = true
+			st, err := s.api.GotoWait(ctx, t.X, t.Y, t.Z, 1, 6)
+			after, _ := s.api.Brief(ctx)
+			slog.Info("target above or below, walking to its floor", "entry", t.Entry, "dz", int(t.Z-me.Z), "x", int(t.X), "y", int(t.Y),
+				"z", int(t.Z), "my_z", int(me.Z), "state", st.GetState(), "reason", st.GetReason(), "err", err, "z_after", int(after.GetSelf().GetZ()))
+			progress = time.Now()
+			continue
+		}
 		if dist < 2 && math.Abs(float64(t.Z-me.Z)) > 4 && now.Sub(progress) > 6*time.Second && !steppedAside {
 			steppedAside = true
 			slog.Info("target above or below, stepping aside", "entry", t.Entry, "dz", int(t.Z-me.Z))
