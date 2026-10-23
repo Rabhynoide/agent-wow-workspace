@@ -1,12 +1,12 @@
 {
- "until": "2026-10-23T07:25:12.196Z",
- "flee_until": "2026-10-23T07:07:30.340Z",
+ "until": "2026-10-23T14:06:44.836Z",
+ "flee_until": "2026-10-23T13:11:02.231Z",
  "cells": {
   "1:-10": {
    "n": 0,
    "deaths": 0,
-   "flee_n": 6,
-   "flee_deaths": 4
+   "flee_n": 7,
+   "flee_deaths": 5
   },
   "1:-20": {
    "n": 0,
@@ -19,25 +19,25 @@
    "flee_n": 1
   },
   "1:0": {
-   "n": 11,
-   "deaths": 2,
+   "n": 12,
+   "deaths": 3,
    "flee_n": 12,
    "flee_deaths": 3
   },
   "1:10": {
-   "n": 28,
+   "n": 35,
    "deaths": 1,
    "flee_n": 9
   },
   "1:20": {
-   "n": 9,
+   "n": 10,
    "deaths": 0,
    "flee_n": 22
   },
   "2:-10": {
    "n": 0,
    "deaths": 0,
-   "flee_n": 15,
+   "flee_n": 17,
    "flee_deaths": 1
   },
   "2:-20": {
@@ -53,19 +53,19 @@
    "flee_deaths": 2
   },
   "2:0": {
-   "n": 15,
-   "deaths": 3,
+   "n": 18,
+   "deaths": 4,
    "flee_n": 6
   },
   "2:10": {
-   "n": 31,
-   "deaths": 0,
+   "n": 37,
+   "deaths": 1,
    "flee_n": 16,
    "flee_deaths": 1
   },
   "2:20": {
-   "n": 39,
-   "deaths": 1,
+   "n": 48,
+   "deaths": 2,
    "flee_n": 11
   },
   "2:30": {
@@ -76,7 +76,7 @@
   "3:-10": {
    "n": 0,
    "deaths": 0,
-   "flee_n": 16,
+   "flee_n": 17,
    "flee_deaths": 2
   },
   "3:-20": {
@@ -97,35 +97,55 @@
    "flee_n": 17
   },
   "3:10": {
-   "n": 14,
-   "deaths": 4,
+   "n": 20,
+   "deaths": 7,
    "flee_n": 13
   },
   "3:20": {
-   "n": 15,
+   "n": 18,
    "deaths": 0,
    "flee_n": 22,
    "flee_deaths": 1
   },
   "3:30": {
-   "n": 27,
-   "deaths": 1,
+   "n": 37,
+   "deaths": 2,
    "flee_n": 19
   },
   "3:40": {
-   "n": 38,
+   "n": 45,
    "deaths": 1,
    "flee_n": 12
   },
   "3:50": {
-   "n": 22,
-   "deaths": 0,
+   "n": 28,
+   "deaths": 1,
    "flee_n": 9
   },
   "3:60": {
-   "n": 3,
+   "n": 7,
    "deaths": 0,
-   "flee_n": 14
+   "flee_n": 17
+  },
+  "4:-20": {
+   "n": 0,
+   "deaths": 0,
+   "flee_n": 1
+  },
+  "4:0": {
+   "n": 1,
+   "deaths": 0
+  },
+  "4:10": {
+   "n": 0,
+   "deaths": 0,
+   "flee_n": 1
+  },
+  "4:40": {
+   "n": 0,
+   "deaths": 0,
+   "flee_n": 1,
+   "flee_deaths": 1
   }
  }
 }
