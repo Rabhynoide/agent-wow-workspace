@@ -196,11 +196,6 @@ func (s *Service) cast(ctx context.Context, spell uint32, target uint64) (uint8,
 	return cnt, moveio.Packet(ctx, s.s, uint32(opcode.CMSGCastSpell), w.B)
 }
 
-// face turns towards the target when the orientation differs by more than ~6 degrees.
-func (s *Service) face(ctx context.Context, me *statepb.SelfInfo, tx, ty float32) {
-	s.faceTo(ctx, me, tx, ty, false)
-}
-
 // faceTo turns towards the target; force sends the orientation even when ours looks right (the
 // server said we were not facing it).
 func (s *Service) faceTo(ctx context.Context, me *statepb.SelfInfo, tx, ty float32, force bool) {

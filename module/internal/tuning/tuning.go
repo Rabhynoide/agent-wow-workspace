@@ -62,6 +62,16 @@ type Tuning struct {
 	WarriorRestBelow uint32 `json:"warrior_rest_below"`
 }
 
+// Defaults. Why these margins (benches of 2026-10-13):
+//   - flee_margin 15: health we want left when the fight is expected to end; a fight can cost twice its
+//     average, and a death (150 s, durability) costs far more than a flight (a kill lost).
+//   - crowd_flee 3: with 5-6 kobolds of a pack (Fargodeep mine) the ones still on us at the start of
+//     the run killed us twice; crowd_loss 30: three kobolds two levels below (19 %) made us flee at
+//     92 % health and postponed the mine quest level after level (0 quests in 100 minutes).
+//   - high_margin 10 per attacker 2+ levels above: two deaths to a level-10 Riverpaw Outrunner at
+//     level 8, flights started at 44 and 20 %.
+//   - chase_margin 10 per fresh attacker beyond the first: Prowler + Young Forest Bear at level 9,
+//     flight started at 34 %, dead 8 s later.
 func Defaults() Tuning {
 	return Tuning{FleeMargin: 15, HighMargin: 10, ChaseMargin: 10, CrowdFlee: 3, CrowdLoss: 30, Avoid: false,
 		PostponeAfterFlights: 1, Explore: 0.25, Learn: true, MinFights: 6, DeathCostS: 180, FleeCostS: 90,

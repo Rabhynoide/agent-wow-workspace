@@ -165,12 +165,6 @@ func (b *spellBook) cooling(spell uint32) bool {
 	return info.GCD > 0 && now.Before(b.gcd)
 }
 
-// can is canCast without the reason.
-func (s *Service) can(spell uint32, me *statepb.SelfInfo, t *statepb.Obj, dist float32) bool {
-	ok, _ := s.book.canCast(spell, me, t, dist)
-	return ok
-}
-
 // canCast checks a spell before sending it: cooldown, power, aura states and range (dist is the 3D
 // distance to the target; t nil = self cast). An unknown spell is allowed (the server decides).
 func (b *spellBook) canCast(spell uint32, me *statepb.SelfInfo, t *statepb.Obj, dist float32) (bool, string) {

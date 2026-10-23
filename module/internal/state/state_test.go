@@ -1,6 +1,7 @@
 package state
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -151,7 +152,7 @@ func TestSnapshotIgnoresItemsNotCarried(t *testing.T) {
 	setGUID(me, uint16(fInvSlots+2*slotPackFirst), 100) // carried in the backpack
 	sold := svc.st.obj(101, TypeItem)                   // sold: lives on in the buyback list
 	sold.F[fEntry] = 1411
-	resp, err := svc.Snapshot(nil, nil)
+	resp, err := svc.Snapshot(context.TODO(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
