@@ -104,8 +104,12 @@ func main() {
 	dbcDir := flag.String("dbc", "../assets/dbc", "with -play: client DBC directory (FactionTemplate.dbc)")
 	maxMin := flag.Int("max_min", 180, "with -play: stop after this many minutes")
 	above := flag.Int("maxabove", 2, "with -plan: skip quests more than this many levels above the character (danger)")
+	learnQ := flag.Bool("learn_quests", false, "learn journal/learn/quests.json from logs/level_*.log and list the quests passed over per level (tuning quest_defer, or 0.6)")
 	score := flag.String("score", "", "rank grind monsters by xp/min around map,x,y for -level and -class (e.g. 0,-9464,62)")
 	flag.Parse()
+	if *learnQ {
+		os.Exit(printLearnedQuests())
+	}
 	// Files given as arguments are checked in that order (one race's chain); else the whole directory.
 	files := flag.Args()
 	port := env("AGENT_WOW_WORLDRPC_PORT", "8086")

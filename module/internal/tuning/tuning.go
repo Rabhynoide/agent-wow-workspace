@@ -60,6 +60,11 @@ type Tuning struct {
 	// WarriorRestBelow: a kill job rests (and eats) before the next pull below this health (percent)
 	// for a warrior; the classes with a heal rest below 55.
 	WarriorRestBelow uint32 `json:"warrior_rest_below"`
+	// QuestDefer: guidecheck passes over a quest whose learned failure rate at our level
+	// (journal/learn/quests.json) reaches this, after QuestDeferMin tries; it is tried when nothing
+	// else is left. 0 = off.
+	QuestDefer    float64 `json:"quest_defer"`
+	QuestDeferMin float64 `json:"quest_defer_min"`
 }
 
 // Defaults. Why these margins (benches of 2026-10-13):
@@ -77,7 +82,7 @@ func Defaults() Tuning {
 		PostponeAfterFlights: 1, Explore: 0.25, Learn: true, MinFights: 6, DeathCostS: 180, FleeCostS: 90,
 		FleeDeathPrior: 0.1, ExploreFleeDeath: 0.2,
 		AddCost: 1.5, PullAdapt: false, PullSize: 2, PullSizeMax: 4, PullUpAfter: 2,
-		WarriorRestBelow: 55}
+		WarriorRestBelow: 55, QuestDefer: 0, QuestDeferMin: 4}
 }
 
 // cached reads a JSON file again when it changes (looked at every 10 s at most).

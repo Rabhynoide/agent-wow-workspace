@@ -41,6 +41,9 @@ type playState struct {
 	waitUntil map[uint32]time.Time
 	tries     map[uint32]int
 	flights   map[uint32]int // flights in each quest, against tuning postpone_after_flights
+	// hard: quests that often failed at this level (questlearn.go), passed over like the postponed
+	// ones but tried when nothing else is left
+	hard map[uint32]bool
 }
 
 // nextBatch walks the route in order. It returns the first quests doable now (up to n, stopping at the
@@ -52,7 +55,12 @@ func nextBatch(entries []routeQuest, cache map[uint32]*quest, manual map[uint32]
 	race, class uint32, raceName, className string, level uint32, above, n int) (batch []uint32, need, blocker uint32) {
 	seen := map[uint32]bool{}
 	var laterNeed, laterID uint32 // the first postponed quest passed over
+	var hard []uint32             // learned hard quests passed over, in route order
 	defer func() {
+		if len(batch) == 0 && len(hard) > 0 {
+			batch, need, blocker = hard[:min(len(hard), n)], 0, 0 // nothing else: try them, no grind
+			return
+		}
 		if len(batch) == 0 && laterID != 0 && (need == 0 || laterNeed < need) {
 			need, blocker = laterNeed, laterID
 		}
@@ -103,6 +111,10 @@ func nextBatch(entries []routeQuest, cache map[uint32]*quest, manual map[uint32]
 				return nil, req, e.id
 			}
 			return batch, 0, 0
+		}
+		if ps.hard[e.id] {
+			hard = append(hard, e.id)
+			continue
 		}
 		batch = append(batch, e.id)
 		if len(batch) >= n {
@@ -525,6 +537,12 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 	defer savePlan(planPath(char), ps)
 	deaths, idle := 0, 0
 	tune := tuning.NewSource(learnPath)
+	quests, nq, err := learnQuests()
+	if err != nil {
+		say("learned quests: %v", err)
+	} else if nq > 0 {
+		say("learned %d quest outcomes", nq)
+	}
 	for {
 		if time.Since(start) > time.Duration(maxMin)*time.Minute {
 			say("time limit (%d min) reached", maxMin)
@@ -546,6 +564,12 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 		if idle >= 4 {
 			say("STOP: no progress in 4 rounds (see logs/level_%s.log)", char)
 			return 1
+		}
+		if t := tune.Get(); t.QuestDefer > 0 {
+			ps.hard = quests.hard(me.Level, t.QuestDefer, t.QuestDeferMin)
+			if len(ps.hard) > 0 {
+				detail("  quests passed over at level %d (learned failures): %v", me.Level, keys(ps.hard))
+			}
 		}
 		batch, need, blocker := nextBatch(c.entries, c.cache, c.manual, ps, race, class, raceName, className, me.Level, 2, 5)
 		levelBefore, xpBefore := me.Level, me.XP
@@ -618,6 +642,12 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 			}
 			if n, err := learnFlee(); err == nil && n > 0 {
 				say("learned %d borderline fights", n)
+			}
+			if t, n, err := learnQuests(); err == nil {
+				quests = t
+				if n > 0 {
+					say("learned %d quest outcomes", n)
+				}
 			}
 			targets, report := c.grindTargets(me.Map, me.X, me.Y, 250, me.Level, class, factions[playerFactions[race]], factions)
 			// One target is not enough: after a flight its spawn points are avoided for minutes and the
@@ -705,5 +735,14 @@ func (c *checker) rewardedOf(char string) map[uint32]bool {
 			out[id] = true
 		}
 	}
+	return out
+}
+
+func keys(m map[uint32]bool) []uint32 {
+	out := make([]uint32, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	slices.Sort(out)
 	return out
 }
