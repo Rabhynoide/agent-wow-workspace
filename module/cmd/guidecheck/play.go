@@ -551,12 +551,31 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 	defer savePlan(planPath(char), ps)
 	deaths, idle := 0, 0
 	tune := tuning.NewSource(learnPath)
-	quests, nq, err := learnQuests()
-	if err != nil {
-		say("learned quests: %v", err)
-	} else if nq > 0 {
-		say("learned %d quest outcomes", nq)
+	var quests *questTable
+	// learnAll adds the new log lines to the learned tables (fights, borderline flee decisions, quest
+	// outcomes). It ran only before a grind: with no grind left (series QR and DE, 2026-10-24) the flee
+	// table learned nothing for 8 runs. Now also at the start and at each new level.
+	learnAll := func() {
+		if n, err := c.learnFights(); err != nil {
+			say("learned fights: %v", err)
+		} else if n > 0 {
+			say("learned %d fights: %s", n, strings.Join(c.fights.Summary(class), " | "))
+		}
+		if n, err := learnFlee(); err != nil {
+			say("learned borderline fights: %v", err)
+		} else if n > 0 {
+			say("learned %d borderline fights", n)
+		}
+		if t, n, err := learnQuests(); err != nil {
+			say("learned quests: %v", err)
+		} else {
+			quests = t
+			if n > 0 {
+				say("learned %d quest outcomes", n)
+			}
+		}
 	}
+	learnAll()
 	for {
 		if time.Since(start) > time.Duration(maxMin)*time.Minute {
 			say("time limit (%d min) reached", maxMin)
@@ -670,20 +689,7 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 				savePlan(planPath(char), ps)
 			}
 		case need > 0:
-			if n, err := c.learnFights(); err != nil {
-				say("learned fights: %v", err)
-			} else if n > 0 {
-				say("learned %d fights: %s", n, strings.Join(c.fights.Summary(class), " | "))
-			}
-			if n, err := learnFlee(); err == nil && n > 0 {
-				say("learned %d borderline fights", n)
-			}
-			if t, n, err := learnQuests(); err == nil {
-				quests = t
-				if n > 0 {
-					say("learned %d quest outcomes", n)
-				}
-			}
+			learnAll()
 			targets, report := c.grindTargets(me.Map, me.X, me.Y, 250, me.Level, class, factions[playerFactions[race]], factions)
 			// One target is not enough: after a flight its spawn points are avoided for minutes and the
 			// grind ends with nothing to hunt (Young Forest Bears among Prowlers, bench of 2026-10-13).
@@ -740,6 +746,7 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 			}
 			if b.Self.Level > levelBefore {
 				say("LEVEL %d", b.Self.Level)
+				learnAll()
 			}
 			if b.Self.Level == levelBefore && b.Self.XP == xpBefore {
 				idle++
