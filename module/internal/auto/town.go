@@ -79,6 +79,11 @@ func (r *run) supplyNeeds(me *statepb.SelfInfo) (wantDrink uint32, needFood, nee
 		wantDrink = drinkWanted
 	}
 	needFood = (food < foodWanted/2 || (wantDrink > 0 && drink < wantDrink/2)) && me.Money >= minMoneyForFood
+	// No food before combat eats it (tuning eat_from_level, one level ahead): 9 vendor stops of 14 in a
+	// run of series QR were for food never eaten, 1-3 minutes a run (2026-10-24). Drink still counts.
+	if wantDrink == 0 && me.Level+1 < r.s.tune.Get().EatFromLevel {
+		needFood = false
+	}
 	if failed := r.s.foodFailedAt.Load(); failed > 0 && me.Money < failed+100 {
 		needFood = false
 	}

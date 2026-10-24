@@ -83,7 +83,7 @@ func (s *Service) mustFlee(ctx context.Context, me *statepb.SelfInfo) (bool, flo
 	return s.decide(me, att, loss), loss, att
 }
 
-// fleeDecision: the first borderline decision of a fight (the rule says flee), logged with the
+// fleeDecision: the first borderline decision of an encounter (the rule says flee), logged with the
 // outcome of its encounter ("flee outcome", encounter.go) so that the death rate of staying is learned.
 type fleeDecision struct {
 	key    string
@@ -91,11 +91,12 @@ type fleeDecision struct {
 	how    string // rule, learned, explore
 	hp     uint32
 	slack  float64
+	fresh  int // fresh attackers when it was taken
 }
 
 // decide: the rule says flee. The learned table may say stay (its death rate is low enough for the
 // speedrun's costs); without enough fights, a borderline case where we are expected to survive is
-// explored (stay) with probability Explore. An exploration holds for the rest of the fight, a learned
+// explored (stay) with probability Explore. An exploration holds for the rest of the encounter, a learned
 // stay as long as the fight is expected to leave us some health (slack >= 0). Where fleeing itself
 // kills often (tuning.FleeDeath), staying is explored without slack too.
 func (s *Service) decide(me *statepb.SelfInfo, att []*statepb.Obj, loss float64) bool {
@@ -114,7 +115,9 @@ func (s *Service) decide(me *statepb.SelfInfo, att []*statepb.Obj, loss float64)
 	// fell into a cell with few fights (a fourth kobold, health 75-85 %) and the rule fled. Of the
 	// learned stays at 3 fresh attackers, all benches, 9 in 16 fled that way, while the explored stays
 	// of those cells, held to the end, won 33 times in 37.
-	if d != nil && d.stayed && (d.how == "explore" || slack >= 0) {
+	// Held for the whole encounter now (encounter.go), an exploration stops holding when more fresh
+	// monsters join than when it was taken (an encounter of series QR had 11 monsters).
+	if d != nil && d.stayed && ((d.how == "explore" && fresh <= d.fresh) || slack >= 0) {
 		return false
 	}
 	key := tuning.Key(fresh, slack)
@@ -129,7 +132,7 @@ func (s *Service) decide(me *statepb.SelfInfo, att []*statepb.Obj, loss float64)
 	}
 	if d == nil {
 		s.mu.Lock()
-		s.decision = &fleeDecision{key: key, stayed: !flee, how: how, hp: pct(me.Hp, me.MaxHp), slack: slack}
+		s.decision = &fleeDecision{key: key, stayed: !flee, how: how, hp: pct(me.Hp, me.MaxHp), slack: slack, fresh: fresh}
 		nd := s.decision
 		s.mu.Unlock()
 		s.encounterDecision(nd) // judged when the encounter ends (encounter.go)

@@ -664,9 +664,6 @@ func (s *Service) fight(ctx context.Context, j *job, guid uint64) (bool, string)
 	}
 	rec := s.watchFight(ctx, guid)
 	s.pullSize.fightStart()
-	s.mu.Lock()
-	s.decision = nil
-	s.mu.Unlock()
 	dead, why := s.fightClass(ctx, j, guid)
 	s.pullSize.fightDone(s.tuneGet(), rec, rec.done(s, dead, why))
 	switch why { // otherwise the encounter goes on until we are out of combat (encounter.go)

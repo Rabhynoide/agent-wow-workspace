@@ -13,7 +13,10 @@ import (
 // taken during it are judged on how it ends, not on their own fight: a stay against a pack was "won"
 // as soon as its target died, and the rest of the pack killed us 6-7 s later (series RF runs 1 and 4,
 // 2026-10-24), so the learned table took deadly stays for good ones. The user's rule: count the
-// monsters fought between entering combat and leaving it.
+// monsters fought between entering combat and leaving it. The decision holds for the whole encounter
+// too (it was taken again at each fight): 5 explored stays of 9 against 3 fresh attackers ended "fled"
+// because the next fight of the pack decided again by the rule and ran, so they taught nothing (series
+// QR), and the rule's flights from 3 wolves at 93-100 % health were most of the flights on the way.
 type encounter struct {
 	start     time.Time
 	lastFoe   time.Time       // last sample with a monster on us
@@ -45,6 +48,7 @@ func (s *Service) encounterBegin(me *statepb.SelfInfo) {
 	}
 	s.mu.Lock()
 	s.enc = &encounter{start: time.Now(), lastFoe: time.Now(), foes: map[uint64]bool{}, hpStart: hp, hpMin: hp}
+	s.decision = nil
 	s.mu.Unlock()
 }
 
@@ -91,6 +95,7 @@ func (s *Service) encounterEnd(result string) {
 	s.mu.Lock()
 	e := s.enc
 	s.enc = nil
+	s.decision = nil
 	s.mu.Unlock()
 	if e == nil {
 		return
