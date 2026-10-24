@@ -331,10 +331,20 @@ func (s *Service) rest(ctx context.Context, j *job, hpTarget, manaTarget uint32,
 		last = hp
 		if i == 0 {
 			startHP, first, level = hp, max(hp, 1), me.Level
-			if ate = s.eatAndDrink(ctx, me); ate {
-				j.Update(func(st *pb.CombatStatus) { st.Doing = "eating / drinking" })
-			} else {
-				s.stand(ctx, 1)
+			// Never sit next to a monster: blows on a sitting character are all critical; 15 rests of
+			// 32 were broken that way and one killed us 1.6 s after the meal (series M, 2026-10-24),
+			// aggressor having missed the attacker (the server's target field lags). One in combat:
+			// fight it (aggressor takes any unit in combat at melee reach right after restHitAt).
+			near, fighting := s.hostileNear(ctx, me)
+			if fighting {
+				s.mark(&s.restHitAt)
+				return "done", "monster next to us"
+			}
+			// Sitting itself brings nothing (only food and drink do): we sit only to eat or drink.
+			if !near {
+				if ate = s.eatAndDrink(ctx, me); ate {
+					j.Update(func(st *pb.CombatStatus) { st.Doing = "eating / drinking" })
+				}
 			}
 		}
 		if hp+5 < startHP && me.UnitFlags&unitInCombat != 0 { // in combat: not a false high reading

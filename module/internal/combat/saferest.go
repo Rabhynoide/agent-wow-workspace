@@ -3,6 +3,7 @@ package combat
 import (
 	"context"
 	"log/slog"
+	"math"
 
 	statepb "wowagent/gen/statev1"
 	"wowagent/internal/safe"
@@ -51,4 +52,27 @@ func (s *Service) restSpot(ctx context.Context, me *statepb.SelfInfo) {
 	}
 	slog.Info("walking to a quieter spot to rest", "hp", pct(me.Hp, me.MaxHp), "nearest", int(here), "spot", int(sp.Clearance))
 	_, _ = s.api.GotoWait(ctx, sp.X, sp.Y, sp.Z, 2, 15)
+}
+
+// restNear: a hostile monster closer than this (on our level) forbids sitting down to eat.
+const restNear = 8
+
+// hostileNear tells whether a hostile monster stands within restNear on our level, and whether one of
+// those is in combat (fighting us, most likely).
+func (s *Service) hostileNear(ctx context.Context, me *statepb.SelfInfo) (near, fighting bool) {
+	vis, err := s.api.Nearby(ctx, &statepb.NearbyRequest{Kind: "unit", Radius: restNear, Max: 12, AliveOnly: true, HostileOnly: true})
+	if err != nil {
+		return false, false
+	}
+	for _, o := range vis.Objs {
+		if o.Guid == me.Guid || math.Abs(float64(o.Z-me.Z)) > 4 || math.Hypot(float64(o.X-me.X), float64(o.Y-me.Y)) > restNear {
+			continue
+		}
+		near = true
+		if o.UnitFlags&unitInCombat != 0 {
+			slog.Info("monster next to us, not resting", "entry", o.Entry, "dist", int(math.Hypot(float64(o.X-me.X), float64(o.Y-me.Y))), "on_me", o.Target == me.Guid)
+			return true, true
+		}
+	}
+	return near, false
 }

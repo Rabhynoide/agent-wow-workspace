@@ -66,7 +66,7 @@ func (s *Service) itemInfo(ctx context.Context, entry uint32) *worldpb.ItemInfo 
 // eatAndDrink uses the best food when health is low and the best drink when mana is low (the
 // server sits the character down). It returns whether something was consumed.
 func (s *Service) eatAndDrink(ctx context.Context, me *statepb.SelfInfo) bool {
-	wantFood := pct(me.Hp, me.MaxHp) < eatBelow
+	wantFood := pct(me.Hp, me.MaxHp) < eatBelow && me.Level >= s.tuneGet().EatFromLevel
 	wantDrink := me.PowerType == 0 && me.MaxPower > 0 && pct(me.Power, me.MaxPower) < drinkBelow
 	if !wantFood && !wantDrink {
 		return false

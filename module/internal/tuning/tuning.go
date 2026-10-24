@@ -67,6 +67,9 @@ type Tuning struct {
 	// VerticalGiveUp: a target right above or below that our walk to its floor did not reach is given
 	// up at once, without a flight (combat fightWarrior). false = the old way (step aside, then flee).
 	VerticalGiveUp bool `json:"vertical_give_up"`
+	// EatFromLevel: a rest eats food only from this character level; below, it waits standing (health
+	// came back from 52 to 100 % in 4 s at levels 6-7, series M of 2026-10-24). 1 = always eat.
+	EatFromLevel uint32 `json:"eat_from_level"`
 	// QuestDefer: guidecheck passes over a quest whose learned failure rate at our level
 	// (journal/learn/quests.json) reaches this, after QuestDeferMin tries; it is tried when nothing
 	// else is left. 0 = off.
@@ -89,7 +92,7 @@ func Defaults() Tuning {
 		PostponeAfterFlights: 1, Explore: 0.25, Learn: true, MinFights: 6, DeathCostS: 180, FleeCostS: 90,
 		FleeDeathPrior: 0.1, ExploreFleeDeath: 0.2,
 		AddCost: 1.5, PullAdapt: false, PullSize: 2, PullSizeMax: 4, PullUpAfter: 2,
-		WarriorRestBelow: 55, SafeRestBelow: 40, VerticalGiveUp: true, QuestDefer: 0, QuestDeferMin: 4}
+		WarriorRestBelow: 55, SafeRestBelow: 40, VerticalGiveUp: true, EatFromLevel: 10, QuestDefer: 0, QuestDeferMin: 4}
 }
 
 // cached reads a JSON file again when it changes (looked at every 10 s at most).
