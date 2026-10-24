@@ -12,7 +12,7 @@ func TestNextBatchKeepsRouteOrder(t *testing.T) {
 	cache := map[uint32]*quest{
 		1: {ID: 1, MinLevel: 1, Level: 5},
 		2: {ID: 2, MinLevel: 1, Level: 6},
-		3: {ID: 3, MinLevel: 7, Level: 9}, // needs level 7: everything after waits
+		3: {ID: 3, MinLevel: 7, Level: 9}, // needs level 7: passed over, the next ones go
 		4: {ID: 4, MinLevel: 1, Level: 5},
 		5: {ID: 5, MinLevel: 1, Level: 5, Prev: 9}, // chain broken (9 skipped)
 		9: {ID: 9, MinLevel: 1, Level: 5},
@@ -20,10 +20,10 @@ func TestNextBatchKeepsRouteOrder(t *testing.T) {
 	entries := []routeQuest{{id: 9}, {id: 1}, {id: 5}, {id: 2}, {id: 3}, {id: 4}}
 	ps := &playState{finished: map[uint32]bool{}, skipped: map[uint32]string{9: "failed"}, retryAt: map[uint32]uint32{}, waitUntil: map[uint32]time.Time{}}
 	batch, need, _ := nextBatch(entries, cache, nil, ps, human, warrior, "human", "warrior", 6, 2, 5)
-	if !reflect.DeepEqual(batch, []uint32{1, 2}) || need != 0 {
-		t.Fatalf("batch %v need %d, want [1 2] and 0 (stop before quest 3, keep the order)", batch, need)
+	if !reflect.DeepEqual(batch, []uint32{1, 2, 4}) || need != 0 {
+		t.Fatalf("batch %v need %d, want [1 2 4] and 0 (quest 3 too high passed over, order kept)", batch, need)
 	}
-	ps.finished[1], ps.finished[2] = true, true
+	ps.finished[1], ps.finished[2], ps.finished[4] = true, true, true
 	batch, need, blocker := nextBatch(entries, cache, nil, ps, human, warrior, "human", "warrior", 6, 2, 5)
 	if batch != nil || need != 7 || blocker != 3 {
 		t.Fatalf("batch %v need %d blocker %d, want grind to 7 for quest 3", batch, need, blocker)
@@ -31,12 +31,23 @@ func TestNextBatchKeepsRouteOrder(t *testing.T) {
 	// A quest found too dangerous waits for the next level even when its minimum is reached; the
 	// quests after it go first, and it is the grind's blocker once they are done.
 	ps.retryAt[3] = 8
+	ps.finished[4] = false
 	if batch, need, _ := nextBatch(entries, cache, nil, ps, human, warrior, "human", "warrior", 7, 2, 5); !reflect.DeepEqual(batch, []uint32{4}) || need != 0 {
 		t.Fatalf("batch %v need %d, want [4]: postponed quest 3 passed over", batch, need)
 	}
 	ps.finished[4] = true
 	if batch, need, blocker := nextBatch(entries, cache, nil, ps, human, warrior, "human", "warrior", 7, 2, 5); batch != nil || need != 8 || blocker != 3 {
 		t.Fatalf("batch %v need %d blocker %d, want grind to 8 for postponed quest 3", batch, need, blocker)
+	}
+}
+
+// Quest colors: at level 7, a level-10 quest (orange, 3 over) is done now; a level-12 one (red) waits.
+func TestOnlyRedQuestsWait(t *testing.T) {
+	cache := map[uint32]*quest{76: {ID: 76, MinLevel: 4, Level: 10}, 99: {ID: 99, MinLevel: 4, Level: 12}, 61: {ID: 61, MinLevel: 3, Level: 7}}
+	ps := &playState{finished: map[uint32]bool{}, skipped: map[uint32]string{}, retryAt: map[uint32]uint32{}, waitUntil: map[uint32]time.Time{}}
+	batch, need, _ := nextBatch([]routeQuest{{id: 99}, {id: 76}, {id: 61}}, cache, nil, ps, 1, 1, "human", "warrior", 7, redAbove, 5)
+	if !reflect.DeepEqual(batch, []uint32{76, 61}) || need != 0 {
+		t.Fatalf("batch %v need %d, want [76 61]: the red one passed over", batch, need)
 	}
 }
 

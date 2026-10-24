@@ -46,15 +46,17 @@ type playState struct {
 	hard map[uint32]bool
 }
 
-// nextBatch walks the route in order. It returns the first quests doable now (up to n, stopping at the
-// first one that needs a higher level, so the order is kept), or, when the very first pending quest is
-// too high, the level it needs and its id. A quest postponed after a death or a flight (retryAt) is
-// passed over instead: it stopped the whole route, 100 minutes of grind behind the Fargodeep mine
-// quest (bench of 2026-10-13). It is the blocker only when nothing else can be done.
+// nextBatch walks the route in order. It returns the first quests doable now (up to n), or, when none
+// is, the lowest level one of them needs and its id. A quest too high (minimum level not reached, or
+// red: more than `above` levels over us) is passed over, like one postponed after a death or a flight
+// (retryAt): stopping the route there left the next quests undone. Quest 76 (Jasperlode, level 10),
+// given by the Fargodeep quest done at level 6, stopped the route at level 7 for 34 minutes of grind
+// (2026-10-24); the user's rule: only red quests wait (above = 4, quest color by level difference).
+// It is the blocker only when nothing else can be done.
 func nextBatch(entries []routeQuest, cache map[uint32]*quest, manual map[uint32]string, ps *playState,
 	race, class uint32, raceName, className string, level uint32, above, n int) (batch []uint32, need, blocker uint32) {
 	seen := map[uint32]bool{}
-	var laterNeed, laterID uint32 // the first postponed quest passed over
+	var laterNeed, laterID uint32 // the passed-over quest (too high or postponed) needing the lowest level
 	var hard []uint32             // learned hard quests passed over, in route order
 	defer func() {
 		if len(batch) == 0 && len(hard) > 0 {
@@ -101,16 +103,13 @@ func nextBatch(entries []routeQuest, cache map[uint32]*quest, manual map[uint32]
 			req = uint32(q.Level - above)
 		}
 		if r := ps.retryAt[e.id]; r > level && r > req {
-			if laterID == 0 {
-				laterNeed, laterID = r, e.id
-			}
-			continue
+			req = r
 		}
 		if req > level {
-			if len(batch) == 0 {
-				return nil, req, e.id
+			if laterID == 0 || req < laterNeed {
+				laterNeed, laterID = req, e.id
 			}
-			return batch, 0, 0
+			continue
 		}
 		if ps.hard[e.id] {
 			hard = append(hard, e.id)
@@ -123,6 +122,10 @@ func nextBatch(entries []routeQuest, cache map[uint32]*quest, manual map[uint32]
 	}
 	return batch, 0, 0
 }
+
+// redAbove: a quest more than this many levels over the character is red (GetQuestDifficultyColor:
+// 5 and more) and waits; orange (3-4 over) and below are done now (user's rule, 2026-10-24).
+const redAbove = 4
 
 func inList(l []uint32, v uint32) bool {
 	for _, x := range l {
@@ -571,7 +574,7 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 				detail("  quests passed over at level %d (learned failures): %v", me.Level, keys(ps.hard))
 			}
 		}
-		batch, need, blocker := nextBatch(c.entries, c.cache, c.manual, ps, race, class, raceName, className, me.Level, 2, 5)
+		batch, need, blocker := nextBatch(c.entries, c.cache, c.manual, ps, race, class, raceName, className, me.Level, redAbove, 5)
 		levelBefore, xpBefore := me.Level, me.XP
 		switch {
 		case len(batch) > 0:
