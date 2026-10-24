@@ -19,12 +19,48 @@ import (
 
 func aggroRange(player, creature uint32) float32 { return safe.AggroRange(player, creature) }
 
+// aggroFn gives a monster's aggro radius against us (its detection range from the creature
+// template, our levels: safe.AggroRangeOf).
+type aggroFn func(o *statepb.Obj) float32
+
+// levelAggro uses the default detection range (tests, and when the template is unknown).
+func levelAggro(level uint32) aggroFn {
+	return func(o *statepb.Obj) float32 { return safe.AggroRangeOf(safe.DefaultDetection, level, o.Level) }
+}
+
+// aggroOf reads each monster's detection range (18 for every monster of Elwynn, not the default 20:
+// the pull choice saw adds 2 yards too far) once per entry.
+func (s *Service) aggroOf(ctx context.Context, level uint32) aggroFn {
+	return func(o *statepb.Obj) float32 {
+		s.mu.Lock()
+		det, ok := s.detection[o.Entry]
+		s.mu.Unlock()
+		if !ok {
+			det = safe.DefaultDetection
+			if c, err := s.api.Creature(ctx, o.Entry); err == nil && c.DetectionRange > 0 {
+				det = c.DetectionRange
+			}
+			s.mu.Lock()
+			s.detection[o.Entry] = det
+			s.mu.Unlock()
+		}
+		return safe.AggroRangeOf(det, level, o.Level)
+	}
+}
+
+func dist3D(a, b *statepb.Obj) float32 {
+	return float32(math.Sqrt(float64((a.X-b.X)*(a.X-b.X) + (a.Y-b.Y)*(a.Y-b.Y) + (a.Z-b.Z)*(a.Z-b.Z))))
+}
+
+// addMargin: yards added to an aggro radius for an add (we fight around the target, not on it).
+const addMargin = 2
+
 // groupYards: with the adaptive pull size, one more monster in a pull is worth this many yards of
 // walk (2-3 s per kill saved against about 3 s of walk).
 const groupYards = 20
 
 // assistRange: a monster attacked calls for help within this distance (CreatureFamilyAssistanceRadius).
-const assistRange = 10
+const assistRange = safe.AssistRange
 
 // pullWeight is how much a monster counts against the capacity: weaker monsters less, stronger more.
 func pullWeight(player, creature uint32) float32 {
@@ -47,14 +83,18 @@ func dist2D(ax, ay, bx, by float32) float32 {
 }
 
 // addsOf lists the hostile monsters that would join a fight at the target's spot: not engaged with
-// anyone, and within their aggro range (or the assistance range) of the target.
-func addsOf(t *statepb.Obj, hostiles []*statepb.Obj, level uint32) []*statepb.Obj {
+// anyone, and either within their aggro radius of it (3D, at most safe.ZAggro yards above or below:
+// Creature::CanStartAttack) or called by the target (within the assistance range, 3D). A kobold on
+// the floor above in Fargodeep mine is no add (it counted as one, 2D, and crowded the pulls).
+func addsOf(t *statepb.Obj, hostiles []*statepb.Obj, rangeOf aggroFn) []*statepb.Obj {
 	var out []*statepb.Obj
 	for _, h := range hostiles {
 		if h.Guid == t.Guid || h.Target != 0 {
 			continue
 		}
-		if dist2D(h.X, h.Y, t.X, t.Y) <= max(aggroRange(level, h.Level), assistRange)+2 {
+		d := dist3D(h, t)
+		aggro := math.Abs(float64(h.Z-t.Z)) <= safe.ZAggro && d <= rangeOf(h)+addMargin
+		if aggro || d <= assistRange+1 {
 			out = append(out, h)
 		}
 	}
@@ -74,8 +114,8 @@ func pullLoad(t *statepb.Obj, adds []*statepb.Obj, level uint32) float32 {
 
 // pullSpot finds where to stand so that only the target sees us: within its aggro range, out of the
 // others' (keeping margin yards). It prefers the largest margin, then the spot nearest to us.
-func pullSpot(me, t *statepb.Obj, others []*statepb.Obj, level uint32) (x, y float32, ok bool) {
-	reach := aggroRange(level, t.Level)
+func pullSpot(me, t *statepb.Obj, others []*statepb.Obj, rangeOf aggroFn) (x, y float32, ok bool) {
+	reach := rangeOf(t)
 	bestScore := float32(-1e9)
 	for _, d := range []float32{reach - 2, reach - 4, reach - 6} {
 		if d < 4 {
@@ -86,7 +126,11 @@ func pullSpot(me, t *statepb.Obj, others []*statepb.Obj, level uint32) (x, y flo
 			px, py := t.X+d*float32(math.Cos(a)), t.Y+d*float32(math.Sin(a))
 			margin := float32(100)
 			for _, o := range others {
-				margin = min(margin, dist2D(px, py, o.X, o.Y)-max(aggroRange(level, o.Level), assistRange))
+				r := float32(assistRange)
+				if math.Abs(float64(o.Z-t.Z)) <= safe.ZAggro {
+					r = max(rangeOf(o), r)
+				}
+				margin = min(margin, dist2D(px, py, o.X, o.Y)-r)
 			}
 			if margin < 3 {
 				continue
@@ -146,6 +190,7 @@ func (s *Service) choosePull(ctx context.Context, j *job, me *statepb.SelfInfo, 
 		return nil, err
 	}
 	fits := s.pullFits(me, r.MaxPull)
+	rangeOf := s.aggroOf(ctx, me.Level)
 	group := r.MaxPull == 0 && s.pullSize.cap(s.tuneGet()) > 1
 	self := &statepb.Obj{Guid: me.Guid, X: me.X, Y: me.Y, Z: me.Z}
 	var crowded, taken []*statepb.Obj
@@ -167,7 +212,7 @@ func (s *Service) choosePull(ctx context.Context, j *job, me *statepb.SelfInfo, 
 			taken = append(taken, c)
 			continue
 		}
-		adds := addsOf(c, hostile.Objs, me.Level)
+		adds := addsOf(c, hostile.Objs, rangeOf)
 		ok, load, limit := fits(c, adds)
 		if ok && !group {
 			return c, nil
@@ -188,7 +233,7 @@ func (s *Service) choosePull(ctx context.Context, j *job, me *statepb.SelfInfo, 
 		return best, nil
 	}
 	for i, c := range crowded {
-		if r.BodyPull && i < 2 && s.bodyPull(ctx, j, self, c, hostile.Objs, me.Level) {
+		if r.BodyPull && i < 2 && s.bodyPull(ctx, j, self, c, hostile.Objs, rangeOf) {
 			return c, nil
 		}
 		s.skipCrowded(c.Guid)
@@ -204,7 +249,7 @@ func (s *Service) choosePull(ctx context.Context, j *job, me *statepb.SelfInfo, 
 
 // bodyPull brings the target alone: go where only it sees us, wait for it to come, then back off to a
 // spot away from the others. It returns whether the target is now coming at us.
-func (s *Service) bodyPull(ctx context.Context, j *job, me, t *statepb.Obj, hostiles []*statepb.Obj, level uint32) bool {
+func (s *Service) bodyPull(ctx context.Context, j *job, me, t *statepb.Obj, hostiles []*statepb.Obj, rangeOf aggroFn) bool {
 	if t.Reaction != "hostile" {
 		return false // a neutral monster never comes by itself
 	}
@@ -214,7 +259,7 @@ func (s *Service) bodyPull(ctx context.Context, j *job, me, t *statepb.Obj, host
 			others = append(others, h)
 		}
 	}
-	x, y, ok := pullSpot(me, t, others, level)
+	x, y, ok := pullSpot(me, t, others, rangeOf)
 	if !ok {
 		return false
 	}

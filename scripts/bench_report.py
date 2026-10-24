@@ -72,6 +72,16 @@ def blow_line(k):
     b = blows[k]
     avoided = b[2] + b[3] + b[4] + b[5]
     return f"{k} {b[0]} coups ({b[1]} dégâts, évités {avoided} : esquive {b[2]}, parade {b[3]}, blocage {b[4]}, raté {b[5]})"
+# Encounters (combat/encounter.go): monsters fought from entering combat to leaving it, and the result.
+encounters = [m for l in combat if (m := re.search(r'msg=encounter foes=(\d+) s=(\d+) .*result=(\w+)', l))]
+enc_by = collections.Counter((min(int(m.group(1)), 5), m.group(3)) for m in encounters)
+def enc_line():
+    if not encounters:
+        return "—"
+    parts = []
+    for n in sorted({k[0] for k in enc_by}):
+        parts.append(f"{n}{'+' if n == 5 else ''}: " + ", ".join(f"{r} {enc_by[(n, r)]}" for r in ("won", "fled", "died") if enc_by[(n, r)]))
+    return f"{len(encounters)} ; par nombre de monstres : " + " ; ".join(parts)
 defense = [re.sub(r'.*msg=defense ', '', l) for l in combat if "msg=defense " in l]
 # Rests: one line each (combat rest): level, health from/to, seconds, food.
 rests = [m for l in combat if (m := re.search(r'msg=rest level=(\d+) hp_from=(\d+) hp_to=(\d+) s=(\d+) ate=(\w+)', l))]
@@ -128,6 +138,7 @@ lines = [f"# Bench {name} — {race} {cls} {first_level} → {target} ({date})",
          f"- Taille de pull : {len(sizes)} changements, finale {sizes[-1] if sizes else '—'} ; pulls de groupe (monstres: nombre) : {dict(sorted(group_pulls.items()))}",
          f"- Zones fuies évitées : points d'apparition {zone_spawns} ; choix de pull {zone_pulls}",
          f"- Coups reçus par côté : {' ; '.join(blow_line(k) for k in blows)}",
+         f"- Rencontres (entrée → sortie de combat) : {enc_line()}",
          f"- Défense : {defense[-1] if defense else '—'}",
          f"- Repos : {rest_line('false')} ; {rest_line('true')}",
          f"- Fin : {stops[-1] if stops else '?'}"]

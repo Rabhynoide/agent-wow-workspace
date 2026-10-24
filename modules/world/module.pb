@@ -4,7 +4,7 @@
 EmptyB}
 com.google.protobufB
 EmptyProtoPZ.google.golang.org/protobuf/types/known/emptypb¯¢GPB™Google.Protobuf.WellKnownTypesbproto3
-§,
+Õ,
 world.protowowagent.world.v1google/protobuf/empty.proto"®
 FindNpcRequest
 name (	Rname
@@ -153,7 +153,7 @@ display_id (R	displayId
 ItemInfoResponse1
 items (2.wowagent.world.v1.ItemInfoRitems"+
 CreatureInfoRequest
-entry (Rentry"è
+entry (Rentry"∏
 CreatureInfo
 entry (Rentry
 name (	Rname
@@ -165,7 +165,8 @@ display_id (R	displayId
 type (Rtype#
 skinning_loot	 (RskinningLoot
 loot_id
- (RlootId"*
+ (RlootId'
+detection_range (RdetectionRange"*
 ItemSourcesRequest
 entry (Rentry"ú
 

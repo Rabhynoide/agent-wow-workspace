@@ -84,7 +84,7 @@ func (s *Service) mustFlee(ctx context.Context, me *statepb.SelfInfo) (bool, flo
 }
 
 // fleeDecision: the first borderline decision of a fight (the rule says flee), logged with the
-// fight's outcome ("flee outcome") so that guidecheck learns the death rate of staying.
+// outcome of its encounter ("flee outcome", encounter.go) so that the death rate of staying is learned.
 type fleeDecision struct {
 	key    string
 	stayed bool
@@ -130,29 +130,12 @@ func (s *Service) decide(me *statepb.SelfInfo, att []*statepb.Obj, loss float64)
 	if d == nil {
 		s.mu.Lock()
 		s.decision = &fleeDecision{key: key, stayed: !flee, how: how, hp: pct(me.Hp, me.MaxHp), slack: slack}
+		nd := s.decision
 		s.mu.Unlock()
+		s.encounterDecision(nd) // judged when the encounter ends (encounter.go)
 		slog.Info("flee decision", "key", key, "stay", !flee, "how", how, "hp", pct(me.Hp, me.MaxHp), "loss", int(loss), "fresh", fresh)
 	}
 	return flee
-}
-
-// logOutcome ends the fight's borderline decision: result died, fled or won.
-func (s *Service) logOutcome(why string) {
-	s.mu.Lock()
-	d := s.decision
-	s.decision = nil
-	s.mu.Unlock()
-	if d == nil {
-		return
-	}
-	res := "won"
-	switch why {
-	case "dead":
-		res = "died"
-	case "fled", unhittable:
-		res = "fled" // says nothing about staying to the end
-	}
-	slog.Info("flee outcome", "key", d.key, "stayed", d.stayed, "how", d.how, "hp", d.hp, "slack", int(d.slack), "result", res)
 }
 
 func (s *Service) tuneGet() tuning.Tuning {
@@ -298,6 +281,7 @@ func (s *Service) giveUp(ctx context.Context, j *job, me *statepb.SelfInfo, t *s
 	if s.flee(ctx, j, me, att, 0) {
 		return "dead"
 	}
+	s.encounterEnd("fled")
 	if _, why := s.rest(ctx, j, 90, 70, 90); why == "dead" {
 		return "dead"
 	}

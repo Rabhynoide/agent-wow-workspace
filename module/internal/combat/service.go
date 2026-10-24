@@ -75,6 +75,8 @@ type Service struct {
 	zones        []fledZone // places we fled from (zones.go)
 	trail        *trail     // our recent positions, run back along when fleeing (trail.go)
 	items        map[uint32]*worldpb.ItemInfo
+	detection    map[uint32]float32   // creature entry -> detection range (pull.go aggroOf)
+	enc          *encounter           // fights from entering combat to leaving it (encounter.go)
 	buffTried    map[uint32]time.Time // buff item spell -> last use (buffitems.go)
 	gearDue      bool                 // a weapon, armor or bag was looted since the last gear check
 	potionAt     time.Time            // last healing potion (potion.go)
@@ -90,7 +92,7 @@ func Register(g grpc.ServiceRegistrar, s modv1.SessionClient) {
 	tr := &trail{}
 	runner.Decorate = func(j *job, st *pb.CombatStatus) { st.ElapsedS = uint32(time.Since(j.Start).Seconds()) }
 	pb.RegisterCombatServer(g, &Service{s: s, api: api.C{S: s}, loot: loot.NewTracker(), guid: guid, jobs: runner, failures: map[uint8]castFailure{},
-		rotations: map[uint32]*classTables{}, melee: newMeleeLog(), abandoned: map[uint64]time.Time{}, crowded: map[uint64]time.Time{}, items: map[uint32]*worldpb.ItemInfo{}, book: &spellBook{ready: map[uint32]time.Time{}},
+		rotations: map[uint32]*classTables{}, melee: newMeleeLog(), abandoned: map[uint64]time.Time{}, crowded: map[uint64]time.Time{}, items: map[uint32]*worldpb.ItemInfo{}, detection: map[uint32]float32{}, book: &spellBook{ready: map[uint32]time.Time{}},
 		fights: xpscore.LearnedFile(), trail: tr, tune: tuning.NewSource(""), fleeTab: tuning.NewFleeTable("")})
 	go tr.follow(api.C{S: s})
 }
@@ -257,8 +259,10 @@ func (s *Service) defend(ctx context.Context, j *job) (string, string) {
 		}
 		if snap.Self.Dead {
 			s.forgetBuffs()
+			s.encounterEnd("died")
 			return "failed", "dead"
 		}
+		s.encounterCalm(ctx, snap.Self)
 		a := s.aggressor(ctx, snap.Self)
 		if a == nil {
 			if !sleep(ctx, time.Second) {
@@ -306,6 +310,12 @@ func (s *Service) rest(ctx context.Context, j *job, hpTarget, manaTarget uint32,
 	j.Update(func(st *pb.CombatStatus) { st.Doing = "resting" })
 	defer s.stand(context.Background(), 0)
 	if b, err := s.refresh(ctx, j); err == nil && b.Self != nil && !b.Self.Dead {
+		// A monster fighting us next to us first: the search for a quieter spot (restSpot: up to 24
+		// paths) took 6.5 s under the blows of a pack and killed us (series RF run 1, 2026-10-24).
+		if _, fighting := s.hostileNear(ctx, b.Self); fighting {
+			s.mark(&s.restHitAt)
+			return "done", "monster next to us"
+		}
 		s.restSpot(ctx, b.Self) // low among monsters: away from them first (saferest.go)
 	}
 	startHP, reached := uint32(0), 0
@@ -470,8 +480,10 @@ func (s *Service) kill(ctx context.Context, j *job, r *pb.KillRequest) (string, 
 		}
 		if snap.Self.Dead {
 			s.forgetBuffs()
+			s.encounterEnd("died")
 			return "failed", "dead"
 		}
+		s.encounterCalm(ctx, snap.Self)
 		items := uint32(0)
 		if r.ItemEntry != 0 {
 			full, err := s.api.Snapshot(ctx)
@@ -647,6 +659,9 @@ func (s *Service) buff(ctx context.Context, me *statepb.SelfInfo) {
 // Spells come from the priority table of the class (journal/classes/<class>.yaml); a caster out of
 // mana uses its wand (Shoot) if one is equipped, else melee.
 func (s *Service) fight(ctx context.Context, j *job, guid uint64) (bool, string) {
+	if b, err := s.api.Brief(ctx); err == nil {
+		s.encounterBegin(b.Self)
+	}
 	rec := s.watchFight(ctx, guid)
 	s.pullSize.fightStart()
 	s.mu.Lock()
@@ -654,7 +669,12 @@ func (s *Service) fight(ctx context.Context, j *job, guid uint64) (bool, string)
 	s.mu.Unlock()
 	dead, why := s.fightClass(ctx, j, guid)
 	s.pullSize.fightDone(s.tuneGet(), rec, rec.done(s, dead, why))
-	s.logOutcome(why)
+	switch why { // otherwise the encounter goes on until we are out of combat (encounter.go)
+	case "dead":
+		s.encounterEnd("died")
+	case "fled":
+		s.encounterEnd("fled")
+	}
 	if why == "switched" { // not a failure: the caller picks a target again
 		return false, ""
 	}

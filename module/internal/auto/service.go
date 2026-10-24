@@ -47,12 +47,13 @@ type job = jobs.Job[*pb.AutoStatus]
 
 type Service struct {
 	pb.UnimplementedAutoServer
-	sess   modv1.SessionClient
-	corpse chan [4]float32
-	api    api.C
-	jobs   *jobs.Runner[*pb.AutoStatus]
-	guard  atomic.Bool // defend when attacked between jobs
-	items  sync.Map    // item entry -> *worldpb.ItemInfo (food checks)
+	sess      modv1.SessionClient
+	corpse    chan [4]float32
+	api       api.C
+	jobs      *jobs.Runner[*pb.AutoStatus]
+	guard     atomic.Bool // defend when attacked between jobs
+	items     sync.Map    // item entry -> *worldpb.ItemInfo (food checks)
+	detection sync.Map    // creature entry -> detection range (clear.go aggroOf)
 	// money when a repair failed (not enough): no new repair trip before we earn a silver more
 	repairFailedAt atomic.Uint32
 	// money when a food trip bought nothing (too poor): no new trip before we earn a silver more

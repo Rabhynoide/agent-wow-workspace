@@ -1,6 +1,7 @@
 package auto
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"strings"
@@ -40,12 +41,14 @@ func stretch(pts []*movepb.PathPoint, length float32) []*movepb.PathPoint {
 }
 
 // blockers lists the idle hostile monsters whose aggro range reaches the stretch, nearest to us first.
-func blockers(seg []*movepb.PathPoint, hostiles []*statepb.Obj, level uint32) []*statepb.Obj {
+// rangeOf gives a monster's aggro radius (its detection range, safe.AggroRangeOf); one more than
+// safe.ZAggro yards above or below the path (plus a yard: path heights are approximate) cannot aggro.
+func blockers(seg []*movepb.PathPoint, hostiles []*statepb.Obj, rangeOf func(*statepb.Obj) float32) []*statepb.Obj {
 	var out []*statepb.Obj
 	for _, h := range hostiles {
-		reach := safe.AggroRange(level, h.Level) + clearMargin
+		reach := rangeOf(h) + clearMargin
 		for _, p := range seg {
-			if math.Hypot(float64(h.X-p.X), float64(h.Y-p.Y)) <= float64(reach) && math.Abs(float64(h.Z-p.Z)) < 8 {
+			if math.Hypot(float64(h.X-p.X), float64(h.Y-p.Y)) <= float64(reach) && math.Abs(float64(h.Z-p.Z)) <= safe.ZAggro+1 {
 				out = append(out, h)
 				break
 			}
@@ -79,7 +82,7 @@ func (r *run) clearWalk(x, y, z, radius float32) error {
 		if err != nil {
 			return err
 		}
-		if bl := blockers(seg, vis.Objs, me.Level); len(bl) > 0 {
+		if bl := blockers(seg, vis.Objs, r.s.aggroOf(r.ctx, me.Level)); len(bl) > 0 {
 			t := bl[0]
 			sp := &worldpb.Spawn{Entry: t.Entry, Name: fmt.Sprintf("monster %d", t.Entry), MinLevel: t.Level, MaxLevel: t.Level}
 			if why := r.s.tooDangerous(sp, me.Level, me.ClassId); why != "" {
@@ -128,5 +131,22 @@ func (r *run) restBelow(pct uint32) {
 	st, err := r.s.api.CombatRest(r.ctx)
 	for err == nil && st.State == "running" {
 		st, err = r.s.api.CombatStatus(r.ctx, 20)
+	}
+}
+
+// aggroOf gives a monster's aggro radius against us from its detection range (creature template, read
+// once per entry; 18 in Elwynn instead of the default 20).
+func (s *Service) aggroOf(ctx context.Context, level uint32) func(*statepb.Obj) float32 {
+	return func(o *statepb.Obj) float32 {
+		det := float32(safe.DefaultDetection)
+		if v, ok := s.detection.Load(o.Entry); ok {
+			det = v.(float32)
+		} else {
+			if c, err := s.api.Creature(ctx, o.Entry); err == nil && c.DetectionRange > 0 {
+				det = c.DetectionRange
+			}
+			s.detection.Store(o.Entry, det)
+		}
+		return safe.AggroRangeOf(det, level, o.Level)
 	}
 }

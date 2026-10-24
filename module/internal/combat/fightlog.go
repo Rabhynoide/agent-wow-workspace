@@ -72,14 +72,17 @@ func (s *Service) sampleFight(ctx context.Context, r *fightRecord) {
 		return
 	}
 	count := 0
+	var foes []uint64
 	for _, o := range n.Objs {
 		if o.Target == me.Guid && o.UnitFlags&unitInCombat != 0 {
 			count++
 			r.attacker[o.Entry] = true
 			s.melee.saw(o.Guid, inFront(me, o))
+			foes = append(foes, o.Guid)
 		}
 	}
 	r.most = max(r.most, count)
+	s.encounterSaw(foes, hp)
 }
 
 func (r *fightRecord) done(s *Service, dead bool, why string) string {

@@ -261,6 +261,15 @@ func (c C) Restock(ctx context.Context, food, drink, potions uint32) (*townpb.Re
 	return &r, err
 }
 
+// Creature returns a creature template (world.creature).
+func (c C) Creature(ctx context.Context, entry uint32) (*worldpb.CreatureInfo, error) {
+	var r worldpb.CreatureInfo
+	if err := invoke.Call(ctx, c.S, "world", "creature", &worldpb.CreatureInfoRequest{Entry: entry}, &r); err != nil {
+		return nil, err
+	}
+	return &r, nil
+}
+
 func (c C) ItemInfo(ctx context.Context, entry uint32) (*worldpb.ItemInfo, error) {
 	var r worldpb.ItemInfoResponse
 	if err := invoke.Call(ctx, c.S, "world", "item_info", &worldpb.ItemInfoRequest{Entry: entry}, &r); err != nil {

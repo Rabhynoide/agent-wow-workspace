@@ -1596,19 +1596,22 @@ func (x *CreatureInfoRequest) GetEntry() uint32 {
 }
 
 type CreatureInfo struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Entry         uint32                 `protobuf:"varint,1,opt,name=entry,proto3" json:"entry,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	MinLevel      uint32                 `protobuf:"varint,3,opt,name=min_level,json=minLevel,proto3" json:"min_level,omitempty"`
-	MaxLevel      uint32                 `protobuf:"varint,4,opt,name=max_level,json=maxLevel,proto3" json:"max_level,omitempty"`
-	Faction       uint32                 `protobuf:"varint,5,opt,name=faction,proto3" json:"faction,omitempty"`
-	NpcFlags      uint32                 `protobuf:"varint,6,opt,name=npc_flags,json=npcFlags,proto3" json:"npc_flags,omitempty"`
-	Rank          uint32                 `protobuf:"varint,7,opt,name=rank,proto3" json:"rank,omitempty"`
-	Type          uint32                 `protobuf:"varint,8,opt,name=type,proto3" json:"type,omitempty"`
-	SkinningLoot  uint32                 `protobuf:"varint,9,opt,name=skinning_loot,json=skinningLoot,proto3" json:"skinning_loot,omitempty"`
-	LootId        uint32                 `protobuf:"varint,10,opt,name=loot_id,json=lootId,proto3" json:"loot_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	Entry        uint32                 `protobuf:"varint,1,opt,name=entry,proto3" json:"entry,omitempty"`
+	Name         string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	MinLevel     uint32                 `protobuf:"varint,3,opt,name=min_level,json=minLevel,proto3" json:"min_level,omitempty"`
+	MaxLevel     uint32                 `protobuf:"varint,4,opt,name=max_level,json=maxLevel,proto3" json:"max_level,omitempty"`
+	Faction      uint32                 `protobuf:"varint,5,opt,name=faction,proto3" json:"faction,omitempty"`
+	NpcFlags     uint32                 `protobuf:"varint,6,opt,name=npc_flags,json=npcFlags,proto3" json:"npc_flags,omitempty"`
+	Rank         uint32                 `protobuf:"varint,7,opt,name=rank,proto3" json:"rank,omitempty"`
+	Type         uint32                 `protobuf:"varint,8,opt,name=type,proto3" json:"type,omitempty"`
+	SkinningLoot uint32                 `protobuf:"varint,9,opt,name=skinning_loot,json=skinningLoot,proto3" json:"skinning_loot,omitempty"`
+	LootId       uint32                 `protobuf:"varint,10,opt,name=loot_id,json=lootId,proto3" json:"loot_id,omitempty"`
+	// Base aggro radius (creature_template.detection_range, 20 by default, 18 in Elwynn): the aggro
+	// range is this minus (player level - creature level), 5 to 45 (Creature::GetAggroRange).
+	DetectionRange float32 `protobuf:"fixed32,11,opt,name=detection_range,json=detectionRange,proto3" json:"detection_range,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *CreatureInfo) Reset() {
@@ -1707,6 +1710,13 @@ func (x *CreatureInfo) GetSkinningLoot() uint32 {
 func (x *CreatureInfo) GetLootId() uint32 {
 	if x != nil {
 		return x.LootId
+	}
+	return 0
+}
+
+func (x *CreatureInfo) GetDetectionRange() float32 {
+	if x != nil {
+		return x.DetectionRange
 	}
 	return 0
 }
@@ -2473,7 +2483,7 @@ const file_world_proto_rawDesc = "" +
 	"\x10ItemInfoResponse\x121\n" +
 	"\x05items\x18\x01 \x03(\v2\x1b.wowagent.world.v1.ItemInfoR\x05items\"+\n" +
 	"\x13CreatureInfoRequest\x12\x14\n" +
-	"\x05entry\x18\x01 \x01(\rR\x05entry\"\x8f\x02\n" +
+	"\x05entry\x18\x01 \x01(\rR\x05entry\"\xb8\x02\n" +
 	"\fCreatureInfo\x12\x14\n" +
 	"\x05entry\x18\x01 \x01(\rR\x05entry\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1b\n" +
@@ -2485,7 +2495,8 @@ const file_world_proto_rawDesc = "" +
 	"\x04type\x18\b \x01(\rR\x04type\x12#\n" +
 	"\rskinning_loot\x18\t \x01(\rR\fskinningLoot\x12\x17\n" +
 	"\aloot_id\x18\n" +
-	" \x01(\rR\x06lootId\"*\n" +
+	" \x01(\rR\x06lootId\x12'\n" +
+	"\x0fdetection_range\x18\v \x01(\x02R\x0edetectionRange\"*\n" +
 	"\x12ItemSourcesRequest\x12\x14\n" +
 	"\x05entry\x18\x01 \x01(\rR\x05entry\"\x9c\x01\n" +
 	"\n" +

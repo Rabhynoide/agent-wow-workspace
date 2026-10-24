@@ -211,6 +211,9 @@ message CreatureInfo {
   uint32 type = 8;
   uint32 skinning_loot = 9;
   uint32 loot_id = 10;
+  // Base aggro radius (creature_template.detection_range, 20 by default, 18 in Elwynn): the aggro
+  // range is this minus (player level - creature level), 5 to 45 (Creature::GetAggroRange).
+  float detection_range = 11;
 }
 
 message ItemSourcesRequest {

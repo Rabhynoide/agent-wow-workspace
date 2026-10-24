@@ -8,12 +8,32 @@ import (
 	"sort"
 )
 
-// AggroRange approximates Creature::GetAggroRange: 20 yards at the same level, one yard less per level
-// the player is above the creature (more when below), between 5 and 45.
+// AggroRange approximates Creature::GetAggroRange with the default detection range (20 yards).
 func AggroRange(player, creature uint32) float32 {
-	r := 20 - (float32(player) - float32(creature))
-	return min(max(r, 5), 45)
+	return AggroRangeOf(DefaultDetection, player, creature)
 }
+
+// DefaultDetection is creature_template.detection_range when unknown (its default; 18 in Elwynn).
+const DefaultDetection = 20
+
+// AggroRangeOf is Creature::GetAggroRange (read 2026-10-24): the creature's detection range, one yard
+// less per level the player is above it (more when below, at most 25 levels), between 5 and 45, times
+// Rate.Creature.Aggro (1 on our server). The distance is 3D, and a creature more than ZAggro yards
+// above or below does not aggro (CanStartAttack).
+func AggroRangeOf(detection float32, player, creature uint32) float32 {
+	diff := max(float32(player)-float32(creature), -25)
+	return min(max(detection-diff, 5), 45)
+}
+
+// ZAggro is CREATURE_Z_ATTACK_RANGE: no aggro beyond this height difference.
+const ZAggro = 3
+
+// AssistRange and AssistDelay: a creature entering combat calls its friends within this 3D distance
+// (in sight) after this delay (CreatureFamilyAssistanceRadius, CreatureFamilyAssistanceDelay).
+const (
+	AssistRange   = 10
+	AssistDelayMs = 2000
+)
 
 // Point is a candidate with its clearance.
 type Point struct {

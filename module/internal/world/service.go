@@ -499,7 +499,7 @@ func (s *Service) GameObject(ctx context.Context, r *pb.GameObjectRequest) (*pb.
 }
 
 func (s *Service) Creature(ctx context.Context, r *pb.CreatureInfoRequest) (*pb.CreatureInfo, error) {
-	rows, err := s.query(ctx, "SELECT entry, name, minlevel, maxlevel, faction, npcflag, `rank`, type, skinloot, lootid FROM creature_template WHERE entry=?", r.Entry)
+	rows, err := s.query(ctx, "SELECT entry, name, minlevel, maxlevel, faction, npcflag, `rank`, type, skinloot, lootid, detection_range FROM creature_template WHERE entry=?", r.Entry)
 	if err != nil {
 		return nil, err
 	}
@@ -508,7 +508,7 @@ func (s *Service) Creature(ctx context.Context, r *pb.CreatureInfoRequest) (*pb.
 		return nil, status.Error(codes.NotFound, "no such creature")
 	}
 	c := &pb.CreatureInfo{}
-	if err := rows.Scan(&c.Entry, &c.Name, &c.MinLevel, &c.MaxLevel, &c.Faction, &c.NpcFlags, &c.Rank, &c.Type, &c.SkinningLoot, &c.LootId); err != nil {
+	if err := rows.Scan(&c.Entry, &c.Name, &c.MinLevel, &c.MaxLevel, &c.Faction, &c.NpcFlags, &c.Rank, &c.Type, &c.SkinningLoot, &c.LootId, &c.DetectionRange); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	return c, nil

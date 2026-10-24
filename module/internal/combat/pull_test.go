@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	statepb "wowagent/gen/statev1"
+	"wowagent/internal/safe"
 	"wowagent/internal/xpscore"
 )
 
@@ -25,7 +26,7 @@ func TestAddsAndPullSpot(t *testing.T) {
 	busy := &statepb.Obj{Guid: 3, X: 5, Y: 5, Level: 9, Target: 99} // fighting someone else
 	far := &statepb.Obj{Guid: 4, X: 200, Y: 0, Level: 9}
 	all := []*statepb.Obj{target, friend, busy, far}
-	adds := addsOf(target, all, lvl)
+	adds := addsOf(target, all, levelAggro(lvl))
 	if len(adds) != 1 || adds[0].Guid != 2 {
 		t.Fatalf("adds = %+v, want only the idle friend", adds)
 	}
@@ -37,13 +38,13 @@ func TestAddsAndPullSpot(t *testing.T) {
 	if load := pullLoad(strong, nil, lvl); load > 1 {
 		t.Fatalf("a lone level-12 monster has load %v at level 10", load)
 	}
-	if len(addsOf(far, all, lvl)) != 0 {
+	if len(addsOf(far, all, levelAggro(lvl))) != 0 {
 		t.Fatal("the far one is alone")
 	}
 	// Body pull spot: west of the target (away from the friend at +8), within the target's aggro range
 	// (21 yards at level 9 vs 10) but out of the friend's (21) + margin.
 	me := &statepb.Obj{X: -60, Y: 0}
-	x, y, ok := pullSpot(me, target, []*statepb.Obj{friend}, lvl)
+	x, y, ok := pullSpot(me, target, []*statepb.Obj{friend}, levelAggro(lvl))
 	if !ok {
 		t.Fatal("no spot found")
 	}
@@ -58,8 +59,24 @@ func TestAddsAndPullSpot(t *testing.T) {
 	for _, p := range [][2]float32{{10, 0}, {-10, 0}, {0, 10}, {0, -10}} {
 		ring = append(ring, &statepb.Obj{X: p[0], Y: p[1], Level: 9})
 	}
-	if _, _, ok := pullSpot(me, target, ring, lvl); ok {
+	if _, _, ok := pullSpot(me, target, ring, levelAggro(lvl)); ok {
 		t.Fatal("a surrounded target cannot be pulled alone")
+	}
+}
+
+// Server aggro rules: a monster 8 yards above the target (another floor) is no add, unless within the
+// assistance range in 3D; the detection range of the template moves the radius.
+func TestAddsHeightAndDetection(t *testing.T) {
+	target := &statepb.Obj{Guid: 1, X: 0, Y: 0, Z: 20, Level: 5}
+	above := &statepb.Obj{Guid: 2, X: 9, Y: 0, Z: 28, Level: 5}   // 12 yards in 3D: no aggro (dz 8), no assist
+	beside := &statepb.Obj{Guid: 3, X: 16, Y: 0, Z: 21, Level: 5} // in aggro (17 at level 6 vs 5, + margin)
+	near := &statepb.Obj{Guid: 4, X: 3, Y: 0, Z: 25, Level: 5}    // dz 5 but 5.8 yards in 3D: assists
+	adds := addsOf(target, []*statepb.Obj{target, above, beside, near}, func(o *statepb.Obj) float32 { return safe.AggroRangeOf(18, 6, o.Level) })
+	if len(adds) != 2 || adds[0].Guid != 3 || adds[1].Guid != 4 {
+		t.Fatalf("adds %+v, want the one beside and the near one", adds)
+	}
+	if safe.AggroRangeOf(18, 6, 5) != 17 || safe.AggroRangeOf(18, 40, 1) != 5 || safe.AggroRangeOf(20, 1, 60) != 45 {
+		t.Fatal("aggro range")
 	}
 }
 
