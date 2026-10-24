@@ -630,6 +630,11 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 				case st.State == "stopped" && st.Reason == "time limit":
 					say("time limit (%d min) reached during a job", maxMin)
 					return 2
+				case st.Reason == "level reached":
+					// Not an incident: exit 0, or bench.sh stops before its SAVE_AT snapshot and the
+					// rest of the run (bench 8 → 12 of 2026-10-24 ended at level 10).
+					say("level %d reached", st.Level)
+					return 0
 				case st.State == "stopped":
 					say("auto stopped from outside")
 					return 1
