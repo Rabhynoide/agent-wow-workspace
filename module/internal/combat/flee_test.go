@@ -3,6 +3,7 @@ package combat
 import (
 	"path/filepath"
 	"testing"
+	"wowagent/internal/tuning"
 
 	statepb "wowagent/gen/statev1"
 	"wowagent/internal/xpscore"
@@ -41,5 +42,12 @@ func TestLosing(t *testing.T) {
 		if got != c.flee {
 			t.Errorf("%s: flee=%v (loss left %.1f), want %v", c.name, got, loss, c.flee)
 		}
+	}
+}
+
+func TestExploreRate(t *testing.T) {
+	tu := tuning.Defaults()
+	if exploreRate(tu, 50) != 0.5 || exploreRate(tu, 39) != tu.Explore || exploreRate(tuning.Tuning{Explore: 0.25}, 60) != 0.25 {
+		t.Fatal("explore rate")
 	}
 }

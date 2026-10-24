@@ -126,7 +126,7 @@ func (s *Service) decide(me *statepb.SelfInfo, att []*statepb.Obj, loss float64)
 		if f, learned := tuning.Decide(s.fleeTab.Get(), key, t); learned {
 			flee, how = f, "learned"
 		} else if (slack > 0 || (t.ExploreFleeDeath > 0 && tuning.FleeDeath(s.fleeTab.Get(), key, t) >= t.ExploreFleeDeath)) &&
-			rand.Float64() < t.Explore {
+			rand.Float64() < exploreRate(t, slack) {
 			flee, how = false, "explore"
 		}
 	}
@@ -305,3 +305,12 @@ func (s *Service) giveUpVertical(ctx context.Context, me *statepb.SelfInfo, t *s
 
 // unhittable ends a fight against a target given up (giveUp): another one is picked, the job goes on.
 const unhittable = "unhittable"
+
+// exploreRate is the probability to explore a borderline case: tuning ExploreSafe when the fight is
+// expected to leave us ExploreSafeSlack % of health or more, else Explore.
+func exploreRate(t tuning.Tuning, slack float64) float64 {
+	if t.ExploreSafe > t.Explore && slack >= t.ExploreSafeSlack {
+		return t.ExploreSafe
+	}
+	return t.Explore
+}

@@ -20,6 +20,8 @@
  "safe_rest_below": 40,
  "vertical_give_up": true,
  "eat_from_level": 10,
+ "explore_safe": 0.5,
+ "explore_safe_slack": 40,
  "quest_defer": 0,
  "quest_defer_min": 4
 }

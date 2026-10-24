@@ -70,6 +70,11 @@ type Tuning struct {
 	// EatFromLevel: a rest eats food only from this character level; below, it waits standing (health
 	// came back from 52 to 100 % in 4 s at levels 6-7, series M of 2026-10-24). 1 = always eat.
 	EatFromLevel uint32 `json:"eat_from_level"`
+	// ExploreSafe: exploration probability (instead of Explore) for a borderline case expected to leave
+	// at least ExploreSafeSlack % of health: such stays are cheap to try, and the cells of 3 fresh
+	// attackers filled too slowly at 25 % (13 stays in 8 runs, 2026-10-24).
+	ExploreSafe      float64 `json:"explore_safe"`
+	ExploreSafeSlack float64 `json:"explore_safe_slack"`
 	// QuestDefer: guidecheck passes over a quest whose learned failure rate at our level
 	// (journal/learn/quests.json) reaches this, after QuestDeferMin tries; it is tried when nothing
 	// else is left. 0 = off.
@@ -92,7 +97,7 @@ func Defaults() Tuning {
 		PostponeAfterFlights: 1, Explore: 0.25, Learn: true, MinFights: 6, DeathCostS: 180, FleeCostS: 90,
 		FleeDeathPrior: 0.1, ExploreFleeDeath: 0.2,
 		AddCost: 1.5, PullAdapt: false, PullSize: 2, PullSizeMax: 4, PullUpAfter: 2,
-		WarriorRestBelow: 55, SafeRestBelow: 40, VerticalGiveUp: true, EatFromLevel: 10, QuestDefer: 0, QuestDeferMin: 4}
+		WarriorRestBelow: 55, SafeRestBelow: 40, VerticalGiveUp: true, EatFromLevel: 10, ExploreSafe: 0.5, ExploreSafeSlack: 40, QuestDefer: 0, QuestDeferMin: 4}
 }
 
 // cached reads a JSON file again when it changes (looked at every 10 s at most).
