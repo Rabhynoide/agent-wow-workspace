@@ -51,6 +51,16 @@ func TestOnlyRedQuestsWait(t *testing.T) {
 	}
 }
 
+// A quest waiting for its retry is tried now when nothing else is left (not "route finished").
+func TestWaitingQuestWhenNothingElse(t *testing.T) {
+	cache := map[uint32]*quest{62: {ID: 62, MinLevel: 4, Level: 7}}
+	ps := &playState{finished: map[uint32]bool{}, skipped: map[uint32]string{}, retryAt: map[uint32]uint32{},
+		waitUntil: map[uint32]time.Time{62: time.Now().Add(3 * time.Minute)}}
+	if batch, need, _ := nextBatch([]routeQuest{{id: 62}}, cache, nil, ps, 1, 1, "human", "warrior", 6, redAbove, 5); !reflect.DeepEqual(batch, []uint32{62}) || need != 0 {
+		t.Fatalf("batch %v need %d, want [62]", batch, need)
+	}
+}
+
 func TestLevelGateStopsTheRoute(t *testing.T) {
 	cache := map[uint32]*quest{1: {ID: 1, MinLevel: 1, Level: 2}, 2: {ID: 2, MinLevel: 1, Level: 3}}
 	entries := []routeQuest{{id: 1}, {gate: 5}, {id: 2}}

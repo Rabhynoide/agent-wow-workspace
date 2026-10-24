@@ -5,7 +5,7 @@
  "crowd_flee": 3,
  "crowd_loss": 30,
  "avoid": false,
- "postpone_after_flights": 1,
+ "postpone_after_flights": 2,
  "explore": 0.25,
  "learn": true,
  "min_fights": 6,

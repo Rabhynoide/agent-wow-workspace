@@ -40,7 +40,8 @@ type playState struct {
 	// quests whose monsters were all dead or away: done later (after the next ones), at most 3 tries
 	waitUntil map[uint32]time.Time
 	tries     map[uint32]int
-	flights   map[uint32]int // flights in each quest, against tuning postpone_after_flights
+	flights   map[uint32]int    // failures (flight, death, danger) in each quest at failLevel, against tuning postpone_after_flights
+	failLevel map[uint32]uint32 // the level of those failures (a new level starts again from 0)
 	// hard: quests that often failed at this level (questlearn.go), passed over like the postponed
 	// ones but tried when nothing else is left
 	hard map[uint32]bool
@@ -58,7 +59,14 @@ func nextBatch(entries []routeQuest, cache map[uint32]*quest, manual map[uint32]
 	seen := map[uint32]bool{}
 	var laterNeed, laterID uint32 // the passed-over quest (too high or postponed) needing the lowest level
 	var hard []uint32             // learned hard quests passed over, in route order
+	var waiting []uint32          // quests waiting for a retry (waitUntil), in route order
 	defer func() {
+		// Nothing else to do: the quests waiting for a retry go now rather than "route finished" or a
+		// grind (only red quests wait for a level).
+		if len(batch) == 0 && len(waiting) > 0 {
+			batch, need, blocker = waiting[:min(len(waiting), n)], 0, 0
+			return
+		}
 		if len(batch) == 0 && len(hard) > 0 {
 			batch, need, blocker = hard[:min(len(hard), n)], 0, 0 // nothing else: try them, no grind
 			return
@@ -86,7 +94,10 @@ func nextBatch(entries []routeQuest, cache map[uint32]*quest, manual map[uint32]
 		}
 		if time.Now().Before(ps.waitUntil[e.id]) {
 			seen[e.id] = true
-			continue // its monsters respawn: the next quests first
+			if q.MinLevel <= int(level) {
+				waiting = append(waiting, e.id)
+			}
+			continue // its monsters respawn, or it failed: the next quests first
 		}
 		seen[e.id] = true
 		if len(e.only) > 0 && !onlyMatches(e.only, race, class) {
@@ -521,7 +532,7 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 	race, class := b.Self.Race, b.Self.ClassID
 	raceName, className := nameOf(raceIDs, race), nameOf(classIDs, class)
 	ps := &playState{finished: c.rewardedOf(char), skipped: map[uint32]string{}, retryAt: map[uint32]uint32{},
-		waitUntil: map[uint32]time.Time{}, tries: map[uint32]int{}, skippedAt: map[uint32]time.Time{}, flights: map[uint32]int{}}
+		waitUntil: map[uint32]time.Time{}, tries: map[uint32]int{}, skippedAt: map[uint32]time.Time{}, flights: map[uint32]int{}, failLevel: map[uint32]uint32{}}
 	say("%s (%s %s) level %d -> %d, %d quests already rewarded", char, raceName, className, b.Self.Level, until, len(ps.finished))
 	if ids := c.addClassQuests(className, raceName, class); len(ids) > 0 {
 		var why []string
@@ -614,17 +625,38 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 				for _, f := range failures {
 					q, reason := f.Quest, f.Reason
 					switch {
-					case strings.Contains(reason, "fled from monsters") && ps.flights[q]+1 < tune.Get().PostponeAfterFlights:
-						// Not postponed yet (tuning postpone_after_flights): the other quests first, then again.
-						ps.flights[q]++
-						ps.waitUntil[q] = time.Now().Add(3 * time.Minute)
-						say("  %d fled (%d/%d before postponing), retried in 3 min: %s", q, ps.flights[q], tune.Get().PostponeAfterFlights, reason)
-					case strings.Contains(reason, "too dangerous") || strings.Contains(reason, "needs level"):
-						ps.retryAt[q] = me.Level + 1
+					case strings.Contains(reason, "needs level"):
+						ps.retryAt[q] = me.Level + 1 // the server refuses it before
 						say("  %d postponed to level %d: %s", q, me.Level+1, reason)
-					case strings.Contains(reason, "dead"):
-						ps.retryAt[q] = me.Level + 1
-						say("  DEATH on %d (%d in this run), postponed to level %d: %s", q, deaths+1, me.Level+1, reason)
+					case strings.Contains(reason, "too dangerous") || strings.Contains(reason, "dead"):
+						// Only red quests wait for a level (user's rule, 2026-10-24): after a flight, a death
+						// or a danger check, the other quests first, then again in 3 min; postponed to the next
+						// level only after tuning postpone_after_flights failures at this level (2), so that
+						// a deadly quest does not send us back to die again and again.
+						if ps.failLevel[q] != me.Level {
+							ps.flights[q], ps.failLevel[q] = 0, me.Level
+						}
+						ps.flights[q]++
+						limit := max(tune.Get().PostponeAfterFlights, 1)
+						died := strings.Contains(reason, "dead")
+						what := "too dangerous"
+						if strings.Contains(reason, "fled from monsters") {
+							what = "fled"
+						}
+						switch {
+						case ps.flights[q] < limit && died:
+							ps.waitUntil[q] = time.Now().Add(3 * time.Minute)
+							say("  DEATH on %d (%d in this run), failure %d/%d at level %d, retried in 3 min: %s", q, deaths+1, ps.flights[q], limit, me.Level, reason)
+						case ps.flights[q] < limit:
+							ps.waitUntil[q] = time.Now().Add(3 * time.Minute)
+							say("  %d %s (%d/%d at level %d), retried in 3 min: %s", q, what, ps.flights[q], limit, me.Level, reason)
+						case died:
+							ps.retryAt[q] = me.Level + 1
+							say("  DEATH on %d (%d in this run), postponed to level %d: %s", q, deaths+1, me.Level+1, reason)
+						default:
+							ps.retryAt[q] = me.Level + 1
+							say("  %d postponed to level %d: %s", q, me.Level+1, reason)
+						}
 					case strings.Contains(reason, "no live entry") && ps.tries[q] < 2:
 						ps.tries[q]++
 						ps.waitUntil[q] = time.Now().Add(4 * time.Minute)

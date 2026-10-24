@@ -40,7 +40,7 @@ const questsFile = "quests.json"
 var (
 	levelLine = regexp.MustCompile(`^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d) \[[^\]]*\] L(\d+) (quests|grind)`)
 	doneLine  = regexp.MustCompile(`^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d) \[[^\]]*\]   done \[([\d ]+)\]`)
-	failLine  = regexp.MustCompile(`^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d) \[[^\]]*\]   (?:DEATH on (\d+) |(\d+) (?:postponed to level|fled \())`)
+	failLine  = regexp.MustCompile(`^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d) \[[^\]]*\]   (?:DEATH on (\d+) |(\d+) (?:postponed to level|fled \(|too dangerous \())`)
 )
 
 func loadQuests(path string) (*questTable, error) {
