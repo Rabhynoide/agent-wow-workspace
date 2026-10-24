@@ -104,11 +104,22 @@ func main() {
 	dbcDir := flag.String("dbc", "../assets/dbc", "with -play: client DBC directory (FactionTemplate.dbc)")
 	maxMin := flag.Int("max_min", 180, "with -play: stop after this many minutes")
 	above := flag.Int("maxabove", 2, "with -plan: skip quests more than this many levels above the character (danger)")
+	learnAllFlag := flag.Bool("learn", false, "learn the fights, borderline flee decisions and quest outcomes from the logs now (what level.sh does at start)")
 	learnQ := flag.Bool("learn_quests", false, "learn journal/learn/quests.json from logs/level_*.log and list the quests passed over per level (tuning quest_defer, or 0.6)")
 	score := flag.String("score", "", "rank grind monsters by xp/min around map,x,y for -level and -class (e.g. 0,-9464,62)")
 	flag.Parse()
 	if *learnQ {
 		os.Exit(printLearnedQuests())
+	}
+	if *learnAllFlag {
+		c := &checker{}
+		nf, err := c.learnFights()
+		fmt.Println("learned fights:", nf, err)
+		nb, err := learnFlee()
+		fmt.Println("learned borderline fights:", nb, err)
+		_, nq, err := learnQuests()
+		fmt.Println("learned quest outcomes:", nq, err)
+		os.Exit(0)
 	}
 	// Files given as arguments are checked in that order (one race's chain); else the whole directory.
 	files := flag.Args()
