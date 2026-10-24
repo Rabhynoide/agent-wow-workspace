@@ -22,7 +22,7 @@
  "eat_from_level": 10,
  "explore_safe": 0.5,
  "explore_safe_slack": 40,
- "explore_min_slack": 15,
+ "explore_min_slack": 40,
  "quest_defer": 0,
  "quest_defer_min": 4
 }
