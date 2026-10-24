@@ -51,3 +51,13 @@ func TestExploreRate(t *testing.T) {
 		t.Fatal("explore rate")
 	}
 }
+
+func TestExploreMinSlack(t *testing.T) {
+	tu := tuning.Defaults()
+	if exploreProb(tu, 3, false) != 0 || exploreProb(tu, 3, true) != tu.Explore || exploreProb(tu, 20, false) != tu.Explore || exploreProb(tu, 45, false) != tu.ExploreSafe {
+		t.Fatal("explore min slack")
+	}
+	if exploreProb(tuning.Tuning{Explore: 0.25}, 1, false) != 0.25 || exploreProb(tuning.Tuning{Explore: 0.25}, 0, false) != 0 {
+		t.Fatal("min slack 0 keeps slack > 0")
+	}
+}

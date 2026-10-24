@@ -122,11 +122,11 @@ func (s *Service) decide(me *statepb.SelfInfo, att []*statepb.Obj, loss float64)
 	}
 	key := tuning.Key(fresh, slack)
 	flee, how := true, "rule"
+	p := 0.0 // exploration probability, logged: 1 exploration in 8 eligible cases in game (series ES)
 	if s.fleeTab != nil {
 		if f, learned := tuning.Decide(s.fleeTab.Get(), key, t); learned {
 			flee, how = f, "learned"
-		} else if (slack > 0 || (t.ExploreFleeDeath > 0 && tuning.FleeDeath(s.fleeTab.Get(), key, t) >= t.ExploreFleeDeath)) &&
-			rand.Float64() < exploreRate(t, slack) {
+		} else if p = exploreProb(t, slack, t.ExploreFleeDeath > 0 && tuning.FleeDeath(s.fleeTab.Get(), key, t) >= t.ExploreFleeDeath); rand.Float64() < p {
 			flee, how = false, "explore"
 		}
 	}
@@ -136,7 +136,7 @@ func (s *Service) decide(me *statepb.SelfInfo, att []*statepb.Obj, loss float64)
 		nd := s.decision
 		s.mu.Unlock()
 		s.encounterDecision(nd) // judged when the encounter ends (encounter.go)
-		slog.Info("flee decision", "key", key, "stay", !flee, "how", how, "hp", pct(me.Hp, me.MaxHp), "loss", int(loss), "fresh", fresh)
+		slog.Info("flee decision", "key", key, "stay", !flee, "how", how, "hp", pct(me.Hp, me.MaxHp), "loss", int(loss), "fresh", fresh, "p", p)
 	}
 	return flee
 }
@@ -305,6 +305,15 @@ func (s *Service) giveUpVertical(ctx context.Context, me *statepb.SelfInfo, t *s
 
 // unhittable ends a fight against a target given up (giveUp): another one is picked, the job goes on.
 const unhittable = "unhittable"
+
+// exploreProb is the probability to explore a borderline case not learned yet: only when the fight is
+// expected to leave us more than ExploreMinSlack % of health, or where fleeing kills often.
+func exploreProb(t tuning.Tuning, slack float64, fleeKills bool) float64 {
+	if slack > max(t.ExploreMinSlack, 0) || fleeKills {
+		return exploreRate(t, slack)
+	}
+	return 0
+}
 
 // exploreRate is the probability to explore a borderline case: tuning ExploreSafe when the fight is
 // expected to leave us ExploreSafeSlack % of health or more, else Explore.

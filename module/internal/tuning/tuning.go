@@ -75,6 +75,10 @@ type Tuning struct {
 	// attackers filled too slowly at 25 % (13 stays in 8 runs, 2026-10-24).
 	ExploreSafe      float64 `json:"explore_safe"`
 	ExploreSafeSlack float64 `json:"explore_safe_slack"`
+	// ExploreMinSlack: a borderline case is explored only when the fight is expected to leave us more
+	// than this % of health (an exploration at a 3 % margin against 4 fresh kobolds killed us, series
+	// ES run 3). Where fleeing kills often (ExploreFleeDeath) it is explored anyway.
+	ExploreMinSlack float64 `json:"explore_min_slack"`
 	// QuestDefer: guidecheck passes over a quest whose learned failure rate at our level
 	// (journal/learn/quests.json) reaches this, after QuestDeferMin tries; it is tried when nothing
 	// else is left. 0 = off.
@@ -97,7 +101,7 @@ func Defaults() Tuning {
 		PostponeAfterFlights: 1, Explore: 0.25, Learn: true, MinFights: 6, DeathCostS: 180, FleeCostS: 90,
 		FleeDeathPrior: 0.1, ExploreFleeDeath: 0.2,
 		AddCost: 1.5, PullAdapt: false, PullSize: 2, PullSizeMax: 4, PullUpAfter: 2,
-		WarriorRestBelow: 55, SafeRestBelow: 40, VerticalGiveUp: true, EatFromLevel: 10, ExploreSafe: 0.5, ExploreSafeSlack: 40, QuestDefer: 0, QuestDeferMin: 4}
+		WarriorRestBelow: 55, SafeRestBelow: 40, VerticalGiveUp: true, EatFromLevel: 10, ExploreSafe: 0.5, ExploreSafeSlack: 40, ExploreMinSlack: 15, QuestDefer: 0, QuestDeferMin: 4}
 }
 
 // cached reads a JSON file again when it changes (looked at every 10 s at most).
