@@ -1,6 +1,6 @@
 {
- "until": "2026-10-24T22:05:56.361Z",
- "flee_until": "2026-10-24T22:10:29.493Z",
+ "until": "2026-10-25T12:05:21.954Z",
+ "flee_until": "2026-10-25T12:13:41.520Z",
  "cells": {
   "1:-10": {
    "n": 0,
@@ -16,18 +16,19 @@
   "1:-30": {
    "n": 0,
    "deaths": 0,
-   "flee_n": 1
+   "flee_n": 5,
+   "flee_deaths": 2
   },
   "1:0": {
-   "n": 0,
+   "n": 1,
    "deaths": 0,
-   "flee_n": 13,
+   "flee_n": 14,
    "flee_deaths": 4
   },
   "1:10": {
    "n": 0,
    "deaths": 0,
-   "flee_n": 18,
+   "flee_n": 22,
    "flee_deaths": 3
   },
   "1:20": {
@@ -38,7 +39,7 @@
   "2:-10": {
    "n": 0,
    "deaths": 0,
-   "flee_n": 19,
+   "flee_n": 20,
    "flee_deaths": 1
   },
   "2:-20": {
@@ -50,8 +51,8 @@
   "2:-30": {
    "n": 0,
    "deaths": 0,
-   "flee_n": 6,
-   "flee_deaths": 4
+   "flee_n": 7,
+   "flee_deaths": 5
   },
   "2:0": {
    "n": 0,
@@ -61,13 +62,13 @@
   "2:10": {
    "n": 1,
    "deaths": 1,
-   "flee_n": 16,
+   "flee_n": 17,
    "flee_deaths": 1
   },
   "2:20": {
    "n": 2,
    "deaths": 0,
-   "flee_n": 17
+   "flee_n": 22
   },
   "2:30": {
    "n": 0,
@@ -77,12 +78,12 @@
   "3:-10": {
    "n": 0,
    "deaths": 0,
-   "flee_n": 19,
+   "flee_n": 20,
    "flee_deaths": 2
   },
   "3:-20": {
-   "n": 0,
-   "deaths": 0,
+   "n": 1,
+   "deaths": 1,
    "flee_n": 7,
    "flee_deaths": 2
   },
@@ -95,37 +96,37 @@
   "3:0": {
    "n": 0,
    "deaths": 0,
-   "flee_n": 18
+   "flee_n": 22
   },
   "3:10": {
    "n": 1,
    "deaths": 1,
-   "flee_n": 19
+   "flee_n": 24
   },
   "3:20": {
    "n": 2,
    "deaths": 0,
-   "flee_n": 29,
+   "flee_n": 36,
    "flee_deaths": 1
   },
   "3:30": {
    "n": 2,
    "deaths": 0,
-   "flee_n": 23,
+   "flee_n": 30,
    "flee_deaths": 1
   },
   "3:40": {
-   "n": 3,
+   "n": 8,
    "deaths": 0,
-   "flee_n": 24
+   "flee_n": 25
   },
   "3:50": {
-   "n": 8,
+   "n": 13,
    "deaths": 1,
    "flee_n": 14
   },
   "3:60": {
-   "n": 2,
+   "n": 4,
    "deaths": 0,
    "flee_n": 27
   },
@@ -143,8 +144,8 @@
   "4:-30": {
    "n": 0,
    "deaths": 0,
-   "flee_n": 3,
-   "flee_deaths": 2
+   "flee_n": 5,
+   "flee_deaths": 4
   },
   "4:0": {
    "n": 1,
