@@ -60,9 +60,9 @@ func nextBatch(entries []routeQuest, cache map[uint32]*quest, manual map[uint32]
 	seen := map[uint32]bool{}
 	isFar := func(id uint32) bool { return far != nil && far(id) }
 	var farBatch, farWaiting []uint32 // doable but far, in route order
-	var laterNeed, laterID uint32 // the passed-over quest (too high or postponed) needing the lowest level
-	var hard []uint32             // learned hard quests passed over, in route order
-	var waiting []uint32          // quests waiting for a retry (waitUntil), in route order
+	var laterNeed, laterID uint32     // the passed-over quest (too high or postponed) needing the lowest level
+	var hard []uint32                 // learned hard quests passed over, in route order
+	var waiting []uint32              // quests waiting for a retry (waitUntil), in route order
 	defer func() {
 		// Nothing else to do: the quests waiting for a retry go now rather than "route finished" or a
 		// grind (only red quests wait for a level).
