@@ -60,7 +60,7 @@ Référence humaine (journal/sessions/20261014_humain_1-8.md) : **1 → 8 en ~60
 - [ ] Premiers soins (bandages) pour le guerrier, butin sélectif quand les sacs sont pleins : petits gains (repos 2-5 %, butin 1-5 %).
 
 ### Étape 2 : quitter Elwynn (niveaux 10-20)
-- [ ] Changer de zone : routes Zygor 13-20 (Westfall, Loch Modan, Redridge, Duskwood) dans `assets/routes/` ; voyages à pied d'une zone à l'autre, puis maîtres de vol (découverte, achat de trajets) et pierre de foyer (lier à l'auberge de la zone de quêtes).
+- [x] Changer de zone : module `travel` (2026-10-25) : vols (découverte en passant, vol express), portails de zone (tram à pied), bateaux (horaire du serveur porté), pierre de foyer ; marches refusées à travers les zones de plus de 5 niveaux au-dessus. Testé : Elwynn → Ironforge, vol Ironforge → Stormwind, bateau Stormwind → Auberdine. Suite : section « Voyages longue distance ».
 - [ ] Quête de classe guerrier 1640 « Beat Bartleby » (duel scripté) : débloque la Posture défensive ; puis postures dans la rotation si elles font gagner du temps.
 - [ ] Nage (quêtes de murlocs, rivières) : `move` ne nage pas (section « Nage »).
 - [ ] Respec de talents (niveau 25 du build guerrier) et talents par niveau.
@@ -99,6 +99,18 @@ Référence humaine (journal/sessions/20261014_humain_1-8.md) : **1 → 8 en ~60
 - [x] Équiper automatiquement les sacs trouvés/achetés (aujourd'hui gardés, jamais équipés) : plus d'emplacements, donc moins de ventes.
 - [ ] Manger/boire : `combat.rest` ne mange ni ne boit ; la nourriture gardée ne sert à rien tant que ce n'est pas fait (gain de temps de repos).
 - [ ] Argent pour l'entraînement : `progress.train` achète du moins cher au plus cher ; si l'argent manque, noter le déficit dans le statut.
+
+## Voyages longue distance (module travel, idées du 2026-10-25)
+Constat des runs 10 → 12 du 2026-10-25 : `travel.plan` vérifie les marches en jeu (`move.path` sur des milliers de yards) et dépasse les 30 s d'un appel de module ; le premier plan d'une session calcule aussi les pontons de tous les bateaux. Repli sur la marche directe (supprimé) : 3 morts dans la Gorge des Vents brûlants.
+- [ ] **Graphe de trajets précalculé hors jeu** (comme mod-playerbots, `TravelNodeMap` et tables `playerbots_travelnode*`) : nœuds fixes (maîtres de vol, entrées et sorties de portails, pontons des bateaux, auberges) et marches entre nœuds proches calculées une fois (longueur, niveau d'exploration maximal des zones traversées), dans un fichier de `journal/` lu par `travel`. En jeu, ne vérifier que la marche position → premier nœud et dernier nœud → destination. Supprime le problème des 30 s au lieu de le contourner par des reprises (`busy`). Choix du plan selon le niveau du personnage au moment du voyage.
+- [ ] **Tram des Profondeurs en rame** au lieu du tunnel à pied (~6 min → ~1 min + attente, gain 3-5 min par passage, quelques passages par leveling) : les 6 rames « Subway » (carte 369, entrées 176080-176085) sont des transports de type 11 animés par `TransportAnimation.dbc` (pas TaxiPathNode). Embarquement identique aux bateaux (mouvement avec MOVEMENTFLAG_ONTRANSPORT, accepté pour le type 11) ; reste à calculer quand une rame est à quai et laquelle prendre.
+- [ ] **Lier la pierre de foyer** aux auberges de la route (étapes `set_hearth` de Zygor, ou auberge de la zone de quêtes en cours) : aujourd'hui seul le lien existant (Northshire) sert.
+- [ ] Étapes `flight_path` de Zygor : aller apprendre ces nœuds même hors du chemin (aujourd'hui seulement à moins de 40 yards d'une marche).
+- [ ] La marche réelle (`move.goto`, contournement des monstres jusqu'à ×7) peut s'écarter du chemin vérifié par le plan : vérifier aussi le danger des zones sur le chemin réellement suivi.
+- [ ] Estimations : le plan a choisi une fois la pierre de foyer (242 s) quand la marche directe était estimée à 213 s (`walk_seconds` calculé autrement que les marches du plan) : une seule estimation.
+- [ ] guidecheck compte comme « DEATH » les échecs « too dangerous for now: no safe way … DeadlineExceeded » (pas de mort réelle) : les classer comme fuite/danger.
+- [ ] Zeppelins : même système que les bateaux (déjà gérés) ; seul celui de Westguard Keep (Fjord Hurlant) sert à l'Alliance, à tester le moment venu.
+- [ ] Rappel Honorbuddy : longue distance écrite à la main dans les profils (pierre de foyer, vols, `UseTransport` avec quai, pont et arrivée) ; écarté, on veut que le bot décide seul.
 
 ## Déplacement (idées des bots du serveur, 2026-10-10)
 - [ ] Sorts interrompus (code 40) : ne pas se déplacer pendant une incantation quand la cible bouge un peu.
