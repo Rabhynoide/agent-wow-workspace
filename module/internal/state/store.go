@@ -80,6 +80,9 @@ type Obj struct {
 	Speeds     [9]float32
 	Auras      map[uint8]*aura // by aura slot
 	spl        *spline         // monster on its way (SMSG_MONSTER_MOVE); X, Y, Z = destination
+	// progress: transport path progress (ms) received at progressAt (UPDATEFLAG_TRANSPORT)
+	progress   uint32
+	progressAt time.Time
 }
 
 // spline is a monster move: from the position in the packet to the destination in dur. Positions are
@@ -376,7 +379,7 @@ func (s *Store) movement(o *Obj, r *wire.Reader) {
 		r.PackedGUID()
 	}
 	if flags&0x2 != 0 {
-		r.U32()
+		o.progress, o.progressAt = r.U32(), time.Now()
 	}
 	if flags&0x80 != 0 {
 		r.Skip(8)

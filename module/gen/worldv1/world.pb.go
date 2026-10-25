@@ -2331,6 +2331,265 @@ func (x *GameObjectInfo) GetLootItems() uint32 {
 	return 0
 }
 
+// areatrigger_teleport row: entering trigger id (AreaTrigger.dbc gives where it is) teleports to
+// the target (instance entrances, Deeprun Tram, Dark Portal...).
+type Teleport struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            uint32                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Map           uint32                 `protobuf:"varint,3,opt,name=map,proto3" json:"map,omitempty"`
+	X             float32                `protobuf:"fixed32,4,opt,name=x,proto3" json:"x,omitempty"`
+	Y             float32                `protobuf:"fixed32,5,opt,name=y,proto3" json:"y,omitempty"`
+	Z             float32                `protobuf:"fixed32,6,opt,name=z,proto3" json:"z,omitempty"`
+	O             float32                `protobuf:"fixed32,7,opt,name=o,proto3" json:"o,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Teleport) Reset() {
+	*x = Teleport{}
+	mi := &file_world_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Teleport) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Teleport) ProtoMessage() {}
+
+func (x *Teleport) ProtoReflect() protoreflect.Message {
+	mi := &file_world_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Teleport.ProtoReflect.Descriptor instead.
+func (*Teleport) Descriptor() ([]byte, []int) {
+	return file_world_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *Teleport) GetId() uint32 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *Teleport) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Teleport) GetMap() uint32 {
+	if x != nil {
+		return x.Map
+	}
+	return 0
+}
+
+func (x *Teleport) GetX() float32 {
+	if x != nil {
+		return x.X
+	}
+	return 0
+}
+
+func (x *Teleport) GetY() float32 {
+	if x != nil {
+		return x.Y
+	}
+	return 0
+}
+
+func (x *Teleport) GetZ() float32 {
+	if x != nil {
+		return x.Z
+	}
+	return 0
+}
+
+func (x *Teleport) GetO() float32 {
+	if x != nil {
+		return x.O
+	}
+	return 0
+}
+
+type TeleportsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Teleports     []*Teleport            `protobuf:"bytes,1,rep,name=teleports,proto3" json:"teleports,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TeleportsResponse) Reset() {
+	*x = TeleportsResponse{}
+	mi := &file_world_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TeleportsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TeleportsResponse) ProtoMessage() {}
+
+func (x *TeleportsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_world_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TeleportsResponse.ProtoReflect.Descriptor instead.
+func (*TeleportsResponse) Descriptor() ([]byte, []int) {
+	return file_world_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *TeleportsResponse) GetTeleports() []*Teleport {
+	if x != nil {
+		return x.Teleports
+	}
+	return nil
+}
+
+// A boat or zeppelin (transports joined with gameobject_template: path, speed, acceleration).
+type Transport struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Entry         uint32                 `protobuf:"varint,1,opt,name=entry,proto3" json:"entry,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Path          uint32                 `protobuf:"varint,3,opt,name=path,proto3" json:"path,omitempty"`
+	Speed         float32                `protobuf:"fixed32,4,opt,name=speed,proto3" json:"speed,omitempty"`
+	Accel         float32                `protobuf:"fixed32,5,opt,name=accel,proto3" json:"accel,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Transport) Reset() {
+	*x = Transport{}
+	mi := &file_world_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Transport) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Transport) ProtoMessage() {}
+
+func (x *Transport) ProtoReflect() protoreflect.Message {
+	mi := &file_world_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Transport.ProtoReflect.Descriptor instead.
+func (*Transport) Descriptor() ([]byte, []int) {
+	return file_world_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *Transport) GetEntry() uint32 {
+	if x != nil {
+		return x.Entry
+	}
+	return 0
+}
+
+func (x *Transport) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Transport) GetPath() uint32 {
+	if x != nil {
+		return x.Path
+	}
+	return 0
+}
+
+func (x *Transport) GetSpeed() float32 {
+	if x != nil {
+		return x.Speed
+	}
+	return 0
+}
+
+func (x *Transport) GetAccel() float32 {
+	if x != nil {
+		return x.Accel
+	}
+	return 0
+}
+
+type TransportsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Transports    []*Transport           `protobuf:"bytes,1,rep,name=transports,proto3" json:"transports,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TransportsResponse) Reset() {
+	*x = TransportsResponse{}
+	mi := &file_world_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TransportsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TransportsResponse) ProtoMessage() {}
+
+func (x *TransportsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_world_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TransportsResponse.ProtoReflect.Descriptor instead.
+func (*TransportsResponse) Descriptor() ([]byte, []int) {
+	return file_world_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *TransportsResponse) GetTransports() []*Transport {
+	if x != nil {
+		return x.Transports
+	}
+	return nil
+}
+
 var File_world_proto protoreflect.FileDescriptor
 
 const file_world_proto_rawDesc = "" +
@@ -2544,7 +2803,27 @@ const file_world_proto_rawDesc = "" +
 	"\aloot_id\x18\x05 \x01(\rR\x06lootId\x12\x19\n" +
 	"\bquest_id\x18\x06 \x01(\rR\aquestId\x12\x1d\n" +
 	"\n" +
-	"loot_items\x18\a \x01(\rR\tlootItems2\xe4\x06\n" +
+	"loot_items\x18\a \x01(\rR\tlootItems\"x\n" +
+	"\bTeleport\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\rR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x10\n" +
+	"\x03map\x18\x03 \x01(\rR\x03map\x12\f\n" +
+	"\x01x\x18\x04 \x01(\x02R\x01x\x12\f\n" +
+	"\x01y\x18\x05 \x01(\x02R\x01y\x12\f\n" +
+	"\x01z\x18\x06 \x01(\x02R\x01z\x12\f\n" +
+	"\x01o\x18\a \x01(\x02R\x01o\"N\n" +
+	"\x11TeleportsResponse\x129\n" +
+	"\tteleports\x18\x01 \x03(\v2\x1b.wowagent.world.v1.TeleportR\tteleports\"u\n" +
+	"\tTransport\x12\x14\n" +
+	"\x05entry\x18\x01 \x01(\rR\x05entry\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
+	"\x04path\x18\x03 \x01(\rR\x04path\x12\x14\n" +
+	"\x05speed\x18\x04 \x01(\x02R\x05speed\x12\x14\n" +
+	"\x05accel\x18\x05 \x01(\x02R\x05accel\"R\n" +
+	"\x12TransportsResponse\x12<\n" +
+	"\n" +
+	"transports\x18\x01 \x03(\v2\x1c.wowagent.world.v1.TransportR\n" +
+	"transports2\xfc\a\n" +
 	"\x05World\x12\\\n" +
 	"\vItemSources\x12%.wowagent.world.v1.ItemSourcesRequest\x1a&.wowagent.world.v1.ItemSourcesResponse\x12P\n" +
 	"\aFindNpc\x12!.wowagent.world.v1.FindNpcRequest\x1a\".wowagent.world.v1.FindNpcResponse\x12V\n" +
@@ -2555,7 +2834,10 @@ const file_world_proto_rawDesc = "" +
 	"\bCreature\x12&.wowagent.world.v1.CreatureInfoRequest\x1a\x1f.wowagent.world.v1.CreatureInfo\x12b\n" +
 	"\rClassTrainers\x12'.wowagent.world.v1.ClassTrainersRequest\x1a(.wowagent.world.v1.ClassTrainersResponse\x12U\n" +
 	"\n" +
-	"GameObject\x12$.wowagent.world.v1.GameObjectRequest\x1a!.wowagent.world.v1.GameObjectInfo\x12>\n" +
+	"GameObject\x12$.wowagent.world.v1.GameObjectRequest\x1a!.wowagent.world.v1.GameObjectInfo\x12I\n" +
+	"\tTeleports\x12\x16.google.protobuf.Empty\x1a$.wowagent.world.v1.TeleportsResponse\x12K\n" +
+	"\n" +
+	"Transports\x12\x16.google.protobuf.Empty\x1a%.wowagent.world.v1.TransportsResponse\x12>\n" +
 	"\fBeforeLogout\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.EmptyB\x1eZ\x1cwowagent/gen/worldv1;worldv1b\x06proto3"
 
 var (
@@ -2570,7 +2852,7 @@ func file_world_proto_rawDescGZIP() []byte {
 	return file_world_proto_rawDescData
 }
 
-var file_world_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
+var file_world_proto_msgTypes = make([]protoimpl.MessageInfo, 32)
 var file_world_proto_goTypes = []any{
 	(*FindNpcRequest)(nil),        // 0: wowagent.world.v1.FindNpcRequest
 	(*Spawn)(nil),                 // 1: wowagent.world.v1.Spawn
@@ -2600,7 +2882,11 @@ var file_world_proto_goTypes = []any{
 	(*ClassTrainersResponse)(nil), // 25: wowagent.world.v1.ClassTrainersResponse
 	(*GameObjectRequest)(nil),     // 26: wowagent.world.v1.GameObjectRequest
 	(*GameObjectInfo)(nil),        // 27: wowagent.world.v1.GameObjectInfo
-	(*emptypb.Empty)(nil),         // 28: google.protobuf.Empty
+	(*Teleport)(nil),              // 28: wowagent.world.v1.Teleport
+	(*TeleportsResponse)(nil),     // 29: wowagent.world.v1.TeleportsResponse
+	(*Transport)(nil),             // 30: wowagent.world.v1.Transport
+	(*TransportsResponse)(nil),    // 31: wowagent.world.v1.TransportsResponse
+	(*emptypb.Empty)(nil),         // 32: google.protobuf.Empty
 }
 var file_world_proto_depIdxs = []int32{
 	1,  // 0: wowagent.world.v1.FindNpcResponse.spawns:type_name -> wowagent.world.v1.Spawn
@@ -2615,31 +2901,37 @@ var file_world_proto_depIdxs = []int32{
 	20, // 9: wowagent.world.v1.ItemSourcesResponse.sources:type_name -> wowagent.world.v1.ItemSource
 	23, // 10: wowagent.world.v1.ClassTrainer.spells:type_name -> wowagent.world.v1.TrainerSpell
 	24, // 11: wowagent.world.v1.ClassTrainersResponse.trainers:type_name -> wowagent.world.v1.ClassTrainer
-	19, // 12: wowagent.world.v1.World.ItemSources:input_type -> wowagent.world.v1.ItemSourcesRequest
-	0,  // 13: wowagent.world.v1.World.FindNpc:input_type -> wowagent.world.v1.FindNpcRequest
-	3,  // 14: wowagent.world.v1.World.QuestInfo:input_type -> wowagent.world.v1.QuestInfoRequest
-	9,  // 15: wowagent.world.v1.World.QuestsForNpc:input_type -> wowagent.world.v1.QuestsForNpcRequest
-	12, // 16: wowagent.world.v1.World.Spawns:input_type -> wowagent.world.v1.SpawnsRequest
-	14, // 17: wowagent.world.v1.World.ItemInfo:input_type -> wowagent.world.v1.ItemInfoRequest
-	17, // 18: wowagent.world.v1.World.Creature:input_type -> wowagent.world.v1.CreatureInfoRequest
-	22, // 19: wowagent.world.v1.World.ClassTrainers:input_type -> wowagent.world.v1.ClassTrainersRequest
-	26, // 20: wowagent.world.v1.World.GameObject:input_type -> wowagent.world.v1.GameObjectRequest
-	28, // 21: wowagent.world.v1.World.BeforeLogout:input_type -> google.protobuf.Empty
-	21, // 22: wowagent.world.v1.World.ItemSources:output_type -> wowagent.world.v1.ItemSourcesResponse
-	2,  // 23: wowagent.world.v1.World.FindNpc:output_type -> wowagent.world.v1.FindNpcResponse
-	8,  // 24: wowagent.world.v1.World.QuestInfo:output_type -> wowagent.world.v1.QuestInfoResponse
-	11, // 25: wowagent.world.v1.World.QuestsForNpc:output_type -> wowagent.world.v1.QuestsForNpcResponse
-	13, // 26: wowagent.world.v1.World.Spawns:output_type -> wowagent.world.v1.SpawnsResponse
-	16, // 27: wowagent.world.v1.World.ItemInfo:output_type -> wowagent.world.v1.ItemInfoResponse
-	18, // 28: wowagent.world.v1.World.Creature:output_type -> wowagent.world.v1.CreatureInfo
-	25, // 29: wowagent.world.v1.World.ClassTrainers:output_type -> wowagent.world.v1.ClassTrainersResponse
-	27, // 30: wowagent.world.v1.World.GameObject:output_type -> wowagent.world.v1.GameObjectInfo
-	28, // 31: wowagent.world.v1.World.BeforeLogout:output_type -> google.protobuf.Empty
-	22, // [22:32] is the sub-list for method output_type
-	12, // [12:22] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	28, // 12: wowagent.world.v1.TeleportsResponse.teleports:type_name -> wowagent.world.v1.Teleport
+	30, // 13: wowagent.world.v1.TransportsResponse.transports:type_name -> wowagent.world.v1.Transport
+	19, // 14: wowagent.world.v1.World.ItemSources:input_type -> wowagent.world.v1.ItemSourcesRequest
+	0,  // 15: wowagent.world.v1.World.FindNpc:input_type -> wowagent.world.v1.FindNpcRequest
+	3,  // 16: wowagent.world.v1.World.QuestInfo:input_type -> wowagent.world.v1.QuestInfoRequest
+	9,  // 17: wowagent.world.v1.World.QuestsForNpc:input_type -> wowagent.world.v1.QuestsForNpcRequest
+	12, // 18: wowagent.world.v1.World.Spawns:input_type -> wowagent.world.v1.SpawnsRequest
+	14, // 19: wowagent.world.v1.World.ItemInfo:input_type -> wowagent.world.v1.ItemInfoRequest
+	17, // 20: wowagent.world.v1.World.Creature:input_type -> wowagent.world.v1.CreatureInfoRequest
+	22, // 21: wowagent.world.v1.World.ClassTrainers:input_type -> wowagent.world.v1.ClassTrainersRequest
+	26, // 22: wowagent.world.v1.World.GameObject:input_type -> wowagent.world.v1.GameObjectRequest
+	32, // 23: wowagent.world.v1.World.Teleports:input_type -> google.protobuf.Empty
+	32, // 24: wowagent.world.v1.World.Transports:input_type -> google.protobuf.Empty
+	32, // 25: wowagent.world.v1.World.BeforeLogout:input_type -> google.protobuf.Empty
+	21, // 26: wowagent.world.v1.World.ItemSources:output_type -> wowagent.world.v1.ItemSourcesResponse
+	2,  // 27: wowagent.world.v1.World.FindNpc:output_type -> wowagent.world.v1.FindNpcResponse
+	8,  // 28: wowagent.world.v1.World.QuestInfo:output_type -> wowagent.world.v1.QuestInfoResponse
+	11, // 29: wowagent.world.v1.World.QuestsForNpc:output_type -> wowagent.world.v1.QuestsForNpcResponse
+	13, // 30: wowagent.world.v1.World.Spawns:output_type -> wowagent.world.v1.SpawnsResponse
+	16, // 31: wowagent.world.v1.World.ItemInfo:output_type -> wowagent.world.v1.ItemInfoResponse
+	18, // 32: wowagent.world.v1.World.Creature:output_type -> wowagent.world.v1.CreatureInfo
+	25, // 33: wowagent.world.v1.World.ClassTrainers:output_type -> wowagent.world.v1.ClassTrainersResponse
+	27, // 34: wowagent.world.v1.World.GameObject:output_type -> wowagent.world.v1.GameObjectInfo
+	29, // 35: wowagent.world.v1.World.Teleports:output_type -> wowagent.world.v1.TeleportsResponse
+	31, // 36: wowagent.world.v1.World.Transports:output_type -> wowagent.world.v1.TransportsResponse
+	32, // 37: wowagent.world.v1.World.BeforeLogout:output_type -> google.protobuf.Empty
+	26, // [26:38] is the sub-list for method output_type
+	14, // [14:26] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_world_proto_init() }
@@ -2653,7 +2945,7 @@ func file_world_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_world_proto_rawDesc), len(file_world_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   28,
+			NumMessages:   32,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

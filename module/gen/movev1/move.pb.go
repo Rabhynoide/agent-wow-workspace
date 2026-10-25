@@ -277,7 +277,19 @@ type PathRequest struct {
 	Y     float32                `protobuf:"fixed32,2,opt,name=y,proto3" json:"y,omitempty"`
 	Z     float32                `protobuf:"fixed32,3,opt,name=z,proto3" json:"z,omitempty"`
 	// Also return the points (every 2 yards).
-	WithPoints    bool `protobuf:"varint,4,opt,name=with_points,json=withPoints,proto3" json:"with_points,omitempty"`
+	WithPoints bool `protobuf:"varint,4,opt,name=with_points,json=withPoints,proto3" json:"with_points,omitempty"`
+	// Plan from (from_x, from_y, from_z) on map instead of our position, without avoiding monsters
+	// (travel planning).
+	FromSet bool    `protobuf:"varint,5,opt,name=from_set,json=fromSet,proto3" json:"from_set,omitempty"`
+	Map     uint32  `protobuf:"varint,6,opt,name=map,proto3" json:"map,omitempty"`
+	FromX   float32 `protobuf:"fixed32,7,opt,name=from_x,json=fromX,proto3" json:"from_x,omitempty"`
+	FromY   float32 `protobuf:"fixed32,8,opt,name=from_y,json=fromY,proto3" json:"from_y,omitempty"`
+	FromZ   float32 `protobuf:"fixed32,9,opt,name=from_z,json=fromZ,proto3" json:"from_z,omitempty"`
+	// Also return the areas crossed (AreaTable ids from the .map files).
+	WithAreas bool `protobuf:"varint,10,opt,name=with_areas,json=withAreas,proto3" json:"with_areas,omitempty"`
+	// An unreachable destination ends at the closest walkable point within this many yards (default
+	// 30): a boat's pier from its dock point.
+	Snap          float32 `protobuf:"fixed32,11,opt,name=snap,proto3" json:"snap,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -340,6 +352,116 @@ func (x *PathRequest) GetWithPoints() bool {
 	return false
 }
 
+func (x *PathRequest) GetFromSet() bool {
+	if x != nil {
+		return x.FromSet
+	}
+	return false
+}
+
+func (x *PathRequest) GetMap() uint32 {
+	if x != nil {
+		return x.Map
+	}
+	return 0
+}
+
+func (x *PathRequest) GetFromX() float32 {
+	if x != nil {
+		return x.FromX
+	}
+	return 0
+}
+
+func (x *PathRequest) GetFromY() float32 {
+	if x != nil {
+		return x.FromY
+	}
+	return 0
+}
+
+func (x *PathRequest) GetFromZ() float32 {
+	if x != nil {
+		return x.FromZ
+	}
+	return 0
+}
+
+func (x *PathRequest) GetWithAreas() bool {
+	if x != nil {
+		return x.WithAreas
+	}
+	return false
+}
+
+func (x *PathRequest) GetSnap() float32 {
+	if x != nil {
+		return x.Snap
+	}
+	return 0
+}
+
+// AreaSpan: the path runs through area from start to end (yards from the path start).
+type AreaSpan struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Area          uint32                 `protobuf:"varint,1,opt,name=area,proto3" json:"area,omitempty"`
+	Start         float32                `protobuf:"fixed32,2,opt,name=start,proto3" json:"start,omitempty"`
+	End           float32                `protobuf:"fixed32,3,opt,name=end,proto3" json:"end,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AreaSpan) Reset() {
+	*x = AreaSpan{}
+	mi := &file_move_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AreaSpan) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AreaSpan) ProtoMessage() {}
+
+func (x *AreaSpan) ProtoReflect() protoreflect.Message {
+	mi := &file_move_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AreaSpan.ProtoReflect.Descriptor instead.
+func (*AreaSpan) Descriptor() ([]byte, []int) {
+	return file_move_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *AreaSpan) GetArea() uint32 {
+	if x != nil {
+		return x.Area
+	}
+	return 0
+}
+
+func (x *AreaSpan) GetStart() float32 {
+	if x != nil {
+		return x.Start
+	}
+	return 0
+}
+
+func (x *AreaSpan) GetEnd() float32 {
+	if x != nil {
+		return x.End
+	}
+	return 0
+}
+
 type PathPoint struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	X             float32                `protobuf:"fixed32,1,opt,name=x,proto3" json:"x,omitempty"`
@@ -351,7 +473,7 @@ type PathPoint struct {
 
 func (x *PathPoint) Reset() {
 	*x = PathPoint{}
-	mi := &file_move_proto_msgTypes[4]
+	mi := &file_move_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -363,7 +485,7 @@ func (x *PathPoint) String() string {
 func (*PathPoint) ProtoMessage() {}
 
 func (x *PathPoint) ProtoReflect() protoreflect.Message {
-	mi := &file_move_proto_msgTypes[4]
+	mi := &file_move_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -376,7 +498,7 @@ func (x *PathPoint) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PathPoint.ProtoReflect.Descriptor instead.
 func (*PathPoint) Descriptor() ([]byte, []int) {
-	return file_move_proto_rawDescGZIP(), []int{4}
+	return file_move_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *PathPoint) GetX() float32 {
@@ -401,18 +523,21 @@ func (x *PathPoint) GetZ() float32 {
 }
 
 type PathResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Points        uint32                 `protobuf:"varint,1,opt,name=points,proto3" json:"points,omitempty"`
-	Length        float32                `protobuf:"fixed32,2,opt,name=length,proto3" json:"length,omitempty"`
-	Error         string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
-	Pts           []*PathPoint           `protobuf:"bytes,4,rep,name=pts,proto3" json:"pts,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Points uint32                 `protobuf:"varint,1,opt,name=points,proto3" json:"points,omitempty"`
+	Length float32                `protobuf:"fixed32,2,opt,name=length,proto3" json:"length,omitempty"`
+	Error  string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	Pts    []*PathPoint           `protobuf:"bytes,4,rep,name=pts,proto3" json:"pts,omitempty"`
+	Areas  []*AreaSpan            `protobuf:"bytes,5,rep,name=areas,proto3" json:"areas,omitempty"`
+	// Last point of the path (where the walk ends, on the ground).
+	End           *PathPoint `protobuf:"bytes,6,opt,name=end,proto3" json:"end,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PathResponse) Reset() {
 	*x = PathResponse{}
-	mi := &file_move_proto_msgTypes[5]
+	mi := &file_move_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -424,7 +549,7 @@ func (x *PathResponse) String() string {
 func (*PathResponse) ProtoMessage() {}
 
 func (x *PathResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_move_proto_msgTypes[5]
+	mi := &file_move_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -437,7 +562,7 @@ func (x *PathResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PathResponse.ProtoReflect.Descriptor instead.
 func (*PathResponse) Descriptor() ([]byte, []int) {
-	return file_move_proto_rawDescGZIP(), []int{5}
+	return file_move_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *PathResponse) GetPoints() uint32 {
@@ -468,6 +593,20 @@ func (x *PathResponse) GetPts() []*PathPoint {
 	return nil
 }
 
+func (x *PathResponse) GetAreas() []*AreaSpan {
+	if x != nil {
+		return x.Areas
+	}
+	return nil
+}
+
+func (x *PathResponse) GetEnd() *PathPoint {
+	if x != nil {
+		return x.End
+	}
+	return nil
+}
+
 type LosRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Target position (world); the check runs from our eyes to the target's (+2 yards each).
@@ -480,7 +619,7 @@ type LosRequest struct {
 
 func (x *LosRequest) Reset() {
 	*x = LosRequest{}
-	mi := &file_move_proto_msgTypes[6]
+	mi := &file_move_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -492,7 +631,7 @@ func (x *LosRequest) String() string {
 func (*LosRequest) ProtoMessage() {}
 
 func (x *LosRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_move_proto_msgTypes[6]
+	mi := &file_move_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -505,7 +644,7 @@ func (x *LosRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LosRequest.ProtoReflect.Descriptor instead.
 func (*LosRequest) Descriptor() ([]byte, []int) {
-	return file_move_proto_rawDescGZIP(), []int{6}
+	return file_move_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *LosRequest) GetX() float32 {
@@ -539,7 +678,7 @@ type LosResult struct {
 
 func (x *LosResult) Reset() {
 	*x = LosResult{}
-	mi := &file_move_proto_msgTypes[7]
+	mi := &file_move_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -551,7 +690,7 @@ func (x *LosResult) String() string {
 func (*LosResult) ProtoMessage() {}
 
 func (x *LosResult) ProtoReflect() protoreflect.Message {
-	mi := &file_move_proto_msgTypes[7]
+	mi := &file_move_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -564,7 +703,7 @@ func (x *LosResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LosResult.ProtoReflect.Descriptor instead.
 func (*LosResult) Descriptor() ([]byte, []int) {
-	return file_move_proto_rawDescGZIP(), []int{7}
+	return file_move_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *LosResult) GetVisible() bool {
@@ -597,7 +736,7 @@ type SafePointRequest struct {
 
 func (x *SafePointRequest) Reset() {
 	*x = SafePointRequest{}
-	mi := &file_move_proto_msgTypes[8]
+	mi := &file_move_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -609,7 +748,7 @@ func (x *SafePointRequest) String() string {
 func (*SafePointRequest) ProtoMessage() {}
 
 func (x *SafePointRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_move_proto_msgTypes[8]
+	mi := &file_move_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -622,7 +761,7 @@ func (x *SafePointRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SafePointRequest.ProtoReflect.Descriptor instead.
 func (*SafePointRequest) Descriptor() ([]byte, []int) {
-	return file_move_proto_rawDescGZIP(), []int{8}
+	return file_move_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *SafePointRequest) GetX() float32 {
@@ -683,7 +822,7 @@ type SafePointResult struct {
 
 func (x *SafePointResult) Reset() {
 	*x = SafePointResult{}
-	mi := &file_move_proto_msgTypes[9]
+	mi := &file_move_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -695,7 +834,7 @@ func (x *SafePointResult) String() string {
 func (*SafePointResult) ProtoMessage() {}
 
 func (x *SafePointResult) ProtoReflect() protoreflect.Message {
-	mi := &file_move_proto_msgTypes[9]
+	mi := &file_move_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -708,7 +847,7 @@ func (x *SafePointResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SafePointResult.ProtoReflect.Descriptor instead.
 func (*SafePointResult) Descriptor() ([]byte, []int) {
-	return file_move_proto_rawDescGZIP(), []int{9}
+	return file_move_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *SafePointResult) GetOk() bool {
@@ -787,22 +926,37 @@ const file_move_proto_rawDesc = "" +
 	"\x05eta_s\x18\b \x01(\x02R\x04etaS\x12\x1b\n" +
 	"\telapsed_s\x18\t \x01(\x02R\belapsedS\x12\x19\n" +
 	"\bpath_len\x18\n" +
-	" \x01(\x02R\apathLen\"X\n" +
+	" \x01(\x02R\apathLen\"\xfd\x01\n" +
 	"\vPathRequest\x12\f\n" +
 	"\x01x\x18\x01 \x01(\x02R\x01x\x12\f\n" +
 	"\x01y\x18\x02 \x01(\x02R\x01y\x12\f\n" +
 	"\x01z\x18\x03 \x01(\x02R\x01z\x12\x1f\n" +
 	"\vwith_points\x18\x04 \x01(\bR\n" +
-	"withPoints\"5\n" +
+	"withPoints\x12\x19\n" +
+	"\bfrom_set\x18\x05 \x01(\bR\afromSet\x12\x10\n" +
+	"\x03map\x18\x06 \x01(\rR\x03map\x12\x15\n" +
+	"\x06from_x\x18\a \x01(\x02R\x05fromX\x12\x15\n" +
+	"\x06from_y\x18\b \x01(\x02R\x05fromY\x12\x15\n" +
+	"\x06from_z\x18\t \x01(\x02R\x05fromZ\x12\x1d\n" +
+	"\n" +
+	"with_areas\x18\n" +
+	" \x01(\bR\twithAreas\x12\x12\n" +
+	"\x04snap\x18\v \x01(\x02R\x04snap\"F\n" +
+	"\bAreaSpan\x12\x12\n" +
+	"\x04area\x18\x01 \x01(\rR\x04area\x12\x14\n" +
+	"\x05start\x18\x02 \x01(\x02R\x05start\x12\x10\n" +
+	"\x03end\x18\x03 \x01(\x02R\x03end\"5\n" +
 	"\tPathPoint\x12\f\n" +
 	"\x01x\x18\x01 \x01(\x02R\x01x\x12\f\n" +
 	"\x01y\x18\x02 \x01(\x02R\x01y\x12\f\n" +
-	"\x01z\x18\x03 \x01(\x02R\x01z\"\x83\x01\n" +
+	"\x01z\x18\x03 \x01(\x02R\x01z\"\xe4\x01\n" +
 	"\fPathResponse\x12\x16\n" +
 	"\x06points\x18\x01 \x01(\rR\x06points\x12\x16\n" +
 	"\x06length\x18\x02 \x01(\x02R\x06length\x12\x14\n" +
 	"\x05error\x18\x03 \x01(\tR\x05error\x12-\n" +
-	"\x03pts\x18\x04 \x03(\v2\x1b.wowagent.move.v1.PathPointR\x03pts\"6\n" +
+	"\x03pts\x18\x04 \x03(\v2\x1b.wowagent.move.v1.PathPointR\x03pts\x120\n" +
+	"\x05areas\x18\x05 \x03(\v2\x1a.wowagent.move.v1.AreaSpanR\x05areas\x12-\n" +
+	"\x03end\x18\x06 \x01(\v2\x1b.wowagent.move.v1.PathPointR\x03end\"6\n" +
 	"\n" +
 	"LosRequest\x12\f\n" +
 	"\x01x\x18\x01 \x01(\x02R\x01x\x12\f\n" +
@@ -848,41 +1002,44 @@ func file_move_proto_rawDescGZIP() []byte {
 	return file_move_proto_rawDescData
 }
 
-var file_move_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_move_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_move_proto_goTypes = []any{
 	(*GotoRequest)(nil),      // 0: wowagent.move.v1.GotoRequest
 	(*StatusRequest)(nil),    // 1: wowagent.move.v1.StatusRequest
 	(*MoveStatus)(nil),       // 2: wowagent.move.v1.MoveStatus
 	(*PathRequest)(nil),      // 3: wowagent.move.v1.PathRequest
-	(*PathPoint)(nil),        // 4: wowagent.move.v1.PathPoint
-	(*PathResponse)(nil),     // 5: wowagent.move.v1.PathResponse
-	(*LosRequest)(nil),       // 6: wowagent.move.v1.LosRequest
-	(*LosResult)(nil),        // 7: wowagent.move.v1.LosResult
-	(*SafePointRequest)(nil), // 8: wowagent.move.v1.SafePointRequest
-	(*SafePointResult)(nil),  // 9: wowagent.move.v1.SafePointResult
-	(*emptypb.Empty)(nil),    // 10: google.protobuf.Empty
+	(*AreaSpan)(nil),         // 4: wowagent.move.v1.AreaSpan
+	(*PathPoint)(nil),        // 5: wowagent.move.v1.PathPoint
+	(*PathResponse)(nil),     // 6: wowagent.move.v1.PathResponse
+	(*LosRequest)(nil),       // 7: wowagent.move.v1.LosRequest
+	(*LosResult)(nil),        // 8: wowagent.move.v1.LosResult
+	(*SafePointRequest)(nil), // 9: wowagent.move.v1.SafePointRequest
+	(*SafePointResult)(nil),  // 10: wowagent.move.v1.SafePointResult
+	(*emptypb.Empty)(nil),    // 11: google.protobuf.Empty
 }
 var file_move_proto_depIdxs = []int32{
-	4,  // 0: wowagent.move.v1.PathResponse.pts:type_name -> wowagent.move.v1.PathPoint
-	0,  // 1: wowagent.move.v1.Move.Goto:input_type -> wowagent.move.v1.GotoRequest
-	1,  // 2: wowagent.move.v1.Move.Status:input_type -> wowagent.move.v1.StatusRequest
-	10, // 3: wowagent.move.v1.Move.Stop:input_type -> google.protobuf.Empty
-	3,  // 4: wowagent.move.v1.Move.Path:input_type -> wowagent.move.v1.PathRequest
-	6,  // 5: wowagent.move.v1.Move.LineOfSight:input_type -> wowagent.move.v1.LosRequest
-	8,  // 6: wowagent.move.v1.Move.SafePoint:input_type -> wowagent.move.v1.SafePointRequest
-	10, // 7: wowagent.move.v1.Move.BeforeLogout:input_type -> google.protobuf.Empty
-	2,  // 8: wowagent.move.v1.Move.Goto:output_type -> wowagent.move.v1.MoveStatus
-	2,  // 9: wowagent.move.v1.Move.Status:output_type -> wowagent.move.v1.MoveStatus
-	2,  // 10: wowagent.move.v1.Move.Stop:output_type -> wowagent.move.v1.MoveStatus
-	5,  // 11: wowagent.move.v1.Move.Path:output_type -> wowagent.move.v1.PathResponse
-	7,  // 12: wowagent.move.v1.Move.LineOfSight:output_type -> wowagent.move.v1.LosResult
-	9,  // 13: wowagent.move.v1.Move.SafePoint:output_type -> wowagent.move.v1.SafePointResult
-	10, // 14: wowagent.move.v1.Move.BeforeLogout:output_type -> google.protobuf.Empty
-	8,  // [8:15] is the sub-list for method output_type
-	1,  // [1:8] is the sub-list for method input_type
-	1,  // [1:1] is the sub-list for extension type_name
-	1,  // [1:1] is the sub-list for extension extendee
-	0,  // [0:1] is the sub-list for field type_name
+	5,  // 0: wowagent.move.v1.PathResponse.pts:type_name -> wowagent.move.v1.PathPoint
+	4,  // 1: wowagent.move.v1.PathResponse.areas:type_name -> wowagent.move.v1.AreaSpan
+	5,  // 2: wowagent.move.v1.PathResponse.end:type_name -> wowagent.move.v1.PathPoint
+	0,  // 3: wowagent.move.v1.Move.Goto:input_type -> wowagent.move.v1.GotoRequest
+	1,  // 4: wowagent.move.v1.Move.Status:input_type -> wowagent.move.v1.StatusRequest
+	11, // 5: wowagent.move.v1.Move.Stop:input_type -> google.protobuf.Empty
+	3,  // 6: wowagent.move.v1.Move.Path:input_type -> wowagent.move.v1.PathRequest
+	7,  // 7: wowagent.move.v1.Move.LineOfSight:input_type -> wowagent.move.v1.LosRequest
+	9,  // 8: wowagent.move.v1.Move.SafePoint:input_type -> wowagent.move.v1.SafePointRequest
+	11, // 9: wowagent.move.v1.Move.BeforeLogout:input_type -> google.protobuf.Empty
+	2,  // 10: wowagent.move.v1.Move.Goto:output_type -> wowagent.move.v1.MoveStatus
+	2,  // 11: wowagent.move.v1.Move.Status:output_type -> wowagent.move.v1.MoveStatus
+	2,  // 12: wowagent.move.v1.Move.Stop:output_type -> wowagent.move.v1.MoveStatus
+	6,  // 13: wowagent.move.v1.Move.Path:output_type -> wowagent.move.v1.PathResponse
+	8,  // 14: wowagent.move.v1.Move.LineOfSight:output_type -> wowagent.move.v1.LosResult
+	10, // 15: wowagent.move.v1.Move.SafePoint:output_type -> wowagent.move.v1.SafePointResult
+	11, // 16: wowagent.move.v1.Move.BeforeLogout:output_type -> google.protobuf.Empty
+	10, // [10:17] is the sub-list for method output_type
+	3,  // [3:10] is the sub-list for method input_type
+	3,  // [3:3] is the sub-list for extension type_name
+	3,  // [3:3] is the sub-list for extension extendee
+	0,  // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_move_proto_init() }
@@ -896,7 +1053,7 @@ func file_move_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_move_proto_rawDesc), len(file_move_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -1,0 +1,120 @@
+syntax = "proto3";
+
+package wowagent.travel.v1;
+option go_package = "wowagent/gen/travelv1;travelv1";
+
+import "api/module/v1/session.proto";
+import "google/protobuf/empty.proto";
+
+message Point {
+  uint32 map = 1;
+  float x = 2;
+  float y = 3;
+  float z = 4;
+}
+
+// One leg of a journey. kind: "walk" (to `to`), "fly" (talk to the flight master npc_entry standing at
+// `from`, fly through nodes, land at `to`), "portal" (walk into area trigger `trigger` at `from`, arrive
+// at `to`), "hearth" (use the hearthstone, arrive at the bind point `to`), "boat" (wait on the pier
+// `from` for transport `transport` docked at `dock`, ride to `land_dock`, step onto the pier `to`).
+message Leg {
+  string kind = 1;
+  Point from = 2;
+  Point to = 3;
+  repeated uint32 nodes = 4;
+  uint32 trigger = 5;
+  uint32 npc_entry = 6;
+  // Expected duration.
+  float seconds = 7;
+  string name = 8;
+  uint32 transport = 9;
+  Point dock = 10;
+  Point land_dock = 11;
+}
+
+message PlanRequest {
+  Point to = 1;
+  // Level the walking legs are judged at (0 = ours).
+  uint32 level = 2;
+}
+
+message PlanResponse {
+  bool ok = 1;
+  string reason = 2;
+  repeated Leg legs = 3;
+  float seconds = 4;
+  // Walking straight there, when possible (0 = no safe path).
+  float walk_seconds = 5;
+}
+
+message FlyRequest {
+  // Node path from the flight master in reach (Leg.nodes).
+  repeated uint32 nodes = 1;
+}
+
+message TriggerRequest {
+  uint32 id = 1;
+  // Map expected after the teleport.
+  uint32 map = 2;
+}
+
+message TravelResult {
+  bool ok = 1;
+  string reason = 2;
+  Point at = 3;
+  // fly: expected flight time (seconds); the caller waits for the landing (taxi flag off).
+  float seconds = 4;
+}
+
+message NearRequest {
+  float radius = 1;
+}
+
+// A flight master whose node we do not know yet.
+message NearResponse {
+  bool found = 1;
+  uint32 node = 2;
+  string name = 3;
+  uint32 npc_entry = 4;
+  Point at = 5;
+}
+
+message BoatRequest {
+  // Transport entry, the dock (where it stops: Leg.dock or land_dock) and our pier.
+  uint32 transport = 1;
+  Point dock = 2;
+  Point pier = 3;
+  // Wait at most this long in this call (default 20).
+  uint32 max_wait_s = 4;
+}
+
+message BoatStatus {
+  // waiting (not docked yet), aboard, riding, ashore, or "" with reason on an error.
+  string state = 1;
+  string reason = 2;
+  // Seconds before it docks.
+  uint32 wait_s = 3;
+}
+
+message KnownResponse {
+  repeated uint32 nodes = 1;
+  Point bind = 2;
+  bool bind_known = 3;
+  // Seconds before the hearthstone can be used again (0 = ready).
+  uint32 hearth_cooldown_s = 4;
+}
+
+service Travel {
+  rpc Plan(PlanRequest) returns (PlanResponse);
+  rpc Discover(google.protobuf.Empty) returns (TravelResult);
+  rpc Fly(FlyRequest) returns (TravelResult);
+  rpc Trigger(TriggerRequest) returns (TravelResult);
+  rpc Bind(google.protobuf.Empty) returns (TravelResult);
+  rpc Hearth(google.protobuf.Empty) returns (TravelResult);
+  rpc NearUnknown(NearRequest) returns (NearResponse);
+  rpc Board(BoatRequest) returns (BoatStatus);
+  rpc Disembark(BoatRequest) returns (BoatStatus);
+  rpc Known(google.protobuf.Empty) returns (KnownResponse);
+  rpc OnPacket(agentwow.module.v1.WorldPacket) returns (google.protobuf.Empty);
+  rpc BeforeLogout(google.protobuf.Empty) returns (google.protobuf.Empty);
+}

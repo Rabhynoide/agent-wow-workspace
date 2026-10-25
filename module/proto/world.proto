@@ -284,6 +284,35 @@ message GameObjectInfo {
   uint32 loot_items = 7;
 }
 
+// areatrigger_teleport row: entering trigger id (AreaTrigger.dbc gives where it is) teleports to
+// the target (instance entrances, Deeprun Tram, Dark Portal...).
+message Teleport {
+  uint32 id = 1;
+  string name = 2;
+  uint32 map = 3;
+  float x = 4;
+  float y = 5;
+  float z = 6;
+  float o = 7;
+}
+
+message TeleportsResponse {
+  repeated Teleport teleports = 1;
+}
+
+// A boat or zeppelin (transports joined with gameobject_template: path, speed, acceleration).
+message Transport {
+  uint32 entry = 1;
+  string name = 2;
+  uint32 path = 3;
+  float speed = 4;
+  float accel = 5;
+}
+
+message TransportsResponse {
+  repeated Transport transports = 1;
+}
+
 service World {
   rpc ItemSources(ItemSourcesRequest) returns (ItemSourcesResponse);
   rpc FindNpc(FindNpcRequest) returns (FindNpcResponse);
@@ -294,5 +323,7 @@ service World {
   rpc Creature(CreatureInfoRequest) returns (CreatureInfo);
   rpc ClassTrainers(ClassTrainersRequest) returns (ClassTrainersResponse);
   rpc GameObject(GameObjectRequest) returns (GameObjectInfo);
+  rpc Teleports(google.protobuf.Empty) returns (TeleportsResponse);
+  rpc Transports(google.protobuf.Empty) returns (TransportsResponse);
   rpc BeforeLogout(google.protobuf.Empty) returns (google.protobuf.Empty);
 }

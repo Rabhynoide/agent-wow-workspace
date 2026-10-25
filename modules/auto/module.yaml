@@ -9,6 +9,7 @@ requires:
   - combat
   - town
   - progress
+  - travel
 compose:
   file: compose.yaml
   service: module

@@ -127,6 +127,11 @@ func (s *Service) Goto(ctx context.Context, r *pb.GotoRequest) (*pb.AutoStatus, 
 		radius = 3
 	}
 	return s.start(ctx, r.WaitS, &pb.AutoStatus{State: "running", Step: "walking"}, func(run *run) error {
+		if r.OtherMap {
+			if err := run.goTo(r.Map, r.X, r.Y, r.Z); err != nil {
+				return err
+			}
+		}
 		return run.walk(r.X, r.Y, r.Z, radius)
 	}), nil
 }
@@ -393,6 +398,11 @@ type run struct {
 	detour bool
 	// lastShop: last vendor visit or check on the way (shop); lastChestCheck: last chest lookup
 	lastShop, lastChestCheck, lastVendorCheck time.Time
+	// travelling: inside a journey (travel.go), whose walks do not plan again; lastFlightCheck and
+	// triedNodes: flight masters of unknown nodes looked for and visited on the way
+	travelling      bool
+	lastFlightCheck time.Time
+	triedNodes      map[uint32]bool
 }
 
 func (r *run) step(format string, a ...any) {
@@ -552,7 +562,17 @@ func nearestNpc(list []*worldpb.QuestNpc, mapID uint32, x, y float32) *worldpb.Q
 // walk goes to the point. A monster attacking on the way is fought back (combat.defend) before going
 // on: the move alone ignores attacks and the character died walking with a monster at its back.
 func (r *run) walk(x, y, z, radius float32) error {
-	deadline := time.Now().Add(240 * time.Second)
+	limit := 240 * time.Second
+	if b, err := r.s.api.Brief(r.ctx); err == nil && b.Self != nil {
+		if err := r.goTo(b.Self.Map, x, y, z); err != nil {
+			return err
+		}
+		// Long walks (Deeprun Tram tunnel: 2 600 yards) get the time to walk them.
+		if b, err = r.s.api.Brief(r.ctx); err == nil && b.Self != nil {
+			limit = max(limit, time.Duration(dist2(b.Self.X, b.Self.Y, x, y)/4)*time.Second)
+		}
+	}
+	deadline := time.Now().Add(limit)
 	for fights := 0; ; {
 		// No new fight below walkRestBelow: a monster met on the way would be a chained fight
 		// (4 of the 5 deaths of the 2026-10-12 bench started at 12-41 %).
@@ -570,6 +590,13 @@ func (r *run) walk(x, y, z, radius float32) error {
 			}
 			if vendor = r.vendorOnTheWay(); vendor != nil {
 				break
+			}
+			if node, fm := r.flightOnTheWay(); fm != nil {
+				_ = r.s.api.MoveStop(r.ctx)
+				r.learnFlight(node, fm)
+				deadline = deadline.Add(60 * time.Second)
+				st, err = r.s.api.Goto(r.ctx, x, y, z, radius, 2)
+				continue
 			}
 			if time.Now().After(deadline) {
 				_ = r.s.api.MoveStop(r.ctx)
@@ -697,11 +724,14 @@ func (r *run) acceptQuest(id uint32, info *worldpb.QuestInfo) error {
 	if info.MinLevel > me.Level {
 		return fmt.Errorf("needs level %d (have %d)", info.MinLevel, me.Level)
 	}
-	st := nearestNpc(info.Starters, me.Map, me.X, me.Y)
+	st := npcOn(info.Starters, me.Map, me.X, me.Y)
 	if st == nil {
-		return fmt.Errorf("no quest giver found on this map")
+		return fmt.Errorf("no quest giver found")
 	}
 	r.step("go to %s to accept '%s'", st.Name, info.Title)
+	if err := r.goTo(st.Map, st.X, st.Y, st.Z); err != nil {
+		return err
+	}
 	if err := r.approachNpc(st.Entry, st.X, st.Y, st.Z); err != nil {
 		return err
 	}
@@ -750,11 +780,14 @@ func (r *run) turnInQuest(id uint32, info *worldpb.QuestInfo, reward uint32, cho
 		return err
 	}
 	me := snap.Self
-	en := nearestNpc(info.Enders, me.Map, me.X, me.Y)
+	en := npcOn(info.Enders, me.Map, me.X, me.Y)
 	if en == nil {
-		return fmt.Errorf("no quest ender found on this map")
+		return fmt.Errorf("no quest ender found")
 	}
 	r.step("turn in '%s' at %s", info.Title, en.Name)
+	if err := r.goTo(en.Map, en.X, en.Y, en.Z); err != nil {
+		return err
+	}
 	if err := r.approachNpc(en.Entry, en.X, en.Y, en.Z); err != nil {
 		return err
 	}

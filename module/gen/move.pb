@@ -4,7 +4,7 @@
 EmptyB}
 com.google.protobufB
 EmptyProtoPZ.google.golang.org/protobuf/types/known/emptypbø¢GPBªGoogle.Protobuf.WellKnownTypesbproto3
-ž
+í
 
 move.protowowagent.move.v1google/protobuf/empty.proto"z
 GotoRequest
@@ -28,22 +28,37 @@ MoveStatus
 eta_s (RetaS
 	elapsed_s	 (RelapsedS
 path_len
- (RpathLen"X
+ (RpathLen"ý
 PathRequest
 x (Rx
 y (Ry
 z (Rz
 with_points (R
-withPoints"5
+withPoints
+from_set (RfromSet
+map (Rmap
+from_x (RfromX
+from_y (RfromY
+from_z	 (RfromZ
+
+with_areas
+ (R	withAreas
+snap (Rsnap"F
+AreaSpan
+area (Rarea
+start (Rstart
+end (Rend"5
 	PathPoint
 x (Rx
 y (Ry
-z (Rz"ƒ
+z (Rz"ä
 PathResponse
 points (Rpoints
 length (Rlength
 error (	Rerror-
-pts (2.wowagent.move.v1.PathPointRpts"6
+pts (2.wowagent.move.v1.PathPointRpts0
+areas (2.wowagent.move.v1.AreaSpanRareas-
+end (2.wowagent.move.v1.PathPointRend"6
 
 LosRequest
 x (Rx

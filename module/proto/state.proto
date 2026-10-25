@@ -133,6 +133,11 @@ message Obj {
   // Distance to where a moving monster is now, along its move (x, y, z and dist give its
   // destination, as the server will place it): the spell range checks use both.
   float dist_now = 19;
+  // Moving transports (boats, zeppelins: game objects with UPDATEFLAG_TRANSPORT): time into their
+  // path now (ms, the server's GetPathProgress plus the time since it was sent; modulo period) and
+  // the path period (GAMEOBJECT_LEVEL).
+  uint32 path_progress = 20;
+  uint32 period = 21;
 }
 
 message NearbyResponse {

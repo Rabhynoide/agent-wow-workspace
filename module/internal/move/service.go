@@ -216,6 +216,11 @@ func smoothZ(p [][3]float32) [][3]float32 {
 }
 
 func (s *Service) plan(mapID uint32, from [3]float32, x, y, z float32, avoid []nav.Danger) ([][3]float32, float32, error) {
+	return s.planReach(mapID, from, x, y, z, avoid, 0)
+}
+
+// planReach is plan with the reach of the closest walkable point to an unreachable destination.
+func (s *Service) planReach(mapID uint32, from [3]float32, x, y, z float32, avoid []nav.Danger, reach float32) ([][3]float32, float32, error) {
 	m, err := s.mesh(mapID)
 	if err != nil {
 		return nil, 0, err
@@ -224,6 +229,7 @@ func (s *Service) plan(mapID uint32, from [3]float32, x, y, z float32, avoid []n
 	to := [3]float32{x, y, z}
 	f := nav.GroundOnly
 	f.Avoid = avoid
+	f.EndReach, f.Partial = reach, reach > 0
 	dense, err := navPlan(m, tm, vm, from, to, f)
 	// Only when the START is the problem: an unreachable destination would make every escape try
 	// search the whole area (seconds each).
@@ -362,11 +368,23 @@ func (s *Service) Path(ctx context.Context, r *pb.PathRequest) (*pb.PathResponse
 	if err != nil {
 		return &pb.PathResponse{Error: err.Error()}, nil
 	}
-	pts, l, err := s.plan(self.Map, [3]float32{self.X, self.Y, self.Z}, r.X, r.Y, r.Z, navDangers(s.dangers(ctx, self, r.X, r.Y, r.Z)))
+	mapID, from, avoid := self.Map, [3]float32{self.X, self.Y, self.Z}, []nav.Danger(nil)
+	if r.FromSet {
+		mapID, from = r.Map, [3]float32{r.FromX, r.FromY, r.FromZ}
+	} else {
+		avoid = navDangers(s.dangers(ctx, self, r.X, r.Y, r.Z))
+	}
+	pts, l, err := s.planReach(mapID, from, r.X, r.Y, r.Z, avoid, r.Snap)
 	if err != nil {
 		return &pb.PathResponse{Error: err.Error()}, nil
 	}
 	out := &pb.PathResponse{Points: uint32(len(pts)), Length: l}
+	if n := len(pts); n > 0 {
+		out.End = &pb.PathPoint{X: pts[n-1][0], Y: pts[n-1][1], Z: pts[n-1][2]}
+	}
+	if r.WithAreas {
+		out.Areas = areaSpans(s.terrainFor(mapID), pts)
+	}
 	if r.WithPoints {
 		for _, p := range pts {
 			out.Pts = append(out.Pts, &pb.PathPoint{X: p[0], Y: p[1], Z: p[2]})
@@ -606,4 +624,27 @@ func angDiff(a, b float32) float32 {
 		d = 2*math.Pi - d
 	}
 	return float32(d)
+}
+
+// areaSpans lists the areas a path crosses, sampled every 10 yards.
+func areaSpans(tm *terrain.Maps, pts [][3]float32) []*pb.AreaSpan {
+	var out []*pb.AreaSpan
+	var l, next float32
+	for i, p := range pts {
+		if i > 0 {
+			q := pts[i-1]
+			l += float32(math.Sqrt(float64((p[0]-q[0])*(p[0]-q[0]) + (p[1]-q[1])*(p[1]-q[1]) + (p[2]-q[2])*(p[2]-q[2]))))
+		}
+		if l < next && i != len(pts)-1 {
+			continue
+		}
+		next = l + 10
+		a := tm.Area(p[0], p[1])
+		if n := len(out); n > 0 && out[n-1].Area == a {
+			out[n-1].End = l
+			continue
+		}
+		out = append(out, &pb.AreaSpan{Area: a, Start: l, End: l})
+	}
+	return out
 }

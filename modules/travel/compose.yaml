@@ -1,0 +1,11 @@
+services:
+  module:
+    build:
+      context: ../../module
+      args:
+        CMD: travel
+    environment:
+      DBC_DIR: /dbc
+    volumes:
+      - ../../logs:/logs
+      - ../../assets/dbc:/dbc:ro

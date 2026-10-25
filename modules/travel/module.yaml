@@ -1,0 +1,31 @@
+api_version: 1
+enabled: true
+description: Journeys (walks, flights, area-trigger portals, hearthstone) and flight paths learned
+requires:
+  - state
+  - world
+  - move
+  - quest
+compose:
+  file: compose.yaml
+  service: module
+grpc:
+  descriptor_set: module.pb
+rpc:
+  plan: /wowagent.travel.v1.Travel/Plan
+  discover: /wowagent.travel.v1.Travel/Discover
+  fly: /wowagent.travel.v1.Travel/Fly
+  trigger: /wowagent.travel.v1.Travel/Trigger
+  bind: /wowagent.travel.v1.Travel/Bind
+  hearth: /wowagent.travel.v1.Travel/Hearth
+  near_unknown: /wowagent.travel.v1.Travel/NearUnknown
+  known: /wowagent.travel.v1.Travel/Known
+  board: /wowagent.travel.v1.Travel/Board
+  disembark: /wowagent.travel.v1.Travel/Disembark
+packets:
+  SMSG_SHOWTAXINODES: /wowagent.travel.v1.Travel/OnPacket
+  SMSG_NEW_TAXI_PATH: /wowagent.travel.v1.Travel/OnPacket
+  SMSG_ACTIVATETAXIREPLY: /wowagent.travel.v1.Travel/OnPacket
+  SMSG_BINDPOINTUPDATE: /wowagent.travel.v1.Travel/OnPacket
+lifecycle:
+  before_logout: /wowagent.travel.v1.Travel/BeforeLogout

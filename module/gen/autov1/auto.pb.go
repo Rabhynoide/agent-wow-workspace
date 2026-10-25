@@ -398,8 +398,11 @@ type GotoRequest struct {
 	Y     float32                `protobuf:"fixed32,2,opt,name=y,proto3" json:"y,omitempty"`
 	Z     float32                `protobuf:"fixed32,3,opt,name=z,proto3" json:"z,omitempty"`
 	// Arrival radius (default 3).
-	Radius        float32 `protobuf:"fixed32,4,opt,name=radius,proto3" json:"radius,omitempty"`
-	WaitS         uint32  `protobuf:"varint,5,opt,name=wait_s,json=waitS,proto3" json:"wait_s,omitempty"`
+	Radius float32 `protobuf:"fixed32,4,opt,name=radius,proto3" json:"radius,omitempty"`
+	WaitS  uint32  `protobuf:"varint,5,opt,name=wait_s,json=waitS,proto3" json:"wait_s,omitempty"`
+	// Destination on another map (with other_map): reached by travel (flights, portals, boats).
+	OtherMap      bool   `protobuf:"varint,6,opt,name=other_map,json=otherMap,proto3" json:"other_map,omitempty"`
+	Map           uint32 `protobuf:"varint,7,opt,name=map,proto3" json:"map,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -469,6 +472,20 @@ func (x *GotoRequest) GetWaitS() uint32 {
 	return 0
 }
 
+func (x *GotoRequest) GetOtherMap() bool {
+	if x != nil {
+		return x.OtherMap
+	}
+	return false
+}
+
+func (x *GotoRequest) GetMap() uint32 {
+	if x != nil {
+		return x.Map
+	}
+	return 0
+}
+
 var File_auto_proto protoreflect.FileDescriptor
 
 const file_auto_proto_rawDesc = "" +
@@ -509,13 +526,15 @@ const file_auto_proto_rawDesc = "" +
 	"\x06failed\x18\v \x03(\v2\x1e.wowagent.auto.v1.QuestFailureR\x06failed\"<\n" +
 	"\fQuestFailure\x12\x14\n" +
 	"\x05quest\x18\x01 \x01(\rR\x05quest\x12\x16\n" +
-	"\x06reason\x18\x02 \x01(\tR\x06reason\"f\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\"\x95\x01\n" +
 	"\vGotoRequest\x12\f\n" +
 	"\x01x\x18\x01 \x01(\x02R\x01x\x12\f\n" +
 	"\x01y\x18\x02 \x01(\x02R\x01y\x12\f\n" +
 	"\x01z\x18\x03 \x01(\x02R\x01z\x12\x16\n" +
 	"\x06radius\x18\x04 \x01(\x02R\x06radius\x12\x15\n" +
-	"\x06wait_s\x18\x05 \x01(\rR\x05waitS2\xab\x04\n" +
+	"\x06wait_s\x18\x05 \x01(\rR\x05waitS\x12\x1b\n" +
+	"\tother_map\x18\x06 \x01(\bR\botherMap\x12\x10\n" +
+	"\x03map\x18\a \x01(\rR\x03map2\xab\x04\n" +
 	"\x04Auto\x12H\n" +
 	"\aRecover\x12\x1f.wowagent.auto.v1.StatusRequest\x1a\x1c.wowagent.auto.v1.AutoStatus\x12C\n" +
 	"\bOnPacket\x12\x1f.agentwow.module.v1.WorldPacket\x1a\x16.google.protobuf.Empty\x12A\n" +

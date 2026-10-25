@@ -63,6 +63,9 @@ message GotoRequest {
   // Arrival radius (default 3).
   float radius = 4;
   uint32 wait_s = 5;
+  // Destination on another map (with other_map): reached by travel (flights, portals, boats).
+  bool other_map = 6;
+  uint32 map = 7;
 }
 
 service Auto {

@@ -29,6 +29,8 @@ const (
 	World_Creature_FullMethodName      = "/wowagent.world.v1.World/Creature"
 	World_ClassTrainers_FullMethodName = "/wowagent.world.v1.World/ClassTrainers"
 	World_GameObject_FullMethodName    = "/wowagent.world.v1.World/GameObject"
+	World_Teleports_FullMethodName     = "/wowagent.world.v1.World/Teleports"
+	World_Transports_FullMethodName    = "/wowagent.world.v1.World/Transports"
 	World_BeforeLogout_FullMethodName  = "/wowagent.world.v1.World/BeforeLogout"
 )
 
@@ -45,6 +47,8 @@ type WorldClient interface {
 	Creature(ctx context.Context, in *CreatureInfoRequest, opts ...grpc.CallOption) (*CreatureInfo, error)
 	ClassTrainers(ctx context.Context, in *ClassTrainersRequest, opts ...grpc.CallOption) (*ClassTrainersResponse, error)
 	GameObject(ctx context.Context, in *GameObjectRequest, opts ...grpc.CallOption) (*GameObjectInfo, error)
+	Teleports(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*TeleportsResponse, error)
+	Transports(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*TransportsResponse, error)
 	BeforeLogout(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
@@ -146,6 +150,26 @@ func (c *worldClient) GameObject(ctx context.Context, in *GameObjectRequest, opt
 	return out, nil
 }
 
+func (c *worldClient) Teleports(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*TeleportsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(TeleportsResponse)
+	err := c.cc.Invoke(ctx, World_Teleports_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *worldClient) Transports(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*TransportsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(TransportsResponse)
+	err := c.cc.Invoke(ctx, World_Transports_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *worldClient) BeforeLogout(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -169,6 +193,8 @@ type WorldServer interface {
 	Creature(context.Context, *CreatureInfoRequest) (*CreatureInfo, error)
 	ClassTrainers(context.Context, *ClassTrainersRequest) (*ClassTrainersResponse, error)
 	GameObject(context.Context, *GameObjectRequest) (*GameObjectInfo, error)
+	Teleports(context.Context, *emptypb.Empty) (*TeleportsResponse, error)
+	Transports(context.Context, *emptypb.Empty) (*TransportsResponse, error)
 	BeforeLogout(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	mustEmbedUnimplementedWorldServer()
 }
@@ -206,6 +232,12 @@ func (UnimplementedWorldServer) ClassTrainers(context.Context, *ClassTrainersReq
 }
 func (UnimplementedWorldServer) GameObject(context.Context, *GameObjectRequest) (*GameObjectInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GameObject not implemented")
+}
+func (UnimplementedWorldServer) Teleports(context.Context, *emptypb.Empty) (*TeleportsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Teleports not implemented")
+}
+func (UnimplementedWorldServer) Transports(context.Context, *emptypb.Empty) (*TransportsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Transports not implemented")
 }
 func (UnimplementedWorldServer) BeforeLogout(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method BeforeLogout not implemented")
@@ -393,6 +425,42 @@ func _World_GameObject_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
+func _World_Teleports_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorldServer).Teleports(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: World_Teleports_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorldServer).Teleports(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _World_Transports_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorldServer).Transports(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: World_Transports_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorldServer).Transports(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _World_BeforeLogout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
@@ -453,6 +521,14 @@ var World_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GameObject",
 			Handler:    _World_GameObject_Handler,
+		},
+		{
+			MethodName: "Teleports",
+			Handler:    _World_Teleports_Handler,
+		},
+		{
+			MethodName: "Transports",
+			Handler:    _World_Transports_Handler,
 		},
 		{
 			MethodName: "BeforeLogout",

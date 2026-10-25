@@ -7,6 +7,7 @@ import (
 	"time"
 
 	modv1 "github.com/agent-wow/agent-wow/pkg/modules/v1"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	combatpb "wowagent/gen/combatv1"
@@ -15,6 +16,7 @@ import (
 	questpb "wowagent/gen/questv1"
 	statepb "wowagent/gen/statev1"
 	townpb "wowagent/gen/townv1"
+	travelpb "wowagent/gen/travelv1"
 	worldpb "wowagent/gen/worldv1"
 	"wowagent/internal/invoke"
 )
@@ -85,6 +87,63 @@ func (c C) LineOfSight(ctx context.Context, x, y, z float32) (bool, error) {
 func (c C) PathPoints(ctx context.Context, x, y, z float32) (*movepb.PathResponse, error) {
 	var r movepb.PathResponse
 	err := invoke.Call(ctx, c.S, "move", "path", &movepb.PathRequest{X: x, Y: y, Z: z, WithPoints: true}, &r)
+	return &r, err
+}
+
+// PathFrom asks move for the walk from (fx, fy, fz) to (x, y, z) on a map, with the areas crossed.
+func (c C) PathFrom(ctx context.Context, mapID uint32, fx, fy, fz, x, y, z float32) (*movepb.PathResponse, error) {
+	return c.PathFromSnap(ctx, mapID, fx, fy, fz, x, y, z, 0)
+}
+
+// PathFromSnap is PathFrom ending at the closest walkable point within snap yards of the destination.
+func (c C) PathFromSnap(ctx context.Context, mapID uint32, fx, fy, fz, x, y, z, snap float32) (*movepb.PathResponse, error) {
+	var r movepb.PathResponse
+	err := invoke.Call(ctx, c.S, "move", "path", &movepb.PathRequest{X: x, Y: y, Z: z, FromSet: true, Map: mapID, FromX: fx, FromY: fy, FromZ: fz, WithAreas: true, Snap: snap}, &r)
+	return &r, err
+}
+
+// Call invokes any module RPC.
+func (c C) Call(ctx context.Context, module, method string, req, resp proto.Message) error {
+	return invoke.Call(ctx, c.S, module, method, req, resp)
+}
+
+// ---- travel ----------------------------------------------------------------
+
+// TravelPlan asks travel for the fastest journey to a point (walks, flights, portals, hearthstone).
+func (c C) TravelPlan(ctx context.Context, mapID uint32, x, y, z float32) (*travelpb.PlanResponse, error) {
+	var r travelpb.PlanResponse
+	err := invoke.Call(ctx, c.S, "travel", "plan", &travelpb.PlanRequest{To: &travelpb.Point{Map: mapID, X: x, Y: y, Z: z}}, &r)
+	return &r, err
+}
+
+// TravelDo runs a non-walk step: "fly" (nodes), "portal" (trigger, map), "hearth", "discover", "bind".
+func (c C) TravelDo(ctx context.Context, kind string, nodes []uint32, trigger, mapID uint32) (*travelpb.TravelResult, error) {
+	var r travelpb.TravelResult
+	var err error
+	switch kind {
+	case "fly":
+		err = invoke.Call(ctx, c.S, "travel", "fly", &travelpb.FlyRequest{Nodes: nodes}, &r)
+	case "portal":
+		err = invoke.Call(ctx, c.S, "travel", "trigger", &travelpb.TriggerRequest{Id: trigger, Map: mapID}, &r)
+	case "hearth", "discover", "bind":
+		err = invoke.Call(ctx, c.S, "travel", kind, &emptypb.Empty{}, &r)
+	default:
+		return nil, fmt.Errorf("unknown travel step %q", kind)
+	}
+	return &r, err
+}
+
+// Boat calls travel.board or travel.disembark (step): wait for the boat at dock, step aboard or onto pier.
+func (c C) Boat(ctx context.Context, step string, transport uint32, dock, pier *travelpb.Point, maxWaitS uint32) (*travelpb.BoatStatus, error) {
+	var r travelpb.BoatStatus
+	err := invoke.Call(ctx, c.S, "travel", step, &travelpb.BoatRequest{Transport: transport, Dock: dock, Pier: pier, MaxWaitS: maxWaitS}, &r)
+	return &r, err
+}
+
+// NearUnknownFlight finds a flight master within radius whose node we do not know.
+func (c C) NearUnknownFlight(ctx context.Context, radius float32) (*travelpb.NearResponse, error) {
+	var r travelpb.NearResponse
+	err := invoke.Call(ctx, c.S, "travel", "near_unknown", &travelpb.NearRequest{Radius: radius}, &r)
 	return &r, err
 }
 

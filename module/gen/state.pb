@@ -31,7 +31,7 @@ EmptyProtoPZ.google.golang.org/protobuf/types/known/emptypbø¢GPBªGoogle.P
 SendPacket%.agentwow.module.v1.SendPacketRequest.google.protobuf.EmptyE
 GetClock.google.protobuf.Empty!.agentwow.module.v1.ClockResponsea
 InvokeModule'.agentwow.module.v1.InvokeModuleRequest(.agentwow.module.v1.InvokeModuleResponseB5Z3github.com/agent-wow/agent-wow/pkg/modules/v1;modv1bproto3
-‚
+¿
 state.protowowagent.state.v1api/module/v1/session.protogoogle/protobuf/empty.proto"¨
 Aura
 slot (Rslot
@@ -112,7 +112,7 @@ alive_only (R	aliveOnly
 	npc_flags (RnpcFlags!
 hostile_only (RhostileOnly
 
-with_auras (R	withAuras"Î
+with_auras (R	withAuras"‹
 Obj
 guid (Rguid
 entry (Rentry
@@ -135,7 +135,9 @@ unit_flags (R	unitFlags
 
 aura_state (R	auraState-
 auras (2.wowagent.state.v1.AuraRauras
-dist_now (RdistNow"R
+dist_now (RdistNow#
+path_progress (RpathProgress
+period (Rperiod"R
 NearbyResponse*
 objs (2.wowagent.state.v1.ObjRobjs
 total (Rtotal"Y

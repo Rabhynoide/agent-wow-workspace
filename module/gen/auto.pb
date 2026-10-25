@@ -31,7 +31,7 @@ EmptyProtoPZ.google.golang.org/protobuf/types/known/emptypbø¢GPBªGoogle.P
 SendPacket%.agentwow.module.v1.SendPacketRequest.google.protobuf.EmptyE
 GetClock.google.protobuf.Empty!.agentwow.module.v1.ClockResponsea
 InvokeModule'.agentwow.module.v1.InvokeModuleRequest(.agentwow.module.v1.InvokeModuleResponseB5Z3github.com/agent-wow/agent-wow/pkg/modules/v1;modv1bproto3
-û
+«
 
 auto.protowowagent.auto.v1api/module/v1/session.protogoogle/protobuf/empty.proto"Ý
 
@@ -68,13 +68,15 @@ AutoStatus
 failed (2.wowagent.auto.v1.QuestFailureRfailed"<
 QuestFailure
 quest (Rquest
-reason (	Rreason"f
+reason (	Rreason"•
 GotoRequest
 x (Rx
 y (Ry
 z (Rz
 radius (Rradius
-wait_s (RwaitS2«
+wait_s (RwaitS
+	other_map (RotherMap
+map (Rmap2«
 AutoH
 Recover.wowagent.auto.v1.StatusRequest.wowagent.auto.v1.AutoStatusC
 OnPacket.agentwow.module.v1.WorldPacket.google.protobuf.EmptyA

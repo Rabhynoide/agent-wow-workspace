@@ -41,3 +41,19 @@ func TestCompareWithNavmesh(t *testing.T) {
 	}
 	t.Logf("%d samples, mean |nav-terrain| %.2f, worst %.2f", n, sum/float32(n), worst)
 }
+
+func TestArea(t *testing.T) {
+	m := New("../../../assets/maps", 0)
+	if _, ok := m.Height(-9464, 62); !ok {
+		t.Skip("no maps")
+	}
+	// Goldshire (87, in Elwynn 12), Lakeshire (69, Redridge 44), Flame Crest (Burning Steppes 46).
+	for _, c := range []struct {
+		x, y float32
+		want uint32
+	}{{-9464, 62, 87}, {-9260, -2200, 69}} {
+		if got := m.Area(c.x, c.y); got != c.want {
+			t.Errorf("area at (%.0f,%.0f) = %d, want %d", c.x, c.y, got, c.want)
+		}
+	}
+}

@@ -577,3 +577,39 @@ func (s *Service) ClassTrainers(ctx context.Context, r *pb.ClassTrainersRequest)
 	}
 	return out, nil
 }
+
+// Teleports lists the area triggers that teleport (areatrigger_teleport).
+func (s *Service) Teleports(ctx context.Context, _ *emptypb.Empty) (*pb.TeleportsResponse, error) {
+	rows, err := s.query(ctx, "SELECT ID, Name, target_map, target_position_x, target_position_y, target_position_z, target_orientation FROM areatrigger_teleport")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := &pb.TeleportsResponse{}
+	for rows.Next() {
+		t := &pb.Teleport{}
+		if err := rows.Scan(&t.Id, &t.Name, &t.Map, &t.X, &t.Y, &t.Z, &t.O); err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		out.Teleports = append(out.Teleports, t)
+	}
+	return out, nil
+}
+
+// Transports lists the boats and zeppelins with their path (gameobject_template data0-2).
+func (s *Service) Transports(ctx context.Context, _ *emptypb.Empty) (*pb.TransportsResponse, error) {
+	rows, err := s.query(ctx, "SELECT t.entry, t.name, g.data0, g.data1, g.data2 FROM transports t JOIN gameobject_template g ON g.entry=t.entry WHERE g.type=15")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := &pb.TransportsResponse{}
+	for rows.Next() {
+		t := &pb.Transport{}
+		if err := rows.Scan(&t.Entry, &t.Name, &t.Path, &t.Speed, &t.Accel); err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		out.Transports = append(out.Transports, t)
+	}
+	return out, nil
+}

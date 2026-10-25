@@ -4,7 +4,7 @@
 EmptyB}
 com.google.protobufB
 EmptyProtoPZ.google.golang.org/protobuf/types/known/emptypbø¢GPBªGoogle.Protobuf.WellKnownTypesbproto3
-Í,
+ú0
 world.protowowagent.world.v1google/protobuf/empty.proto"¨
 FindNpcRequest
 name (	Rname
@@ -214,7 +214,27 @@ trainer_id (R	trainerId7
 loot_id (RlootId
 quest_id (RquestId
 
-loot_items (R	lootItems2ä
+loot_items (R	lootItems"x
+Teleport
+id (Rid
+name (	Rname
+map (Rmap
+x (Rx
+y (Ry
+z (Rz
+o (Ro"N
+TeleportsResponse9
+	teleports (2.wowagent.world.v1.TeleportR	teleports"u
+	Transport
+entry (Rentry
+name (	Rname
+path (Rpath
+speed (Rspeed
+accel (Raccel"R
+TransportsResponse<
+
+transports (2.wowagent.world.v1.TransportR
+transports2ü
 World\
 ItemSources%.wowagent.world.v1.ItemSourcesRequest&.wowagent.world.v1.ItemSourcesResponseP
 FindNpc!.wowagent.world.v1.FindNpcRequest".wowagent.world.v1.FindNpcResponseV
@@ -225,5 +245,8 @@ loot_items (R	lootItems2ä
 Creature&.wowagent.world.v1.CreatureInfoRequest.wowagent.world.v1.CreatureInfob
 ClassTrainers'.wowagent.world.v1.ClassTrainersRequest(.wowagent.world.v1.ClassTrainersResponseU
 
-GameObject$.wowagent.world.v1.GameObjectRequest!.wowagent.world.v1.GameObjectInfo>
+GameObject$.wowagent.world.v1.GameObjectRequest!.wowagent.world.v1.GameObjectInfoI
+	Teleports.google.protobuf.Empty$.wowagent.world.v1.TeleportsResponseK
+
+Transports.google.protobuf.Empty%.wowagent.world.v1.TransportsResponse>
 BeforeLogout.google.protobuf.Empty.google.protobuf.EmptyBZwowagent/gen/worldv1;worldv1bproto3

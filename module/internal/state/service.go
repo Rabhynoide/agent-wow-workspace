@@ -218,7 +218,26 @@ func (o *Obj) toPB(cx, cy, cz float32) *pb.Obj {
 		Guid: o.Guid, Entry: o.u(fEntry), Kind: kindOf(o.Type), X: o.X, Y: o.Y, Z: o.Z, Dist: d, DistNow: dn,
 		Level: o.u(fUnitLevel), Hp: o.u(fUnitHealth), MaxHp: o.u(fUnitMaxHP), Faction: o.u(fUnitFaction),
 		UnitFlags: o.u(fUnitFlags), NpcFlags: o.u(fUnitNpc), DynFlags: o.u(fUnitDyn), Target: o.guid(fUnitTarget),
+		PathProgress: o.pathProgress(),
+		Period:       o.period(),
 	}
+}
+
+const fGOLevel = 16 // GAMEOBJECT_LEVEL: a transport's path period (ms)
+
+func (o *Obj) period() uint32 {
+	if o.progressAt.IsZero() || o.Type != TypeGameObject {
+		return 0
+	}
+	return o.u(fGOLevel)
+}
+
+func (o *Obj) pathProgress() uint32 {
+	p := o.period()
+	if p == 0 {
+		return 0
+	}
+	return uint32((uint64(o.progress) + uint64(time.Since(o.progressAt).Milliseconds())) % uint64(p))
 }
 
 func (s *Service) Nearby(_ context.Context, r *pb.NearbyRequest) (*pb.NearbyResponse, error) {

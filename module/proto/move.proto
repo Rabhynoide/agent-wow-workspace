@@ -42,6 +42,25 @@ message PathRequest {
   float z = 3;
   // Also return the points (every 2 yards).
   bool with_points = 4;
+  // Plan from (from_x, from_y, from_z) on map instead of our position, without avoiding monsters
+  // (travel planning).
+  bool from_set = 5;
+  uint32 map = 6;
+  float from_x = 7;
+  float from_y = 8;
+  float from_z = 9;
+  // Also return the areas crossed (AreaTable ids from the .map files).
+  bool with_areas = 10;
+  // An unreachable destination ends at the closest walkable point within this many yards (default
+  // 30): a boat's pier from its dock point.
+  float snap = 11;
+}
+
+// AreaSpan: the path runs through area from start to end (yards from the path start).
+message AreaSpan {
+  uint32 area = 1;
+  float start = 2;
+  float end = 3;
 }
 
 message PathPoint {
@@ -55,6 +74,9 @@ message PathResponse {
   float length = 2;
   string error = 3;
   repeated PathPoint pts = 4;
+  repeated AreaSpan areas = 5;
+  // Last point of the path (where the walk ends, on the ground).
+  PathPoint end = 6;
 }
 
 message LosRequest {

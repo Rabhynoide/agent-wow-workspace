@@ -22,7 +22,8 @@ const (
 
 // chestInSight returns the nearest chest not tried lately, nil when none (or in a detour already).
 func (r *run) chestInSight() *questpb.Chest {
-	if r.detour || time.Since(r.lastChestCheck) < 2*time.Second {
+	// Not on journeys: the walk to the Deeprun Tram stopped for crates in Stormwind.
+	if r.detour || r.travelling || time.Since(r.lastChestCheck) < 2*time.Second {
 		return nil
 	}
 	r.lastChestCheck = time.Now()

@@ -822,7 +822,12 @@ type Obj struct {
 	Auras []*Aura `protobuf:"bytes,18,rep,name=auras,proto3" json:"auras,omitempty"`
 	// Distance to where a moving monster is now, along its move (x, y, z and dist give its
 	// destination, as the server will place it): the spell range checks use both.
-	DistNow       float32 `protobuf:"fixed32,19,opt,name=dist_now,json=distNow,proto3" json:"dist_now,omitempty"`
+	DistNow float32 `protobuf:"fixed32,19,opt,name=dist_now,json=distNow,proto3" json:"dist_now,omitempty"`
+	// Moving transports (boats, zeppelins: game objects with UPDATEFLAG_TRANSPORT): time into their
+	// path now (ms, the server's GetPathProgress plus the time since it was sent; modulo period) and
+	// the path period (GAMEOBJECT_LEVEL).
+	PathProgress  uint32 `protobuf:"varint,20,opt,name=path_progress,json=pathProgress,proto3" json:"path_progress,omitempty"`
+	Period        uint32 `protobuf:"varint,21,opt,name=period,proto3" json:"period,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -986,6 +991,20 @@ func (x *Obj) GetAuras() []*Aura {
 func (x *Obj) GetDistNow() float32 {
 	if x != nil {
 		return x.DistNow
+	}
+	return 0
+}
+
+func (x *Obj) GetPathProgress() uint32 {
+	if x != nil {
+		return x.PathProgress
+	}
+	return 0
+}
+
+func (x *Obj) GetPeriod() uint32 {
+	if x != nil {
+		return x.Period
 	}
 	return 0
 }
@@ -1291,7 +1310,7 @@ const file_state_proto_rawDesc = "" +
 	"\tnpc_flags\x18\x06 \x01(\rR\bnpcFlags\x12!\n" +
 	"\fhostile_only\x18\a \x01(\bR\vhostileOnly\x12\x1d\n" +
 	"\n" +
-	"with_auras\x18\b \x01(\bR\twithAuras\"\xce\x03\n" +
+	"with_auras\x18\b \x01(\bR\twithAuras\"\x8b\x04\n" +
 	"\x03Obj\x12\x12\n" +
 	"\x04guid\x18\x01 \x01(\x04R\x04guid\x12\x14\n" +
 	"\x05entry\x18\x02 \x01(\rR\x05entry\x12\x12\n" +
@@ -1314,7 +1333,9 @@ const file_state_proto_rawDesc = "" +
 	"\n" +
 	"aura_state\x18\x11 \x01(\rR\tauraState\x12-\n" +
 	"\x05auras\x18\x12 \x03(\v2\x17.wowagent.state.v1.AuraR\x05auras\x12\x19\n" +
-	"\bdist_now\x18\x13 \x01(\x02R\adistNow\"R\n" +
+	"\bdist_now\x18\x13 \x01(\x02R\adistNow\x12#\n" +
+	"\rpath_progress\x18\x14 \x01(\rR\fpathProgress\x12\x16\n" +
+	"\x06period\x18\x15 \x01(\rR\x06period\"R\n" +
 	"\x0eNearbyResponse\x12*\n" +
 	"\x04objs\x18\x01 \x03(\v2\x16.wowagent.state.v1.ObjR\x04objs\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\rR\x05total\"Y\n" +

@@ -24,6 +24,9 @@ type Filter struct {
 	Partial bool
 	// Avoid: places the path keeps away from when it can (hostile monsters and their aggro range).
 	Avoid []Danger
+	// EndReach: with Partial, how far (yards, 2D) the closest walkable point to an unreachable
+	// destination may be (default 30): a boat's pier is farther from its dock point.
+	EndReach float32
 }
 
 // Danger is a disc (Recast space, 2D) a path pays to cross: up to AvoidWeight times its length at
@@ -368,7 +371,11 @@ func (m *Mesh) corridor(from, to V3, f Filter) (V3, V3, []*node, error) {
 		if !f.Partial {
 			return V3{}, V3{}, nil, ErrNoEndPoly
 		}
-		if eRef, ePt, ok = m.NearestPoly(to, f, 12, 30); !ok {
+		reach, vert := float32(30), float32(12)
+		if f.EndReach > 0 {
+			reach, vert = f.EndReach, max(12, f.EndReach/2)
+		}
+		if eRef, ePt, ok = m.NearestPoly(to, f, vert, reach); !ok {
 			return V3{}, V3{}, nil, ErrNoEndPoly
 		}
 	}
