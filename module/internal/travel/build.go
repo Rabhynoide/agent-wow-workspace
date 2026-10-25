@@ -246,7 +246,7 @@ func (b *builder) gridNodes(m uint32) error {
 func (b *builder) npcNodes(m uint32) error {
 	var ids []uint32
 	for id, n := range b.tab.Nodes {
-		if n.Map == m && (n.AllianceMount != 0 || n.HordeMount != 0) {
+		if n.Map == m && (n.AllianceMount != 0 || n.HordeMount != 0) && !questNode(n.Name) {
 			ids = append(ids, id)
 		}
 	}

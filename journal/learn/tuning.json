@@ -26,8 +26,9 @@
  "quest_defer": 0,
  "quest_defer_min": 4,
  "flee_dps": true,
- "flee_exposure": 6,
+ "flee_exposure": 8,
  "flee_reserve": 5,
  "flee_late": true,
- "flee_late_hold": 60
+ "flee_late_hold": 60,
+ "flee_exposure_fresh": 3
 }

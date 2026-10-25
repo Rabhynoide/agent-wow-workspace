@@ -833,7 +833,7 @@ func (s *Service) NearUnknown(ctx context.Context, r *pb.NearRequest) (*pb.NearR
 	}
 	for _, n := range s.graph.Nodes {
 		tn := s.tab.Nodes[n.Taxi]
-		if n.Kind != KindFlight || n.Map != me.Map || known[n.Taxi] || tn == nil || !usable(tn, ally) || dist(here, n.At()) > r.Radius {
+		if n.Kind != KindFlight || n.Map != me.Map || known[n.Taxi] || tn == nil || !usable(tn, ally) || questNode(n.Name) || dist(here, n.At()) > r.Radius {
 			continue
 		}
 		return &pb.NearResponse{Found: true, Node: n.Taxi, Name: n.Name, NpcEntry: n.Npc, At: pt(n.At())}, nil

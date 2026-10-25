@@ -3,6 +3,7 @@ package travel
 import (
 	"encoding/json"
 	"os"
+	"strings"
 
 	"wowagent/internal/dbc"
 )
@@ -37,6 +38,11 @@ type GNode struct {
 }
 
 func (n GNode) At() Point { return Point{n.Map, n.X, n.Y, n.Z} }
+
+// questNode: TaxiNodes used only by quest flights ("Quest - Wintergarde -> Stars' Rest (Start)") sit
+// on ordinary flight masters (Stormwind's) and cannot be learned: the bot went to "learn" them each time
+// it passed by (2026-10-25).
+func questNode(name string) bool { return strings.HasPrefix(name, "Quest") }
 
 // GLink is a walk between two nodes (both ways): navmesh length and its danger, the level of the
 // hostile monsters along it (builder.pathDanger).

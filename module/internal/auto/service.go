@@ -216,7 +216,18 @@ func (r *run) corpseRez(send func(uint32, []byte)) error {
 	}
 	r.step("running to corpse (%.0f,%.0f)", pos[1], pos[2])
 	if err := r.walk(pos[1], pos[2], pos[3], 30); err != nil {
-		return err
+		// The corpse can lie on a scrap of navmesh cut from the rest (a rock of the Gol'Bolar quarry:
+		// "no walkable path", the run of 2026-10-25 stopped there): reclaiming only needs us within
+		// reclaimDist, so go to the closest reachable point.
+		near, ok := r.reachableNear(pos, reclaimDist-2)
+		if !ok {
+			return err
+		}
+		r.note("corpse out of reach (%v): reclaiming from (%.0f,%.0f)", err, near[0], near[1])
+		if err := r.walk(near[0], near[1], near[2], 1.5); err != nil {
+			return err
+		}
+		return r.reclaim(send)
 	}
 	// The corpse often lies in the camp that killed us: come back to life at the edge of the
 	// reclaim radius (39 yards), as far as possible from the monsters (mod-playerbots does the same).
@@ -242,6 +253,29 @@ func (r *run) corpseRez(send func(uint32, []byte)) error {
 		}
 		break
 	}
+	return r.reclaim(send)
+}
+
+// reachableNear is the end of a walk from us towards pos stopping at the closest walkable point
+// within reach yards of it (move.path snap), false when there is none.
+func (r *run) reachableNear(pos [4]float32, reach float32) ([3]float32, bool) {
+	b, err := r.s.api.Brief(r.ctx)
+	if err != nil || b.Self == nil {
+		return [3]float32{}, false
+	}
+	me := b.Self
+	res, err := r.s.api.PathFromSnap(r.ctx, me.Map, me.X, me.Y, me.Z, pos[1], pos[2], pos[3], reach)
+	if err != nil || res.Error != "" || res.End == nil {
+		return [3]float32{}, false
+	}
+	if dist2(res.End.X, res.End.Y, pos[1], pos[2]) > reach {
+		return [3]float32{}, false
+	}
+	return [3]float32{res.End.X, res.End.Y, res.End.Z}, true
+}
+
+// reclaim asks for the corpse until we are alive.
+func (r *run) reclaim(send func(uint32, []byte)) error {
 	// The reclaim delay grows with repeated deaths (up to 2 minutes): keep trying for 4 minutes.
 	for i := 0; i < 80; i++ {
 		w := &wire.Writer{}

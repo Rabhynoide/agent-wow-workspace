@@ -118,10 +118,14 @@ Run de mesure lancé le 2026-10-25 : 10 → 12 depuis `warrior_human_10` avec le
      des monstres dans la base), interruption quand le guerrier l'aura (Pummel).
    - e. Prévision de la perte restante par les mesures du combat en cours (dps reçus × temps de vie restant
      de chaque monstre), mêlée à la prévision apprise.
-0bis. [ ] **Équiper dès le butin** (vu par l'utilisateur le 2026-10-25) : un sac ramassé à 19:08:11 n'a été
+0bis. [x] (2026-10-25, `gearIfLooted` après `combat.defend`) **Équiper dès le butin** (vu par l'utilisateur le 2026-10-25) : un sac ramassé à 19:08:11 n'a été
    équipé qu'à 19:12:54 (`progress.gear` n'est appelé qu'entre deux quêtes ou deux tours) ; pendant ce temps
    6 places de moins, et des butins laissés « sacs pleins » (9 au run 20261025_1628). Appeler `gearUp` au
    premier moment hors combat après un butin qui contient un sac ou une amélioration.
+0ter. [x] (2026-10-26, `travel.questNode`) **Nœuds de vol de quête** : TaxiNodes 285 et 287 (« Quest - Wintergarde -> Stars' Rest », « Quest - Valgarde
+   -> Westguard Keep ») sont sur la carte 0 au maître de vol de Stormwind ; `travel.near_unknown` les croit
+   inconnus et le bot va « apprendre » à chaque passage (run Benchwevujx, 2026-10-25). Exclure les noms
+   « Quest - » du graphe (cmd/travelgraph) et de near_unknown.
 1. [ ] **Monture au niveau 20** : achat chez le vendeur de montures de la race (humain : Katie Hunter,
    Eastvale Logging Camp, Elwynn ; apprentissage du sort Apprenti cavalier chez le maître d'équitation à
    côté, 35-40 po en 3.3.5 avec la réduction de réputation), puis l'utiliser pour toute marche longue en

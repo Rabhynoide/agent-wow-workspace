@@ -30,7 +30,10 @@ type Tuning struct {
 	// 45 % 18 %, over 45 % 4-9 %: the fixed margins fled too late against strong hits).
 	FleeDPS      bool    `json:"flee_dps"`
 	FleeExposure float64 `json:"flee_exposure"` // seconds the attackers keep hitting while we run
-	FleeReserve  float64 `json:"flee_reserve"`  // % of health kept on top
+	// + per fresh attacker beyond the first: the run of 2026-10-25 21:03 died twice in flights started
+	// at 39 % (4 murlocs, 6.8 %/s) and 35 % (3 troggs, 4.3 %/s) with 6 s and nothing more.
+	FleeExposureFresh float64 `json:"flee_exposure_fresh"`
+	FleeReserve       float64 `json:"flee_reserve"` // % of health kept on top
 	// FleeLate: a lost fight goes on while the weakest attacker in reach can die before our health
 	// reaches the flight threshold (combat lateHold): what dies before we run is ours. Before the
 	// damage is measured, we hold above FleeLateHold % of health.
@@ -109,7 +112,7 @@ type Tuning struct {
 //   - chase_margin 10 per fresh attacker beyond the first: Prowler + Young Forest Bear at level 9,
 //     flight started at 34 %, dead 8 s later.
 func Defaults() Tuning {
-	return Tuning{FleeMargin: 15, HighMargin: 10, ChaseMargin: 10, FleeDPS: true, FleeExposure: 6, FleeReserve: 5, FleeLate: true, FleeLateHold: 60, CrowdFlee: 3, CrowdLoss: 30, Avoid: false,
+	return Tuning{FleeMargin: 15, HighMargin: 10, ChaseMargin: 10, FleeDPS: true, FleeExposure: 8, FleeExposureFresh: 3, FleeReserve: 5, FleeLate: true, FleeLateHold: 60, CrowdFlee: 3, CrowdLoss: 30, Avoid: false,
 		PostponeAfterFlights: 1, Explore: 0.25, Learn: true, MinFights: 6, DeathCostS: 180, FleeCostS: 90,
 		FleeDeathPrior: 0.1, ExploreFleeDeath: 0.2,
 		AddCost: 1.5, PullAdapt: false, PullSize: 2, PullSizeMax: 4, PullUpAfter: 2,

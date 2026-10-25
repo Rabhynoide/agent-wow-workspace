@@ -101,7 +101,13 @@ func (s *Service) lateHold(me *statepb.SelfInfo, att []*statepb.Obj) (bool, stri
 		return false, ""
 	}
 	hp := float64(pct(me.Hp, me.MaxHp))
-	threshold, measured := s.dpsMargin(me, t)
+	fresh := 0
+	for _, a := range att {
+		if a.MaxHp > 0 && 2*a.Hp > a.MaxHp {
+			fresh++
+		}
+	}
+	threshold, measured := s.dpsMargin(me, t, fresh)
 	if !measured {
 		return hp >= t.FleeLateHold, "measuring"
 	}
@@ -229,7 +235,7 @@ func (s *Service) losing(me *statepb.SelfInfo, att []*statepb.Obj) (bool, float6
 	}
 	// Never later than the fixed margins: a monster that just joined has not hit us yet, so the
 	// measured damage is low while it is fresh (staying in borderline cases is the learned table's job).
-	if m, ok := s.dpsMargin(me, t); ok {
+	if m, ok := s.dpsMargin(me, t, fresh); ok {
 		margin = max(margin, m)
 	}
 	crowded := t.CrowdFlee > 0 && fresh >= max(t.CrowdFlee, s.pullSize.cap(t)+1)
@@ -237,8 +243,9 @@ func (s *Service) losing(me *statepb.SelfInfo, att []*statepb.Obj) (bool, float6
 }
 
 // dpsMargin is the flee margin from the damage we take (tuning flee_dps): what it costs during a
-// flight (dps × flee_exposure s, % of health) plus flee_reserve; ok false while not measured.
-func (s *Service) dpsMargin(me *statepb.SelfInfo, t tuning.Tuning) (float64, bool) {
+// flight (dps × (flee_exposure + flee_exposure_fresh per fresh attacker beyond the first) s, % of
+// health) plus flee_reserve; ok false while not measured.
+func (s *Service) dpsMargin(me *statepb.SelfInfo, t tuning.Tuning, fresh int) (float64, bool) {
 	if !t.FleeDPS || me.MaxHp == 0 {
 		return 0, false
 	}
@@ -246,7 +253,8 @@ func (s *Service) dpsMargin(me *statepb.SelfInfo, t tuning.Tuning) (float64, boo
 	if !ok {
 		return 0, false
 	}
-	return 100*dps*t.FleeExposure/float64(me.MaxHp) + t.FleeReserve, true
+	exposure := t.FleeExposure + t.FleeExposureFresh*float64(max(fresh-1, 0))
+	return 100*dps*exposure/float64(me.MaxHp) + t.FleeReserve, true
 }
 
 // dpsPct is the damage we take per second in % of our health (0 when not measured), for the logs.
