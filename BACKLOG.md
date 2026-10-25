@@ -103,6 +103,21 @@ Référence humaine (journal/sessions/20261014_humain_1-8.md) : **1 → 8 en ~60
 ## Prochaines étapes (validées par l'utilisateur le 2026-10-25, après le run de mesure en cours)
 Run de mesure lancé le 2026-10-25 : 10 → 12 depuis `warrior_human_10` avec les corrections du commit
 4cd16de (arrêts potions, quêtes proches d'abord), à comparer au run `20261025_1221_Benchrrtfnw` (162 min).
+0. [ ] **Combat contre plusieurs monstres** (idées de l'utilisateur du 2026-10-25 ; le point a, marge mesurée,
+   est fait, commit 467ea09, run de mesure en cours) :
+   - b. **Fuir au dernier moment sûr** au lieu de fuir dès que l'issue prévue est mauvaise : continuer tant que
+     la vie reste au-dessus de dps reçu × flee_exposure + flee_reserve ET que la cible peut mourir avant ce
+     seuil (sa vie ÷ nos dps < (vie − seuil) ÷ dps reçu) ; ce qu'on tue avant de fuir est acquis (XP,
+     quête, un monstre de moins au prochain essai), les dégâts faits aux survivants sont perdus (ils
+     récupèrent leur vie en rentrant). Mesurer : monstres tués avant chaque fuite, morts pendant les
+     fuites par vie au départ (rapport de bench).
+   - c. **Ordre de focus** : tuer d'abord le plus grand rapport dps qu'il nous inflige ÷ temps pour le tuer
+     (règle de Smith : minimise les dégâts totaux reçus), remplace la règle des 60 % (0 changement de cible
+     en 70 combats à plusieurs au run 20261025_1221). Demande nos propres dps mesurés.
+   - d. **Soigneurs** en tête du focus (incantations de soin vues par SMSG_SPELL_START + Spell.dbc, sorts
+     des monstres dans la base), interruption quand le guerrier l'aura (Pummel).
+   - e. Prévision de la perte restante par les mesures du combat en cours (dps reçus × temps de vie restant
+     de chaque monstre), mêlée à la prévision apprise.
 1. [ ] **Monture au niveau 20** : achat chez le vendeur de montures de la race (humain : Katie Hunter,
    Eastvale Logging Camp, Elwynn ; apprentissage du sort Apprenti cavalier chez le maître d'équitation à
    côté, 35-40 po en 3.3.5 avec la réduction de réputation), puis l'utiliser pour toute marche longue en
