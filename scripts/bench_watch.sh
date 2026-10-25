@@ -27,7 +27,7 @@ while true; do
   if [ -f "logs/bench_$name.state.json" ] || { ! pgrep -f "guidecheck -play -char $name" >/dev/null && ! pgrep -f "[b]ench.sh" >/dev/null; }; then
     echo "watch: bench $name ended ($(tail -1 "$log" | cut -c1-160))"; exit 0
   fi
-  deaths=$(tail -n +"$state_from" logs/state.log 2>/dev/null | grep -c "msg=teleported")
+  deaths=$(tail -n +"$state_from" logs/state.log 2>/dev/null | grep "msg=teleported" | grep -vc "dead=false")
   if [ "$deaths" -ge "$maxdeaths" ]; then
     echo "watch: $name died $deaths times ($(grep -E 'DEATH|died' "$log" | tail -1 | cut -c1-160))"; exit 1
   fi

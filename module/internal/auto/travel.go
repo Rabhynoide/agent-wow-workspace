@@ -34,11 +34,14 @@ func (r *run) goTo(mapID uint32, x, y, z float32) error {
 	if r.travelling {
 		return nil
 	}
-	b, err := r.snapshot()
-	if err != nil {
+	b, err := r.s.api.Brief(r.ctx)
+	if err != nil || b.Self == nil {
 		return err
 	}
 	me := b.Self
+	if me.Dead || me.Ghost {
+		return nil // corpse runs walk (a ghost cannot fly; r.snapshot fails when dead: recover broke)
+	}
 	if me.Map == mapID && dist2(me.X, me.Y, x, y) < travelMin { // dist2: plain distance
 		return nil
 	}

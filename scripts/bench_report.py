@@ -28,7 +28,7 @@ for l in level_log:
 done = sorted({int(q) for l in level_log for m in re.finditer(r"done \[([\d ]+)\]", l) for q in m.group(1).split()})
 skips = [re.sub(r"^.*SKIP ", "", l) for l in level_log if " SKIP " in l]
 # Each death ends with a teleport to the graveyard (the bench never uses the hearthstone).
-deaths = sum(1 for l in read("logs/state.log")[state_from - 1:] if "msg=teleported" in l)
+deaths = sum(1 for l in read("logs/state.log")[state_from - 1:] if "msg=teleported" in l and "dead=false" not in l)
 walk_fights = sum(1 for l in level_log if "attacked on the way" in l)
 vendor = sum(1 for l in level_log if "visiting a vendor" in l or "buying food" in l)
 grinds = sum(1 for l in level_log if " grind to " in l)

@@ -51,13 +51,16 @@ func (s *Service) ack(ctx context.Context, op uint32, payload []byte) bool {
 		s.st.mu.Lock()
 		me := s.st.obj(s.st.self, TypePlayer)
 		me.X, me.Y, me.Z, me.O, me.HasPos = x, y, z, o, true
+		// Dead (health 0, or 1 as a ghost) when released to the graveyard; alive for a hearthstone,
+		// which the bench reports counted as deaths (2026-10-25).
+		dead := me.u(fUnitHealth) <= 1
 		s.st.mu.Unlock()
 		w := &wire.Writer{}
 		w.PackedGUID(guid)
 		w.U32(counter)
 		w.U32(s.clock(ctx))
 		s.send(ctx, op, w.B)
-		slog.Info("teleported", "x", x, "y", y, "z", z)
+		slog.Info("teleported", "x", x, "y", y, "z", z, "dead", dead)
 	case uint32(opcode.SMSGNewWorld):
 		s.st.Handle(op, payload)
 		s.send(ctx, uint32(opcode.MSGMoveWorldportAck), nil)
