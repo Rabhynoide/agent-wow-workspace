@@ -24,9 +24,16 @@ type Tuning struct {
 	FleeMargin  float64 `json:"flee_margin"`  // % of health kept after the expected loss
 	HighMargin  float64 `json:"high_margin"`  // + per attacker 2+ levels above us
 	ChaseMargin float64 `json:"chase_margin"` // + per fresh attacker beyond the first
-	CrowdFlee   int     `json:"crowd_flee"`   // fresh attackers that make a crowd (0 = no crowd rule)
-	CrowdLoss   float64 `json:"crowd_loss"`   // expected loss over which a crowd makes us flee
-	Avoid       bool    `json:"avoid"`        // paths walk around monsters (move/avoid.go)
+	// FleeDPS: once the damage we take is measured (combat/dps.go), the margin is at least what that
+	// damage costs during a flight: dps × FleeExposure seconds + FleeReserve (% of health), when it is
+	// above the three fixed margins (2026-10-25: flights started under 30 % killed 41 % of the time, under
+	// 45 % 18 %, over 45 % 4-9 %: the fixed margins fled too late against strong hits).
+	FleeDPS      bool    `json:"flee_dps"`
+	FleeExposure float64 `json:"flee_exposure"` // seconds the attackers keep hitting while we run
+	FleeReserve  float64 `json:"flee_reserve"`  // % of health kept on top
+	CrowdFlee    int     `json:"crowd_flee"`    // fresh attackers that make a crowd (0 = no crowd rule)
+	CrowdLoss    float64 `json:"crowd_loss"`    // expected loss over which a crowd makes us flee
+	Avoid        bool    `json:"avoid"`         // paths walk around monsters (move/avoid.go)
 	// guidecheck: flights in a quest before it is postponed to the next level.
 	PostponeAfterFlights int `json:"postpone_after_flights"`
 	// Learning: in a borderline case (expected to survive, the rule says flee), stay and fight with
@@ -97,7 +104,7 @@ type Tuning struct {
 //   - chase_margin 10 per fresh attacker beyond the first: Prowler + Young Forest Bear at level 9,
 //     flight started at 34 %, dead 8 s later.
 func Defaults() Tuning {
-	return Tuning{FleeMargin: 15, HighMargin: 10, ChaseMargin: 10, CrowdFlee: 3, CrowdLoss: 30, Avoid: false,
+	return Tuning{FleeMargin: 15, HighMargin: 10, ChaseMargin: 10, FleeDPS: true, FleeExposure: 6, FleeReserve: 5, CrowdFlee: 3, CrowdLoss: 30, Avoid: false,
 		PostponeAfterFlights: 1, Explore: 0.25, Learn: true, MinFights: 6, DeathCostS: 180, FleeCostS: 90,
 		FleeDeathPrior: 0.1, ExploreFleeDeath: 0.2,
 		AddCost: 1.5, PullAdapt: false, PullSize: 2, PullSizeMax: 4, PullUpAfter: 2,

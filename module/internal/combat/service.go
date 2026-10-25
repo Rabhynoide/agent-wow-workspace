@@ -66,6 +66,7 @@ type Service struct {
 	fleeTab      *tuning.FleeTable       // learned borderline fights (journal/learn/flee.json)
 	decision     *fleeDecision           // borderline decision of the fight running (flee.go)
 	melee        *meleeLog
+	dmg          damageLog            // damage we take (dps.go)
 	abandoned    map[uint64]time.Time // targets given up (no damage dealt): not picked again for a while
 	crowded      map[uint64]time.Time // targets skipped for their adds: not pulled for a while, still fought back
 	fledAt       time.Time            // last flight (flee.go)
@@ -106,7 +107,17 @@ func (s *Service) OnPacket(_ context.Context, p *modv1.WorldPacket) (*emptypb.Em
 	case uint32(opcode.SMSGAttackswingBadfacing):
 		s.melee.refusedFacing()
 	case uint32(opcode.SMSGAttackerstateupdate):
-		s.melee.attackerState(s.guid, p.GetPayload())
+		if from, amount, onMe := s.melee.attackerState(s.guid, p.GetPayload()); onMe {
+			s.dmg.add(from, amount)
+		}
+	case uint32(opcode.SMSGSpellnonmeleedamagelog):
+		if from, amount, ok := spellDamage(s.guid, p.GetPayload()); ok {
+			s.dmg.add(from, amount)
+		}
+	case uint32(opcode.SMSGPeriodicauralog):
+		if from, amount, ok := periodicDamage(s.guid, p.GetPayload()); ok {
+			s.dmg.add(from, amount)
+		}
 	case uint32(opcode.SMSGSpellCooldown):
 		s.book.onCooldown(p.GetPayload(), s.guid)
 	case uint32(opcode.SMSGClearCooldown):

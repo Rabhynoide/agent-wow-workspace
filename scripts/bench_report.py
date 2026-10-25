@@ -40,6 +40,18 @@ lost = [re.sub(r'.*?(target=.*)', r'\1', l) for l in fights if "result=died" in 
 # Flights (combat/flee.go): the "fleeing" line (health, loss expected, attackers), then "fled" (safe).
 fled = [re.sub(r'.*?(hp=.*)', r'\1', l) for l in combat if "msg=fleeing " in l]
 escaped = sum(1 for l in combat if "msg=fled " in l)
+# Flights by health at their start, and deaths before the next "fled" (combat/dps.go, 2026-10-25: under
+# 30 % 41 % of the flights died, over 45 % 4-9 %).
+flight_hp = collections.defaultdict(lambda: [0, 0])
+_start = None
+for l in combat:
+    if "msg=fleeing " in l:
+        _start = int(re.search(r" hp=(\d+)", l).group(1))
+    elif _start is not None and ("msg=fled " in l or "result=died" in l):
+        b = "<30" if _start < 30 else "30-44" if _start < 45 else "45-74" if _start < 75 else "75+"
+        flight_hp[b][0] += 1
+        flight_hp[b][1] += "result=died" in l
+        _start = None
 # Fled zones (combat/zones.go): spawn points the grind skipped, pull choices that left monsters there.
 # Multi-target fights (combat/focus.go, near_attackers): target switches and spells cast with 2+ attackers.
 switches = sum(1 for l in combat if "msg=\"switching target\"" in l)
@@ -133,7 +145,8 @@ lines = [f"# Bench {name} — {race} {cls} {first_level} → {target} ({date})",
          f"- Argent final : {me.get('money', '?')} cuivres ; durabilité : {state.get('durabilityPct', '?')} %",
          f"- Sorts refusés (sort/code) : {dict(fails.most_common(8))}",
          f"- Combats : {len(fights)} ; perdus : {len(lost)}"] + [f"  - {l}" for l in lost] + [
-         f"- Fuites : {len(fled)} ; semées : {escaped}"] + [f"  - {l}" for l in fled] + [
+         f"- Fuites : {len(fled)} ; semées : {escaped} ; par vie au départ (fuites/morts) : " +
+         " ; ".join(f"{b} % {flight_hp[b][0]}/{flight_hp[b][1]}" for b in ("<30", "30-44", "45-74", "75+") if b in flight_hp)] + [f"  - {l}" for l in fled] + [
          f"- Combats à plusieurs : {group_fights} ; changements de cible : {switches} ; sorts lancés à plusieurs : {dict(group_casts.most_common(8))}",
          f"- Taille de pull : {len(sizes)} changements, finale {sizes[-1] if sizes else '—'} ; pulls de groupe (monstres: nombre) : {dict(sorted(group_pulls.items()))}",
          f"- Zones fuies évitées : points d'apparition {zone_spawns} ; choix de pull {zone_pulls}",

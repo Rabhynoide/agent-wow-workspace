@@ -136,7 +136,8 @@ func (s *Service) decide(me *statepb.SelfInfo, att []*statepb.Obj, loss float64)
 		nd := s.decision
 		s.mu.Unlock()
 		s.encounterDecision(nd) // judged when the encounter ends (encounter.go)
-		slog.Info("flee decision", "key", key, "stay", !flee, "how", how, "hp", pct(me.Hp, me.MaxHp), "loss", int(loss), "fresh", fresh, "p", p)
+		slog.Info("flee decision", "key", key, "stay", !flee, "how", how, "hp", pct(me.Hp, me.MaxHp), "loss", int(loss), "fresh", fresh, "p", p,
+			"dps_pct", s.dpsPct(me))
 	}
 	return flee
 }
@@ -169,8 +170,35 @@ func (s *Service) losing(me *statepb.SelfInfo, att []*statepb.Obj) (bool, float6
 	if fresh > 1 {
 		margin += t.ChaseMargin * float64(fresh-1)
 	}
+	// Never later than the fixed margins: a monster that just joined has not hit us yet, so the
+	// measured damage is low while it is fresh (staying in borderline cases is the learned table's job).
+	if m, ok := s.dpsMargin(me, t); ok {
+		margin = max(margin, m)
+	}
 	crowded := t.CrowdFlee > 0 && fresh >= max(t.CrowdFlee, s.pullSize.cap(t)+1)
 	return (crowded && loss > t.CrowdLoss) || loss > float64(pct(me.Hp, me.MaxHp))-margin, loss
+}
+
+// dpsMargin is the flee margin from the damage we take (tuning flee_dps): what it costs during a
+// flight (dps × flee_exposure s, % of health) plus flee_reserve; ok false while not measured.
+func (s *Service) dpsMargin(me *statepb.SelfInfo, t tuning.Tuning) (float64, bool) {
+	if !t.FleeDPS || me.MaxHp == 0 {
+		return 0, false
+	}
+	dps, ok := s.dmg.rate()
+	if !ok {
+		return 0, false
+	}
+	return 100*dps*t.FleeExposure/float64(me.MaxHp) + t.FleeReserve, true
+}
+
+// dpsPct is the damage we take per second in % of our health (0 when not measured), for the logs.
+func (s *Service) dpsPct(me *statepb.SelfInfo) float64 {
+	dps, ok := s.dmg.rate()
+	if !ok || me.MaxHp == 0 {
+		return 0
+	}
+	return math.Round(1000*dps/float64(me.MaxHp)) / 10
 }
 
 // crowd tells whether at least n attackers (tuning crowd_flee, 0 = no crowd rule) have more than half
@@ -210,7 +238,7 @@ func (s *Service) flee(ctx context.Context, j *job, me *statepb.SelfInfo, att []
 		way = "trail"
 	}
 	slog.Info("fleeing", "hp", pct(me.Hp, me.MaxHp), "loss_left", int(loss), "attackers", entries, "crowd", crowd(att, s.tuneGet().CrowdFlee),
-		"zone", [2]int{int(z.x), int(z.y)}, "way", way, "legs", len(legs))
+		"zone", [2]int{int(z.x), int(z.y)}, "way", way, "legs", len(legs), "dps_pct", s.dpsPct(me))
 	j.Update(func(st *pb.CombatStatus) { st.Doing = "fleeing" })
 	s.trail.pause(true)
 	end := -1

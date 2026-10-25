@@ -24,5 +24,8 @@
  "explore_safe_slack": 40,
  "explore_min_slack": 40,
  "quest_defer": 0,
- "quest_defer_min": 4
+ "quest_defer_min": 4,
+ "flee_dps": true,
+ "flee_exposure": 6,
+ "flee_reserve": 5
 }
