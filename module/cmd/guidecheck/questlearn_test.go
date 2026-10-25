@@ -61,16 +61,16 @@ func TestNextBatchPassesOverHardQuests(t *testing.T) {
 	entries := []routeQuest{{id: 62}, {id: 60}, {id: 76}, {id: 85}, {id: 99}}
 	ps := &playState{finished: map[uint32]bool{}, skipped: map[uint32]string{}, retryAt: map[uint32]uint32{},
 		waitUntil: map[uint32]time.Time{}, hard: map[uint32]bool{62: true}}
-	if batch, need, _ := nextBatch(entries, cache, nil, ps, 1, 1, "human", "warrior", 6, 2, 5); !reflect.DeepEqual(batch, []uint32{60, 85}) || need != 0 {
+	if batch, need, _ := nextBatch(entries, cache, nil, ps, 1, 1, "human", "warrior", 6, 2, 5, nil); !reflect.DeepEqual(batch, []uint32{60, 85}) || need != 0 {
 		t.Fatalf("batch %v need %d, want [60 85]: 62 and its follower 76 passed over", batch, need)
 	}
 	ps.finished[60], ps.finished[85] = true, true
-	if batch, need, _ := nextBatch(entries, cache, nil, ps, 1, 1, "human", "warrior", 6, 2, 5); !reflect.DeepEqual(batch, []uint32{62}) || need != 0 {
+	if batch, need, _ := nextBatch(entries, cache, nil, ps, 1, 1, "human", "warrior", 6, 2, 5, nil); !reflect.DeepEqual(batch, []uint32{62}) || need != 0 {
 		t.Fatalf("batch %v need %d, want [62]: nothing else left, tried before a grind", batch, need)
 	}
 	// Failed again: postponed to the next level like any quest, then the grind.
 	ps.retryAt[62] = 7
-	if batch, need, blocker := nextBatch(entries, cache, nil, ps, 1, 1, "human", "warrior", 6, 2, 5); batch != nil || need != 7 || blocker != 62 {
+	if batch, need, blocker := nextBatch(entries, cache, nil, ps, 1, 1, "human", "warrior", 6, 2, 5, nil); batch != nil || need != 7 || blocker != 62 {
 		t.Fatalf("batch %v need %d blocker %d, want grind to 7 for 62", batch, need, blocker)
 	}
 }

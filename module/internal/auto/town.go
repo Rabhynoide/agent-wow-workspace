@@ -124,15 +124,29 @@ func (r *run) shopTarget(force bool) *statepb.Obj {
 	if failed := r.s.repairFailedAt.Load(); failed > 0 && me.Money < failed+100 {
 		repair = false
 	}
+	// Food and potions count only when a vendor in sight sells them: the bot kept stopping for potions
+	// at an armorer, a trade supplier, an innkeeper and a fruit seller (bench 10 -> 12 of 2026-10-25,
+	// 12 % of the time at vendors).
+	var foodVendor, potionVendor *statepb.Obj
+	if needFood {
+		foodVendor = r.supplyVendor(me, vis.Objs, true)
+		needFood = foodVendor != nil
+	}
+	if needPotion {
+		potionVendor = r.supplyVendor(me, vis.Objs, false)
+		needPotion = potionVendor != nil
+	}
 	if !sell && !needFood && !needPotion && !repair {
 		return nil
 	}
 	// A repairer when repairing, else one that sells what we need (the innkeeper, not the smith), else
 	// the nearest.
 	npc := vis.Objs[0]
-	if !repair && (needFood || needPotion) {
-		if want := r.supplyVendor(me, vis.Objs, needFood); want != nil {
-			npc = want
+	if !repair {
+		if foodVendor != nil {
+			npc = foodVendor
+		} else if potionVendor != nil {
+			npc = potionVendor
 		}
 	}
 	for _, o := range vis.Objs {

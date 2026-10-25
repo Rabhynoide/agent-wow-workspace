@@ -74,6 +74,7 @@ var chainSuffix = regexp.MustCompile(`\s*\(\d+\)\s*$`)
 
 type checker struct {
 	db       *sql.DB
+	places   map[[2]uint32][]place // quest NPC spawns (nearfirst.go)
 	cache    map[uint32]*quest
 	problems []string
 	manual   map[uint32]string

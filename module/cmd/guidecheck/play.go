@@ -53,10 +53,13 @@ type playState struct {
 // (retryAt): stopping the route there left the next quests undone. Quest 76 (Jasperlode, level 10),
 // given by the Fargodeep quest done at level 6, stopped the route at level 7 for 34 minutes of grind
 // (2026-10-24); the user's rule: only red quests wait (above = 4, quest color by level difference).
-// It is the blocker only when nothing else can be done.
+// It is the blocker only when nothing else can be done. far (nil: none) marks the quests whose NPC is
+// far away (nearfirst.go): they come after the near ones, waiting ones included.
 func nextBatch(entries []routeQuest, cache map[uint32]*quest, manual map[uint32]string, ps *playState,
-	race, class uint32, raceName, className string, level uint32, above, n int) (batch []uint32, need, blocker uint32) {
+	race, class uint32, raceName, className string, level uint32, above, n int, far func(uint32) bool) (batch []uint32, need, blocker uint32) {
 	seen := map[uint32]bool{}
+	isFar := func(id uint32) bool { return far != nil && far(id) }
+	var farBatch, farWaiting []uint32 // doable but far, in route order
 	var laterNeed, laterID uint32 // the passed-over quest (too high or postponed) needing the lowest level
 	var hard []uint32             // learned hard quests passed over, in route order
 	var waiting []uint32          // quests waiting for a retry (waitUntil), in route order
@@ -65,6 +68,14 @@ func nextBatch(entries []routeQuest, cache map[uint32]*quest, manual map[uint32]
 		// grind (only red quests wait for a level).
 		if len(batch) == 0 && len(waiting) > 0 {
 			batch, need, blocker = waiting[:min(len(waiting), n)], 0, 0
+			return
+		}
+		if len(batch) == 0 && len(farBatch) > 0 {
+			batch, need, blocker = farBatch[:min(len(farBatch), n)], 0, 0
+			return
+		}
+		if len(batch) == 0 && len(farWaiting) > 0 {
+			batch, need, blocker = farWaiting[:min(len(farWaiting), n)], 0, 0
 			return
 		}
 		if len(batch) == 0 && len(hard) > 0 {
@@ -81,7 +92,7 @@ func nextBatch(entries []routeQuest, cache map[uint32]*quest, manual map[uint32]
 				continue
 			}
 			if e.gate > level {
-				if len(batch) == 0 {
+				if len(batch) == 0 && len(farBatch) == 0 {
 					return nil, e.gate, 0 // grind here, where the guide says so
 				}
 				return batch, 0, 0
@@ -95,7 +106,11 @@ func nextBatch(entries []routeQuest, cache map[uint32]*quest, manual map[uint32]
 		if time.Now().Before(ps.waitUntil[e.id]) {
 			seen[e.id] = true
 			if q.MinLevel <= int(level) {
-				waiting = append(waiting, e.id)
+				if isFar(e.id) {
+					farWaiting = append(farWaiting, e.id)
+				} else {
+					waiting = append(waiting, e.id)
+				}
 			}
 			continue // its monsters respawn, or it failed: the next quests first
 		}
@@ -124,6 +139,10 @@ func nextBatch(entries []routeQuest, cache map[uint32]*quest, manual map[uint32]
 		}
 		if ps.hard[e.id] {
 			hard = append(hard, e.id)
+			continue
+		}
+		if isFar(e.id) {
+			farBatch = append(farBatch, e.id)
 			continue
 		}
 		batch = append(batch, e.id)
@@ -462,6 +481,9 @@ type brief struct {
 		ClassID uint32  `json:"classId"`
 		Race    uint32  `json:"race"`
 	} `json:"self"`
+	Quests []struct {
+		ID uint32 `json:"id"`
+	} `json:"quests"`
 }
 
 // routeFiles picks the route of the race, then the common Alliance route (Horde routes: not converted yet).
@@ -604,7 +626,12 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 				detail("  quests passed over at level %d (learned failures): %v", me.Level, keys(ps.hard))
 			}
 		}
-		batch, need, blocker := nextBatch(c.entries, c.cache, c.manual, ps, race, class, raceName, className, me.Level, redAbove, 5)
+		taken := map[uint32]bool{}
+		for _, q := range b.Quests {
+			taken[q.ID] = true
+		}
+		batch, need, blocker := nextBatch(c.entries, c.cache, c.manual, ps, race, class, raceName, className, me.Level, redAbove, 5,
+			c.farFunc(me.Map, me.X, me.Y, taken))
 		levelBefore, xpBefore := me.Level, me.XP
 		switch {
 		case len(batch) > 0:
