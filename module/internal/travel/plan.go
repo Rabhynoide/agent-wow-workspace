@@ -65,14 +65,15 @@ type Leg struct {
 
 // Graph is what a plan is made from. Flight(a, b) gives the flight time and node path between two
 // known nodes (ok false: no route). Walk(a, b) checks a walk for real (navmesh, dangerous areas):
-// its time, or ok false when there is no safe path; it is called only for the walks of a candidate
-// plan, estimates (straight line × walkDetour) are used until then.
+// its time, or ok false when there is no safe path, or an error to stop planning (out of time); it
+// is called only for the walks of a candidate plan, estimates (straight line × walkDetour) are used
+// until then.
 type Graph struct {
 	Nodes   []FlightNode
 	Flight  func(a, b uint32) (secs float32, path []uint32, ok bool)
 	Portals []Portal
 	Hearth  *Point // bind point when the hearthstone is ready
-	Walk    func(a, b Point) (secs float32, ok bool)
+	Walk    func(a, b Point) (secs float32, ok bool, err error)
 }
 
 type vert struct {
@@ -128,7 +129,10 @@ func Plan(g Graph, start, goal Point) ([]Leg, float32, error) {
 			if _, done := checked[k]; done {
 				continue
 			}
-			s, ok := g.Walk(l.From, l.To)
+			s, ok, err := g.Walk(l.From, l.To)
+			if err != nil {
+				return nil, 0, err
+			}
 			checked[k] = walkRes{s, ok}
 			fresh = true
 		}

@@ -45,6 +45,8 @@ message PlanResponse {
   float seconds = 4;
   // Walking straight there, when possible (0 = no safe path).
   float walk_seconds = 5;
+  // Out of time (walks checked so far are kept): call again.
+  bool busy = 6;
 }
 
 message FlyRequest {

@@ -45,19 +45,21 @@ func (r *run) goTo(mapID uint32, x, y, z float32) error {
 	if me.Map == mapID && dist2(me.X, me.Y, x, y) < travelMin { // dist2: plain distance
 		return nil
 	}
-	plan, err := r.s.api.TravelPlan(r.ctx, mapID, x, y, z)
-	if err != nil {
-		if me.Map == mapID {
-			slog.Warn("travel plan failed, walking", "err", err)
-			return nil
+	// Planning checks walks for a while and may need several calls (busy). No safe way: no walk
+	// straight there either (it went through the Searing Gorge and died 3 times, 2026-10-25).
+	var plan *travelpb.PlanResponse
+	for try := 0; ; try++ {
+		plan, err = r.s.api.TravelPlan(r.ctx, mapID, x, y, z)
+		if err == nil && !plan.Busy {
+			break
 		}
-		return fmt.Errorf("travel to map %d: %v", mapID, err)
+		if try >= 8 {
+			return fmt.Errorf("too dangerous for now: no journey planned to (%.0f,%.0f) on map %d: %v %s", x, y, mapID, err, plan.GetReason())
+		}
+		r.step("planning the journey to (%.0f,%.0f) map %d", x, y, mapID)
 	}
 	if !plan.Ok {
-		if me.Map == mapID {
-			return nil // the walk says why
-		}
-		return fmt.Errorf("no way to (%.0f,%.0f) on map %d: %s", x, y, mapID, plan.Reason)
+		return fmt.Errorf("too dangerous for now: no safe way to (%.0f,%.0f) on map %d: %s", x, y, mapID, plan.Reason)
 	}
 	legs := plan.Legs
 	if n := len(legs); n > 0 && legs[n-1].Kind == "walk" && legs[n-1].To.Map == mapID {

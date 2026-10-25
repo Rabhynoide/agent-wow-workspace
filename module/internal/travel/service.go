@@ -3,6 +3,7 @@ package travel
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math"
@@ -60,6 +61,7 @@ type Service struct {
 	// boatsCache: transports of our faction with docks and piers (boatsvc.go)
 	boatsCache []*boat
 	boatsDone  bool
+	walks      map[walkCacheKey]walkCacheRes // walks checked this session
 
 	shows   chan []byte // SMSG_SHOWTAXINODES
 	learned chan struct{}
@@ -68,7 +70,7 @@ type Service struct {
 
 func Register(g grpc.ServiceRegistrar, s modv1.SessionClient) {
 	sv := &Service{s: s, api: api.C{S: s}, dir: "/logs", known: map[uint32]bool{}, masters: map[uint32]*worldpb.Spawn{},
-		enters: map[Point]*dbc.AreaTrigger{}, fixed: map[Point]Point{},
+		enters: map[Point]*dbc.AreaTrigger{}, fixed: map[Point]Point{}, walks: map[walkCacheKey]walkCacheRes{},
 		shows: make(chan []byte, 4), learned: make(chan struct{}, 4), replies: make(chan uint32, 4)}
 	dir := os.Getenv("DBC_DIR")
 	if dir == "" {
@@ -556,58 +558,108 @@ const (
 	dangerEnds  = 150
 )
 
-func (s *Service) checkWalk(ctx context.Context, level uint32) func(a, b Point) (float32, bool) {
-	return func(a, b Point) (float32, bool) {
+// errBusy: planning ran out of its time budget; the walks checked so far are kept and the next
+// call goes on (the core cancels module calls after 30 s: a plan from Dun Morogh to Elwynn timed out
+// and the walk that followed went through the Searing Gorge, 3 deaths, 2026-10-25).
+var errBusy = errors.New("busy")
+
+type walkCacheKey struct {
+	a, b  [4]int32
+	level uint32
+}
+
+type walkCacheRes struct {
+	secs float32
+	ok   bool
+}
+
+func quant(p Point) [4]int32 {
+	return [4]int32{int32(p.Map), int32(math.Round(float64(p.X) / 2)), int32(math.Round(float64(p.Y) / 2)), int32(math.Round(float64(p.Z) / 4))}
+}
+
+// planBudget: a plan stops checking walks after this long (errBusy), under the 30 s call limit.
+const planBudget = 20 * time.Second
+
+func (s *Service) checkWalk(level uint32, deadline time.Time) func(a, b Point) (float32, bool, error) {
+	return func(a, b Point) (float32, bool, error) {
 		s.mu.Lock()
 		tr := s.enters[b]
 		fix, fixed := s.fixed[b]
-		s.mu.Unlock()
 		if fixed {
 			b = fix
 		}
+		key := walkCacheKey{quant(a), quant(b), level}
+		cached, hit := s.walks[key]
+		s.mu.Unlock()
+		if hit {
+			return cached.secs, cached.ok, nil
+		}
 		if dist(a, b) < 30 && tr == nil {
-			return dist(a, b) / RunSpeed, true
+			return dist(a, b) / RunSpeed, true, nil
 		}
-		res, err := s.api.PathFrom(ctx, a.Map, a.X, a.Y, a.Z, b.X, b.Y, b.Z)
-		if tr != nil && !fixed {
-			// A portal: the walk must end inside its trigger.
-			ok := err == nil && res.Error == "" && res.End != nil && inTrigger(tr, Point{b.Map, res.End.X, res.End.Y, res.End.Z})
-			for _, spot := range triggerSpots(tr) {
-				if ok {
-					break
-				}
-				res, err = s.api.PathFrom(ctx, a.Map, a.X, a.Y, a.Z, spot.X, spot.Y, spot.Z)
-				ok = err == nil && res.Error == "" && res.End != nil && inTrigger(tr, Point{b.Map, res.End.X, res.End.Y, res.End.Z})
-			}
-			if !ok {
-				slog.Info("travel: no walk into the trigger", "from", a, "trigger", tr.ID)
-				return 0, false
-			}
-			end := Point{b.Map, res.End.X, res.End.Y, res.End.Z}
-			s.mu.Lock()
-			s.fixed[b] = end
-			s.mu.Unlock()
-			slog.Info("travel: trigger spot", "trigger", tr.ID, "spot", fmt.Sprintf("(%.1f,%.1f,%.1f)", end.X, end.Y, end.Z))
+		if time.Now().After(deadline) {
+			return 0, false, errBusy
 		}
-		if err != nil || res.Error != "" {
-			slog.Info("travel: no walk", "from", a, "to", b, "err", fmt.Sprint(err, res.GetError()))
-			return 0, false
+		secs, ok, err := s.walkFor(a, b, tr, fixed, level)
+		if err != nil {
+			return 0, false, err
 		}
-		for _, sp := range res.Areas {
-			if sp.End < dangerEnds || sp.Start > res.Length-dangerEnds {
-				continue
-			}
-			if lv := s.areaLevel(sp.Area); lv > int32(level)+dangerAbove {
-				name := ""
-				if ar := s.tab.Areas[sp.Area]; ar != nil {
-					name = ar.Name
-				}
-				slog.Info("travel: walk too dangerous", "from", a, "to", b, "area", name, "level", lv)
-				return 0, false
-			}
-		}
-		return res.Length / RunSpeed, true
+		s.mu.Lock()
+		s.walks[key] = walkCacheRes{secs, ok}
+		s.mu.Unlock()
+		return secs, ok, nil
 	}
+}
+
+// walkFor checks one walk with move.path (its own context: a canceled plan call must not turn the
+// walks it was checking into refusals).
+func (s *Service) walkFor(a, b Point, tr *dbc.AreaTrigger, fixed bool, level uint32) (float32, bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+	defer cancel()
+	res, err := s.api.PathFrom(ctx, a.Map, a.X, a.Y, a.Z, b.X, b.Y, b.Z)
+	if err != nil {
+		return 0, false, err
+	}
+	if tr != nil && !fixed {
+		// A portal: the walk must end inside its trigger.
+		ok := res.Error == "" && res.End != nil && inTrigger(tr, Point{b.Map, res.End.X, res.End.Y, res.End.Z})
+		for _, spot := range triggerSpots(tr) {
+			if ok {
+				break
+			}
+			if res, err = s.api.PathFrom(ctx, a.Map, a.X, a.Y, a.Z, spot.X, spot.Y, spot.Z); err != nil {
+				return 0, false, err
+			}
+			ok = res.Error == "" && res.End != nil && inTrigger(tr, Point{b.Map, res.End.X, res.End.Y, res.End.Z})
+		}
+		if !ok {
+			slog.Info("travel: no walk into the trigger", "from", a, "trigger", tr.ID)
+			return 0, false, nil
+		}
+		end := Point{b.Map, res.End.X, res.End.Y, res.End.Z}
+		s.mu.Lock()
+		s.fixed[b] = end
+		s.mu.Unlock()
+		slog.Info("travel: trigger spot", "trigger", tr.ID, "spot", fmt.Sprintf("(%.1f,%.1f,%.1f)", end.X, end.Y, end.Z))
+	}
+	if res.Error != "" {
+		slog.Info("travel: no walk", "from", a, "to", b, "err", res.Error)
+		return 0, false, nil
+	}
+	for _, sp := range res.Areas {
+		if sp.End < dangerEnds || sp.Start > res.Length-dangerEnds {
+			continue
+		}
+		if lv := s.areaLevel(sp.Area); lv > int32(level)+dangerAbove {
+			name := ""
+			if ar := s.tab.Areas[sp.Area]; ar != nil {
+				name = ar.Name
+			}
+			slog.Info("travel: walk too dangerous", "from", a, "to", b, "area", name, "level", lv)
+			return 0, false, nil
+		}
+	}
+	return res.Length / RunSpeed, true, nil
 }
 
 // Plan finds the fastest journey to the point.
@@ -639,7 +691,7 @@ func (s *Service) Plan(ctx context.Context, r *pb.PlanRequest) (*pb.PlanResponse
 		hearth = &b
 	}
 	s.mu.Unlock()
-	g := Graph{Flight: s.flightRoutes(known, ally), Portals: append(s.portals(ctx), s.boatPortals(ctx, ally)...), Walk: s.checkWalk(ctx, level)}
+	g := Graph{Flight: s.flightRoutes(known, ally), Portals: append(s.portals(ctx), s.boatPortals(ctx, ally)...), Walk: s.checkWalk(level, time.Now().Add(planBudget))}
 	if hearth != nil && s.hasItem(ctx, hearthItem) {
 		g.Hearth = hearth
 	}
@@ -656,7 +708,11 @@ func (s *Service) Plan(ctx context.Context, r *pb.PlanRequest) (*pb.PlanResponse
 	}
 	legs, total, err := Plan(g, start, goal)
 	out := &pb.PlanResponse{}
-	if direct, ok := g.Walk(start, goal); ok {
+	if errors.Is(err, errBusy) {
+		out.Busy, out.Reason = true, "planning not finished, call again"
+		return out, nil
+	}
+	if direct, ok, _ := g.Walk(start, goal); ok {
 		out.WalkSeconds = direct
 	}
 	if err != nil {

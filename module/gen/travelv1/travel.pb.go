@@ -280,7 +280,9 @@ type PlanResponse struct {
 	Legs    []*Leg                 `protobuf:"bytes,3,rep,name=legs,proto3" json:"legs,omitempty"`
 	Seconds float32                `protobuf:"fixed32,4,opt,name=seconds,proto3" json:"seconds,omitempty"`
 	// Walking straight there, when possible (0 = no safe path).
-	WalkSeconds   float32 `protobuf:"fixed32,5,opt,name=walk_seconds,json=walkSeconds,proto3" json:"walk_seconds,omitempty"`
+	WalkSeconds float32 `protobuf:"fixed32,5,opt,name=walk_seconds,json=walkSeconds,proto3" json:"walk_seconds,omitempty"`
+	// Out of time (walks checked so far are kept): call again.
+	Busy          bool `protobuf:"varint,6,opt,name=busy,proto3" json:"busy,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -348,6 +350,13 @@ func (x *PlanResponse) GetWalkSeconds() float32 {
 		return x.WalkSeconds
 	}
 	return 0
+}
+
+func (x *PlanResponse) GetBusy() bool {
+	if x != nil {
+		return x.Busy
+	}
+	return false
 }
 
 type FlyRequest struct {
@@ -864,13 +873,14 @@ const file_travel_proto_rawDesc = "" +
 	"\tland_dock\x18\v \x01(\v2\x19.wowagent.travel.v1.PointR\blandDock\"N\n" +
 	"\vPlanRequest\x12)\n" +
 	"\x02to\x18\x01 \x01(\v2\x19.wowagent.travel.v1.PointR\x02to\x12\x14\n" +
-	"\x05level\x18\x02 \x01(\rR\x05level\"\xa0\x01\n" +
+	"\x05level\x18\x02 \x01(\rR\x05level\"\xb4\x01\n" +
 	"\fPlanResponse\x12\x0e\n" +
 	"\x02ok\x18\x01 \x01(\bR\x02ok\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x12+\n" +
 	"\x04legs\x18\x03 \x03(\v2\x17.wowagent.travel.v1.LegR\x04legs\x12\x18\n" +
 	"\aseconds\x18\x04 \x01(\x02R\aseconds\x12!\n" +
-	"\fwalk_seconds\x18\x05 \x01(\x02R\vwalkSeconds\"\"\n" +
+	"\fwalk_seconds\x18\x05 \x01(\x02R\vwalkSeconds\x12\x12\n" +
+	"\x04busy\x18\x06 \x01(\bR\x04busy\"\"\n" +
 	"\n" +
 	"FlyRequest\x12\x14\n" +
 	"\x05nodes\x18\x01 \x03(\rR\x05nodes\"2\n" +

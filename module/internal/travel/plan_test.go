@@ -20,13 +20,13 @@ func TestPlanPortalAndFlight(t *testing.T) {
 			{Trigger: 2166, Name: "tram IF", Enter: tramIFTrig, Exit: ifSide},
 		},
 		Flight: func(a, b uint32) (float32, []uint32, bool) { return 0, nil, false },
-		Walk: func(a, b Point) (float32, bool) {
+		Walk: func(a, b Point) (float32, bool, error) {
 			walks++
 			// Long walks across the continent go through the Burning Steppes.
 			if dist(a, b) > 3000 && a.Map == 0 {
-				return 0, false
+				return 0, false, nil
 			}
-			return dist(a, b) * 1.1 / RunSpeed, true
+			return dist(a, b) * 1.1 / RunSpeed, true, nil
 		},
 	}
 	legs, _, err := Plan(g, elwynn, loch)
@@ -68,7 +68,7 @@ func TestPlanHearth(t *testing.T) {
 	home := Point{0, -9460, 60, 56}
 	g := Graph{
 		Flight: func(a, b uint32) (float32, []uint32, bool) { return 0, nil, false },
-		Walk:   func(a, b Point) (float32, bool) { return dist(a, b) / RunSpeed, true },
+		Walk:   func(a, b Point) (float32, bool, error) { return dist(a, b) / RunSpeed, true, nil },
 		Hearth: &home,
 	}
 	legs, _, err := Plan(g, far, Point{0, -9450, 70, 56})

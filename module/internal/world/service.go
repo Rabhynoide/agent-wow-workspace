@@ -208,7 +208,7 @@ func (s *Service) nameOf(ctx context.Context, q string, id int64) string {
 }
 
 func (s *Service) QuestInfo(ctx context.Context, r *pb.QuestInfoRequest) (*pb.QuestInfoResponse, error) {
-	cols := "q.ID, q.LogTitle, q.QuestLevel, q.MinLevel, q.QuestSortID, COALESCE(a.PrevQuestID,0), q.RewardNextQuest, q.RewardXPDifficulty, q.RewardMoney, q.LogDescription, COALESCE(a.SpecialFlags,0), q.StartItem, q.ItemDrop1, q.ItemDrop2, q.ItemDrop3, q.ItemDrop4"
+	cols := "q.ID, q.LogTitle, IF(q.QuestLevel<0, q.MinLevel, q.QuestLevel), q.MinLevel, q.QuestSortID, COALESCE(a.PrevQuestID,0), q.RewardNextQuest, q.RewardXPDifficulty, q.RewardMoney, q.LogDescription, COALESCE(a.SpecialFlags,0), q.StartItem, q.ItemDrop1, q.ItemDrop2, q.ItemDrop3, q.ItemDrop4"
 	for i := 1; i <= 4; i++ {
 		cols += fmt.Sprintf(", q.RequiredNpcOrGo%d, q.RequiredNpcOrGoCount%d", i, i)
 	}
@@ -411,7 +411,7 @@ func (s *Service) ids(ctx context.Context, q string, args ...any) []uint32 {
 func (s *Service) QuestsForNpc(ctx context.Context, r *pb.QuestsForNpcRequest) (*pb.QuestsForNpcResponse, error) {
 	out := &pb.QuestsForNpcResponse{}
 	for _, role := range []string{"start", "end"} {
-		rows, err := s.query(ctx, fmt.Sprintf("SELECT q.ID, q.LogTitle, q.QuestLevel, q.MinLevel FROM creature_quest%ser g JOIN quest_template q ON q.ID=g.quest WHERE g.id=? ORDER BY q.MinLevel, q.ID", role), r.Entry)
+		rows, err := s.query(ctx, fmt.Sprintf("SELECT q.ID, q.LogTitle, IF(q.QuestLevel<0, q.MinLevel, q.QuestLevel), q.MinLevel FROM creature_quest%ser g JOIN quest_template q ON q.ID=g.quest WHERE g.id=? ORDER BY q.MinLevel, q.ID", role), r.Entry)
 		if err != nil {
 			return nil, err
 		}

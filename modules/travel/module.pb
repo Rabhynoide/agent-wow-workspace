@@ -31,7 +31,7 @@ EmptyProtoPZ.google.golang.org/protobuf/types/known/emptypbø¢GPBªGoogle.P
 SendPacket%.agentwow.module.v1.SendPacketRequest.google.protobuf.EmptyE
 GetClock.google.protobuf.Empty!.agentwow.module.v1.ClockResponsea
 InvokeModule'.agentwow.module.v1.InvokeModuleRequest(.agentwow.module.v1.InvokeModuleResponseB5Z3github.com/agent-wow/agent-wow/pkg/modules/v1;modv1bproto3
-Õ
+é
 travel.protowowagent.travel.v1api/module/v1/session.protogoogle/protobuf/empty.proto"C
 Point
 map (Rmap
@@ -53,13 +53,14 @@ SendPacket%.agentwow.module.v1.SendPacketRequest.google.protobuf.EmptyE
 	land_dock (2.wowagent.travel.v1.PointRlandDock"N
 PlanRequest)
 to (2.wowagent.travel.v1.PointRto
-level (Rlevel" 
+level (Rlevel"´
 PlanResponse
 ok (Rok
 reason (	Rreason+
 legs (2.wowagent.travel.v1.LegRlegs
 seconds (Rseconds!
-walk_seconds (RwalkSeconds""
+walk_seconds (RwalkSeconds
+busy (Rbusy""
 
 FlyRequest
 nodes (Rnodes"2
