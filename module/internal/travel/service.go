@@ -9,6 +9,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"sort"
 	"sync"
 	"time"
 
@@ -19,7 +20,6 @@ import (
 
 	statepb "wowagent/gen/statev1"
 	pb "wowagent/gen/travelv1"
-	worldpb "wowagent/gen/worldv1"
 	"wowagent/internal/api"
 	"wowagent/internal/dbc"
 	"wowagent/internal/moveio"
@@ -42,9 +42,11 @@ type Service struct {
 	api api.C
 	dir string // where the known nodes are kept (/logs)
 
-	tab       *dbc.Travel
-	tabErr    error
-	zoneLevel map[uint32]int32 // zone -> lowest exploration level of its areas
+	tab    *dbc.Travel
+	tabErr error
+	// graph: the travel graph computed offline (cmd/travelgraph, graph.go)
+	graph    *TravelGraph
+	graphErr error
 
 	mu       sync.Mutex
 	guid     uint64
@@ -52,12 +54,6 @@ type Service struct {
 	loaded   bool
 	bind     *Point
 	hearthAt time.Time
-	masters  map[uint32]*worldpb.Spawn // node -> its flight master (nil: none found)
-	ports    []*worldpb.Teleport
-	// enters: area trigger of each portal entry point; fixed: the ground point inside it we can walk
-	// to (the trigger centre floats above the floor: the Stormwind tram entrance is 8 yards up)
-	enters map[Point]*dbc.AreaTrigger
-	fixed  map[Point]Point
 	// boatsCache: transports of our faction with docks and piers (boatsvc.go)
 	boatsCache []*boat
 	boatsDone  bool
@@ -69,8 +65,7 @@ type Service struct {
 }
 
 func Register(g grpc.ServiceRegistrar, s modv1.SessionClient) {
-	sv := &Service{s: s, api: api.C{S: s}, dir: "/logs", known: map[uint32]bool{}, masters: map[uint32]*worldpb.Spawn{},
-		enters: map[Point]*dbc.AreaTrigger{}, fixed: map[Point]Point{}, walks: map[walkCacheKey]walkCacheRes{},
+	sv := &Service{s: s, api: api.C{S: s}, dir: "/logs", known: map[uint32]bool{}, walks: map[walkCacheKey]walkCacheRes{},
 		shows: make(chan []byte, 4), learned: make(chan struct{}, 4), replies: make(chan uint32, 4)}
 	dir := os.Getenv("DBC_DIR")
 	if dir == "" {
@@ -80,34 +75,17 @@ func Register(g grpc.ServiceRegistrar, s modv1.SessionClient) {
 	if sv.tabErr != nil {
 		slog.Error("travel tables", "err", sv.tabErr)
 	} else {
-		sv.zoneLevel = zoneLevels(sv.tab)
+	}
+	gpath := os.Getenv("TRAVEL_GRAPH")
+	if gpath == "" {
+		gpath = "/travel/graph.json"
+	}
+	if sv.graph, sv.graphErr = LoadGraph(gpath); sv.graphErr != nil {
+		slog.Error("travel graph (go run ./cmd/travelgraph)", "err", sv.graphErr)
+	} else {
+		slog.Info("travel graph", "nodes", len(sv.graph.Nodes), "links", len(sv.graph.Links), "built", sv.graph.Built)
 	}
 	pb.RegisterTravelServer(g, sv)
-}
-
-func zoneLevels(t *dbc.Travel) map[uint32]int32 {
-	out := map[uint32]int32{}
-	for _, a := range t.Areas {
-		if a.Zone != 0 && a.Level > 0 && (out[a.Zone] == 0 || a.Level < out[a.Zone]) {
-			out[a.Zone] = a.Level
-		}
-	}
-	return out
-}
-
-// areaLevel is the exploration level of an area, or of its zone's easiest area.
-func (s *Service) areaLevel(id uint32) int32 {
-	a := s.tab.Areas[id]
-	if a == nil {
-		return 0
-	}
-	if a.Level > 0 {
-		return a.Level
-	}
-	if a.Zone == 0 {
-		return s.zoneLevel[a.ID]
-	}
-	return s.zoneLevel[a.Zone]
 }
 
 func (s *Service) BeforeLogout(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
@@ -253,27 +231,6 @@ func usable(n *dbc.TaxiNode, ally bool) bool {
 		return n.AllianceMount != 0
 	}
 	return n.HordeMount != 0
-}
-
-// master finds the flight master of a node (spawn with the flight master flag within 60 yards).
-func (s *Service) master(ctx context.Context, n *dbc.TaxiNode) *worldpb.Spawn {
-	s.mu.Lock()
-	m, ok := s.masters[n.ID]
-	s.mu.Unlock()
-	if ok {
-		return m
-	}
-	var r worldpb.FindNpcResponse
-	if err := s.api.Call(ctx, "world", "find_npc", &worldpb.FindNpcRequest{MapFilter: true, Map: n.Map, X: n.X, Y: n.Y, Radius: 60, Max: 1, NpcFlags: npcFlightMaster}, &r); err != nil {
-		return nil
-	}
-	if len(r.Spawns) > 0 {
-		m = r.Spawns[0]
-	}
-	s.mu.Lock()
-	s.masters[n.ID] = m
-	s.mu.Unlock()
-	return m
 }
 
 // npcNear returns the nearest unit with these NPC flags within radius.
@@ -486,39 +443,6 @@ func (s *Service) flightRoutes(known map[uint32]bool, ally bool) func(a, b uint3
 	}
 }
 
-// Ways between the open-world maps: Eastern Kingdoms, Kalimdor, Outland, Northrend, Deeprun Tram.
-var openMaps = map[uint32]bool{0: true, 1: true, 530: true, 571: true, 369: true}
-
-func (s *Service) portals(ctx context.Context) []Portal {
-	s.mu.Lock()
-	ports := s.ports
-	s.mu.Unlock()
-	if ports == nil {
-		var r worldpb.TeleportsResponse
-		if err := s.api.Call(ctx, "world", "teleports", &emptypb.Empty{}, &r); err != nil {
-			slog.Warn("travel: teleports", "err", err)
-			return nil
-		}
-		ports = r.Teleports
-		s.mu.Lock()
-		s.ports = ports
-		s.mu.Unlock()
-	}
-	var out []Portal
-	for _, t := range ports {
-		tr := s.tab.Triggers[t.Id]
-		if tr == nil || !openMaps[tr.Map] || !openMaps[t.Map] {
-			continue
-		}
-		enter := Point{tr.Map, tr.X, tr.Y, tr.Z}
-		s.mu.Lock()
-		s.enters[enter] = tr
-		s.mu.Unlock()
-		out = append(out, Portal{Trigger: t.Id, Name: t.Name, Enter: enter, Exit: Point{t.Map, t.X, t.Y, t.Z}})
-	}
-	return out
-}
-
 // inTrigger mirrors Player::IsInAreaTriggerRadius with no tolerance (CMSG_AREATRIGGER), with a
 // margin of a yard.
 func inTrigger(tr *dbc.AreaTrigger, p Point) bool {
@@ -550,11 +474,12 @@ func triggerSpots(tr *dbc.AreaTrigger) []Point {
 	return out
 }
 
-// Danger rule of the walks: no point farther than dangerEnds from both ends in an area more than
-// dangerAbove levels above ours (the walk from Elwynn to Loch Modan went through the Burning Steppes,
-// level 50+, and died: bench 8 -> 12 of 2026-10-24).
+// Danger rule of the walks: no point farther than dangerEnds from both ends in an area whose hostile
+// monsters are typically more than dangerAbove levels above ours (TravelGraph.MobLevel; the walk from
+// Elwynn to Loch Modan went through the Burning Steppes, monsters 50+, and died: bench 8 -> 12 of
+// 2026-10-24). +4 is still orange: the user's rule does orange quests, not red ones.
 const (
-	dangerAbove = 5
+	dangerAbove = 4
 	dangerEnds  = 150
 )
 
@@ -582,25 +507,20 @@ const planBudget = 20 * time.Second
 
 func (s *Service) checkWalk(level uint32, deadline time.Time) func(a, b Point) (float32, bool, error) {
 	return func(a, b Point) (float32, bool, error) {
-		s.mu.Lock()
-		tr := s.enters[b]
-		fix, fixed := s.fixed[b]
-		if fixed {
-			b = fix
-		}
 		key := walkCacheKey{quant(a), quant(b), level}
+		s.mu.Lock()
 		cached, hit := s.walks[key]
 		s.mu.Unlock()
 		if hit {
 			return cached.secs, cached.ok, nil
 		}
-		if dist(a, b) < 30 && tr == nil {
+		if dist(a, b) < 30 {
 			return dist(a, b) / RunSpeed, true, nil
 		}
 		if time.Now().After(deadline) {
 			return 0, false, errBusy
 		}
-		secs, ok, err := s.walkFor(a, b, tr, fixed, level)
+		secs, ok, err := s.walkFor(a, b, level)
 		if err != nil {
 			return 0, false, err
 		}
@@ -613,44 +533,26 @@ func (s *Service) checkWalk(level uint32, deadline time.Time) func(a, b Point) (
 
 // walkFor checks one walk with move.path (its own context: a canceled plan call must not turn the
 // walks it was checking into refusals).
-func (s *Service) walkFor(a, b Point, tr *dbc.AreaTrigger, fixed bool, level uint32) (float32, bool, error) {
+func (s *Service) walkFor(a, b Point, level uint32) (float32, bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 	defer cancel()
 	res, err := s.api.PathFrom(ctx, a.Map, a.X, a.Y, a.Z, b.X, b.Y, b.Z)
 	if err != nil {
 		return 0, false, err
 	}
-	if tr != nil && !fixed {
-		// A portal: the walk must end inside its trigger.
-		ok := res.Error == "" && res.End != nil && inTrigger(tr, Point{b.Map, res.End.X, res.End.Y, res.End.Z})
-		for _, spot := range triggerSpots(tr) {
-			if ok {
-				break
-			}
-			if res, err = s.api.PathFrom(ctx, a.Map, a.X, a.Y, a.Z, spot.X, spot.Y, spot.Z); err != nil {
-				return 0, false, err
-			}
-			ok = res.Error == "" && res.End != nil && inTrigger(tr, Point{b.Map, res.End.X, res.End.Y, res.End.Z})
-		}
-		if !ok {
-			slog.Info("travel: no walk into the trigger", "from", a, "trigger", tr.ID)
-			return 0, false, nil
-		}
-		end := Point{b.Map, res.End.X, res.End.Y, res.End.Z}
-		s.mu.Lock()
-		s.fixed[b] = end
-		s.mu.Unlock()
-		slog.Info("travel: trigger spot", "trigger", tr.ID, "spot", fmt.Sprintf("(%.1f,%.1f,%.1f)", end.X, end.Y, end.Z))
-	}
 	if res.Error != "" {
 		slog.Info("travel: no walk", "from", a, "to", b, "err", res.Error)
+		return 0, false, nil
+	}
+	if res.End != nil && dist(Point{b.Map, res.End.X, res.End.Y, res.End.Z}, b) > 5 {
+		slog.Info("travel: walk ends short", "from", a, "to", b)
 		return 0, false, nil
 	}
 	for _, sp := range res.Areas {
 		if sp.End < dangerEnds || sp.Start > res.Length-dangerEnds {
 			continue
 		}
-		if lv := s.areaLevel(sp.Area); lv > int32(level)+dangerAbove {
+		if lv := s.graph.MobLevel(s.tab, sp.Area); lv > int32(level)+dangerAbove {
 			name := ""
 			if ar := s.tab.Areas[sp.Area]; ar != nil {
 				name = ar.Name
@@ -662,14 +564,92 @@ func (s *Service) walkFor(a, b Point, tr *dbc.AreaTrigger, fixed bool, level uin
 	return res.Length / RunSpeed, true, nil
 }
 
+// Joining walks: the start is joined to the destination directly when closer than directWalk, and to
+// the nearGraph graph points closest to it within nearReach (the 2 closest when none is that close).
+const (
+	directWalk = 1200
+	nearGraph  = 5
+	nearReach  = 1200
+)
+
+// graphFor builds the plan graph: computed walks safe at our level, flights between the known nodes
+// we can use, portals and boats.
+func (s *Service) graphFor(ctx context.Context, level uint32, ally bool, known map[uint32]bool) Graph {
+	gr := s.graph
+	g := baseGraph(gr, level)
+	routes := s.flightRoutes(known, ally)
+	var fl []int
+	for i, n := range gr.Nodes {
+		if tn := s.tab.Nodes[n.Taxi]; n.Kind == KindFlight && known[n.Taxi] && tn != nil && usable(tn, ally) {
+			fl = append(fl, i)
+		}
+	}
+	for _, i := range fl {
+		for _, j := range fl {
+			ni, nj := gr.Nodes[i], gr.Nodes[j]
+			if secs, path, ok := routes(ni.Taxi, nj.Taxi); ok && i != j {
+				g.Adj[i] = append(g.Adj[i], Edge{To: j, Leg: Leg{Kind: "fly", From: g.Pts[i], To: g.Pts[j], Nodes: path,
+					Npc: ni.Npc, Seconds: secs + flightCost, Name: ni.Name + " -> " + nj.Name}})
+			}
+		}
+	}
+	for from, es := range s.boatEdges(ctx, ally) {
+		g.Adj[from] = append(g.Adj[from], es...)
+	}
+	return g
+}
+
+// baseGraph: the computed walks safe at a level, the portals, and the joining points.
+func baseGraph(gr *TravelGraph, level uint32) Graph {
+	g := Graph{Pts: make([]Point, len(gr.Nodes)), Adj: make([][]Edge, len(gr.Nodes)), Direct: directWalk}
+	for i, n := range gr.Nodes {
+		g.Pts[i] = n.At()
+	}
+	maxLv := int32(level) + dangerAbove
+	for _, l := range gr.Links {
+		if l.Lv > maxLv {
+			continue
+		}
+		a, b := g.Pts[l.A], g.Pts[l.B]
+		g.Adj[l.A] = append(g.Adj[l.A], Edge{To: l.B, Leg: Leg{Kind: "walk", From: a, To: b, Seconds: l.Len / RunSpeed}})
+		g.Adj[l.B] = append(g.Adj[l.B], Edge{To: l.A, Leg: Leg{Kind: "walk", From: b, To: a, Seconds: l.Len / RunSpeed}})
+	}
+	for _, p := range gr.Portals {
+		g.Adj[p.Enter] = append(g.Adj[p.Enter], Edge{To: p.Exit, Leg: Leg{Kind: "portal", From: g.Pts[p.Enter], To: g.Pts[p.Exit],
+			Trigger: p.Trigger, Seconds: portalCost, Name: p.Name}})
+	}
+	g.Near = func(p Point) []int {
+		type cand struct {
+			i int
+			d float32
+		}
+		var cs []cand
+		for i, q := range g.Pts {
+			if q.Map == p.Map {
+				cs = append(cs, cand{i, dist2D(p, q)})
+			}
+		}
+		sort.Slice(cs, func(a, b int) bool { return cs[a].d < cs[b].d })
+		var out []int
+		for _, c := range cs {
+			if len(out) >= nearGraph || (c.d > nearReach && len(out) >= 2) {
+				break
+			}
+			out = append(out, c.i)
+		}
+		return out
+	}
+	return g
+}
+
 // Plan finds the fastest journey to the point.
 func (s *Service) Plan(ctx context.Context, r *pb.PlanRequest) (*pb.PlanResponse, error) {
 	me, err := s.self(ctx)
 	if err != nil {
 		return &pb.PlanResponse{Reason: err.Error()}, nil
 	}
-	if s.tabErr != nil {
-		return &pb.PlanResponse{Reason: s.tabErr.Error()}, nil
+	if s.tabErr != nil || s.graphErr != nil {
+		return &pb.PlanResponse{Reason: fmt.Sprint("travel data: ", s.tabErr, s.graphErr)}, nil
 	}
 	if r.To == nil {
 		return &pb.PlanResponse{Reason: "no destination"}, nil
@@ -691,20 +671,10 @@ func (s *Service) Plan(ctx context.Context, r *pb.PlanRequest) (*pb.PlanResponse
 		hearth = &b
 	}
 	s.mu.Unlock()
-	g := Graph{Flight: s.flightRoutes(known, ally), Portals: append(s.portals(ctx), s.boatPortals(ctx, ally)...), Walk: s.checkWalk(level, time.Now().Add(planBudget))}
+	g := s.graphFor(ctx, level, ally, known)
+	g.Walk = s.checkWalk(level, time.Now().Add(planBudget))
 	if hearth != nil && s.hasItem(ctx, hearthItem) {
 		g.Hearth = hearth
-	}
-	for id := range known {
-		n := s.tab.Nodes[id]
-		if n == nil || !usable(n, ally) || !openMaps[n.Map] {
-			continue
-		}
-		m := s.master(ctx, n)
-		if m == nil {
-			continue
-		}
-		g.Nodes = append(g.Nodes, FlightNode{ID: id, Name: n.Name, At: Point{m.Map, m.X, m.Y, m.Z}, NpcEnt: m.Entry})
 	}
 	legs, total, err := Plan(g, start, goal)
 	out := &pb.PlanResponse{}
@@ -712,24 +682,24 @@ func (s *Service) Plan(ctx context.Context, r *pb.PlanRequest) (*pb.PlanResponse
 		out.Busy, out.Reason = true, "planning not finished, call again"
 		return out, nil
 	}
-	if direct, ok, _ := g.Walk(start, goal); ok {
-		out.WalkSeconds = direct
+	// Walking all the way (graph walks only), for comparison.
+	wg := g
+	wg.Hearth, wg.Adj = nil, make([][]Edge, len(g.Adj))
+	for i, es := range g.Adj {
+		for _, e := range es {
+			if e.Leg.Kind == "walk" {
+				wg.Adj[i] = append(wg.Adj[i], e)
+			}
+		}
+	}
+	if _, secs, werr := Plan(wg, start, goal); werr == nil {
+		out.WalkSeconds = secs
 	}
 	if err != nil {
 		out.Reason = err.Error()
 		return out, nil
 	}
 	out.Ok, out.Seconds = true, total
-	s.mu.Lock()
-	for i := range legs {
-		if f, ok := s.fixed[legs[i].To]; ok && legs[i].Kind == "walk" {
-			legs[i].To = f
-		}
-		if f, ok := s.fixed[legs[i].From]; ok && legs[i].Kind == "portal" {
-			legs[i].From = f
-		}
-	}
-	s.mu.Unlock()
 	for _, l := range legs {
 		out.Legs = append(out.Legs, &pb.Leg{Kind: l.Kind, From: pt(l.From), To: pt(l.To), Nodes: l.Nodes, Trigger: l.Trigger,
 			NpcEntry: l.Npc, Seconds: l.Seconds, Name: l.Name, Transport: l.Transport, Dock: pt(l.Dock), LandDock: pt(l.LandDock)})
@@ -853,15 +823,15 @@ func (s *Service) NearUnknown(ctx context.Context, r *pb.NearRequest) (*pb.NearR
 	s.mu.Lock()
 	known := s.known
 	s.mu.Unlock()
-	for id, n := range s.tab.Nodes {
-		if n.Map != me.Map || known[id] || !usable(n, ally) || dist(here, Point{n.Map, n.X, n.Y, n.Z}) > r.Radius+60 {
+	if s.graph == nil {
+		return &pb.NearResponse{}, nil
+	}
+	for _, n := range s.graph.Nodes {
+		tn := s.tab.Nodes[n.Taxi]
+		if n.Kind != KindFlight || n.Map != me.Map || known[n.Taxi] || tn == nil || !usable(tn, ally) || dist(here, n.At()) > r.Radius {
 			continue
 		}
-		m := s.master(ctx, n)
-		if m == nil || dist(here, Point{m.Map, m.X, m.Y, m.Z}) > r.Radius {
-			continue
-		}
-		return &pb.NearResponse{Found: true, Node: id, Name: n.Name, NpcEntry: m.Entry, At: &pb.Point{Map: m.Map, X: m.X, Y: m.Y, Z: m.Z}}, nil
+		return &pb.NearResponse{Found: true, Node: n.Taxi, Name: n.Name, NpcEntry: n.Npc, At: pt(n.At())}, nil
 	}
 	return &pb.NearResponse{}, nil
 }

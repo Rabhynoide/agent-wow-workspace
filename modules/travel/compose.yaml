@@ -6,6 +6,8 @@ services:
         CMD: travel
     environment:
       DBC_DIR: /dbc
+      TRAVEL_GRAPH: /travel/graph.json
     volumes:
       - ../../logs:/logs
       - ../../assets/dbc:/dbc:ro
+      - ../../assets/travel:/travel:ro

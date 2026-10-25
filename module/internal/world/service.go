@@ -613,3 +613,32 @@ func (s *Service) Transports(ctx context.Context, _ *emptypb.Empty) (*pb.Transpo
 	}
 	return out, nil
 }
+
+// SpawnLevel is a creature spawn with its level range and faction (offline tools: travelgraph).
+type SpawnLevel struct {
+	X, Y, Z              float32
+	MinLevel, MaxLevel   uint32
+	Faction, Rank, Entry uint32
+	Wander               float32
+	UnitFlags            uint32
+}
+
+// SpawnLevels lists the creature spawns of a map, without those of game events.
+func (s *Service) SpawnLevels(ctx context.Context, mapID uint32) ([]SpawnLevel, error) {
+	rows, err := s.query(ctx, `SELECT c.position_x, c.position_y, c.position_z, ct.minlevel, ct.maxlevel, ct.faction, ct.rank, ct.entry, c.wander_distance, ct.unit_flags
+		FROM creature c JOIN creature_template ct ON ct.entry=c.id
+		WHERE c.map=? AND NOT EXISTS (SELECT 1 FROM game_event_creature g WHERE g.guid=c.guid AND g.eventEntry>0)`, mapID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []SpawnLevel
+	for rows.Next() {
+		var sp SpawnLevel
+		if err := rows.Scan(&sp.X, &sp.Y, &sp.Z, &sp.MinLevel, &sp.MaxLevel, &sp.Faction, &sp.Rank, &sp.Entry, &sp.Wander, &sp.UnitFlags); err != nil {
+			return nil, err
+		}
+		out = append(out, sp)
+	}
+	return out, rows.Err()
+}

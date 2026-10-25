@@ -65,8 +65,8 @@ func (r *run) goTo(mapID uint32, x, y, z float32) error {
 	if n := len(legs); n > 0 && legs[n-1].Kind == "walk" && legs[n-1].To.Map == mapID {
 		legs = legs[:n-1] // the caller walks the end
 	}
-	if len(legs) == 0 || (len(legs) == 1 && legs[0].Kind == "walk") {
-		return nil
+	if len(legs) == 0 {
+		return nil // walking straight there is the plan
 	}
 	r.travelling = true
 	defer func() { r.travelling = false }()
@@ -78,10 +78,15 @@ func (r *run) goTo(mapID uint32, x, y, z float32) error {
 	}
 	r.step("travel to (%.0f,%.0f) map %d in %.0f s (walking: %.0f s):%s", x, y, mapID, plan.Seconds, plan.WalkSeconds, desc)
 	slog.Info("travel", "to", fmt.Sprintf("%d:(%.0f,%.0f)", mapID, x, y), "s", int(plan.Seconds), "walk_s", int(plan.WalkSeconds), "legs", desc)
-	for _, l := range legs {
+	for i, l := range legs {
 		switch l.Kind {
 		case "walk":
-			if err := r.walk(l.To.X, l.To.Y, l.To.Z, 1.5); err != nil {
+			// Graph points between two walks need not be reached exactly.
+			radius := float32(1.5)
+			if i+1 < len(legs) && legs[i+1].Kind == "walk" {
+				radius = 8
+			}
+			if err := r.walk(l.To.X, l.To.Y, l.To.Z, radius); err != nil {
 				return err
 			}
 		case "fly":

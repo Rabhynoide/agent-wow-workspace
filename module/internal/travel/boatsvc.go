@@ -16,13 +16,13 @@ import (
 	"wowagent/internal/moveio"
 )
 
-// boat is a transport with its docks and the pier next to each (zero Map+X when none was found).
+// boat is a transport with its docks and the graph pier next to each (-1 when none was found).
 type boat struct {
 	entry  uint32
 	name   string
 	period uint32
 	docks  []Dock
-	piers  []*Point
+	piers  []int
 }
 
 // boatList loads the transports of our faction (and neutral ones) once, with their docks and piers.
@@ -49,8 +49,8 @@ func (s *Service) boatList(ctx context.Context, ally bool) []*boat {
 			continue
 		}
 		b := &boat{entry: t.Entry, name: t.Name, period: period, docks: ds}
-		for _, d := range ds {
-			b.piers = append(b.piers, s.pier(ctx, d))
+		for i := range ds {
+			b.piers = append(b.piers, s.pierNode(t.Entry, i))
 		}
 		bs = append(bs, b)
 	}
@@ -60,31 +60,14 @@ func (s *Service) boatList(ctx context.Context, ally bool) []*boat {
 	return bs
 }
 
-// pier finds the walkable point next to a dock: the end of a walk from the nearest flight point of the
-// map to the dock (the navmesh stops on the pier).
-func (s *Service) pier(ctx context.Context, d Dock) *Point {
-	dock := Point{d.Map, d.X, d.Y, d.Z}
-	var anchor *Point
-	for _, n := range s.tab.Nodes {
-		p := Point{n.Map, n.X, n.Y, n.Z}
-		if n.Map == d.Map && dist(p, dock) < 2500 && (anchor == nil || dist(p, dock) < dist(*anchor, dock)) {
-			anchor = &p
+// pierNode is the graph node of the pier of dock i of a transport (-1: none).
+func (s *Service) pierNode(entry uint32, i int) int {
+	for j, n := range s.graph.Nodes {
+		if n.Kind == KindPier && n.Transport == entry && n.Dock == i+1 {
+			return j
 		}
 	}
-	if anchor == nil {
-		return nil
-	}
-	res, err := s.api.PathFromSnap(ctx, d.Map, anchor.X, anchor.Y, anchor.Z, d.X, d.Y, d.Z, 60)
-	if err != nil || res.Error != "" || res.End == nil {
-		slog.Info("travel: no pier", "dock", dock, "err", fmt.Sprint(err, res.GetError()))
-		return nil
-	}
-	p := Point{d.Map, res.End.X, res.End.Y, res.End.Z}
-	if dist(p, dock) > 70 {
-		slog.Info("travel: pier too far from the dock", "dock", dock, "pier", p, "dist", int(dist(p, dock)))
-		return nil
-	}
-	return &p
+	return -1
 }
 
 // transportObj finds a transport game object in sight (they are sent for the whole map).
@@ -96,10 +79,11 @@ func (s *Service) transportObj(ctx context.Context, entry uint32) *statepb.Obj {
 	return vis.Objs[0]
 }
 
-// boatPortals turns each boat into links between its docks' piers; their cost waits for the boat
-// (from its position in its period when it is in sight, else half a period).
-func (s *Service) boatPortals(ctx context.Context, ally bool) []Portal {
-	var out []Portal
+// boatEdges turns each boat into edges between its docks' piers (graph nodes), by starting node;
+// their cost waits for the boat (from its position in its period when it is in sight, else half a
+// period).
+func (s *Service) boatEdges(ctx context.Context, ally bool) map[int][]Edge {
+	out := map[int][]Edge{}
 	read := time.Now()
 	for _, b := range s.boatList(ctx, ally) {
 		b := b
@@ -109,12 +93,14 @@ func (s *Service) boatPortals(ctx context.Context, ally bool) []Portal {
 		}
 		for i, di := range b.docks {
 			for j, dj := range b.docks {
-				if i == j || b.piers[i] == nil || b.piers[j] == nil {
+				if i == j || b.piers[i] < 0 || b.piers[j] < 0 {
 					continue
 				}
 				di, dj := di, dj
-				out = append(out, Portal{Transport: b.entry, Name: b.name, Enter: *b.piers[i], Exit: *b.piers[j],
-					Dock: Point{di.Map, di.X, di.Y, di.Z}, LandDock: Point{dj.Map, dj.X, dj.Y, dj.Z},
+				from, to := s.graph.Nodes[b.piers[i]].At(), s.graph.Nodes[b.piers[j]].At()
+				out[b.piers[i]] = append(out[b.piers[i]], Edge{To: b.piers[j],
+					Leg: Leg{Kind: "boat", From: from, To: to, Transport: b.entry, Name: b.name,
+						Dock: Point{di.Map, di.X, di.Y, di.Z}, LandDock: Point{dj.Map, dj.X, dj.Y, dj.Z}},
 					Cost: func(at float32) float32 {
 						wait := float32(period) / 2000
 						if timer >= 0 {

@@ -245,3 +245,17 @@ func (m *Mesh) poly(r polyRef) (*Tile, *poly) {
 	}
 	return t, &t.polys[r.idx]
 }
+
+// Tiles lists the tiles of the map (indices) and TileCenter gives the Recast-space centre of one
+// (height 0): offline tools sample the map tile by tile.
+func (m *Mesh) Tiles() [][2]int32 {
+	var out [][2]int32
+	for k := range m.files {
+		out = append(out, k)
+	}
+	return out
+}
+
+func (m *Mesh) TileCenter(x, y int32) V3 {
+	return V3{m.orig[0] + (float32(x)+0.5)*m.tileW, 0, m.orig[2] + (float32(y)+0.5)*m.tileH}
+}

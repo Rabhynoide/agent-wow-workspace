@@ -182,12 +182,12 @@ idée par idée.
     téléportation.
   - Généré une fois par commande, puis A* sur ce graphe ; les bots montent sur les transports côté
     serveur.
-- **Nous :** Dijkstra en jeu avec marches vérifiées à la volée (trop lent : dépasse 30 s), vols, portails,
-  bateaux (horaires exacts), pierre de foyer.
+- **Nous :** graphe précalculé hors jeu comme playerbots (`cmd/travelgraph`, 2026-10-25), avec en plus le
+  danger de chaque marche (niveau des monstres près du chemin) ; vols, portails, bateaux (horaires exacts),
+  pierre de foyer. Seules les marches de raccord sont vérifiées en jeu.
 - **Faisable sans triche :** tout. Le graphe précalculé est un calcul hors jeu sur les mmaps et la base,
   comme les maillages d'Honorbuddy.
 - **Prochaines étapes :**
-  - Graphe précalculé hors jeu.
   - Monture (20, 40), puis vol libre en Outreterre (60, 70 en 3.3.5 selon la monture) et Norfendre
     (77, Vol par temps froid).
   - Ascenseurs (type 11, comme les rames du tram).

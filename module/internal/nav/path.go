@@ -113,17 +113,33 @@ func (t *Tile) heightIn(idx int, pt V3) (float32, bool) {
 	if !inPoly2D(pt, vs) {
 		return 0, false
 	}
-	dm := t.dmeshes[idx]
+	// Some tiles carry detail indices out of range (Eastern Kingdoms, found by cmd/travelgraph):
+	// those polygons use the plane approximation.
+	var dm detailMesh
+	if idx < len(t.dmeshes) {
+		dm = t.dmeshes[idx]
+	}
+	if (int(dm.triBase)+int(dm.triCount))*4 > len(t.dtris) {
+		dm.triCount = 0
+	}
 	for i := 0; i < int(dm.triCount); i++ {
 		tri := t.dtris[(int(dm.triBase)+i)*4:]
 		var v [3]V3
+		bad := false
 		for k := 0; k < 3; k++ {
 			if int(tri[k]) < int(p.n) {
 				v[k] = vs[tri[k]]
 			} else {
 				o := (int(dm.vertBase) + int(tri[k]) - int(p.n)) * 3
+				if o < 0 || o+2 >= len(t.dverts) {
+					bad = true
+					break
+				}
 				v[k] = V3{t.dverts[o], t.dverts[o+1], t.dverts[o+2]}
 			}
+		}
+		if bad {
+			break
 		}
 		if h, ok := triHeight(pt, v[0], v[1], v[2]); ok {
 			return h, true
