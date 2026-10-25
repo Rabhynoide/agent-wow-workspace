@@ -68,7 +68,7 @@ func Build(ctx context.Context, o BuildOpts) (*TravelGraph, error) {
 		return nil, err
 	}
 	b := &builder{o: o, tab: tab, fac: fac, w: &world.Service{}, ctx: ctx,
-		pl: move.NewPlanner(o.Assets+"/mmaps", o.Assets+"/maps", o.Assets+"/vmaps"),
+		pl: move.NewPlanner(o.Assets+"/mmaps", o.Assets+"/maps", o.Assets+"/vmaps", o.Assets+"/roads"),
 		g: &TravelGraph{Version: GraphVersion, Built: time.Now().UTC().Format(time.RFC3339), Maps: o.Maps,
 			Areas: map[uint32]int32{}},
 		mobs: map[[3]int32][]mob{}, maps: map[uint32]bool{}, grid: map[[3]int32]int{}, pairs: map[[2]int]bool{}}
@@ -447,7 +447,7 @@ func (b *builder) runLinks() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			pl := move.NewPlanner(b.o.Assets+"/mmaps", b.o.Assets+"/maps", b.o.Assets+"/vmaps")
+			pl := move.NewPlanner(b.o.Assets+"/mmaps", b.o.Assets+"/maps", b.o.Assets+"/vmaps", b.o.Assets+"/roads")
 			for jobs := range ch {
 				for _, j := range jobs {
 					l, ok := b.walk(pl, j[0], j[1])

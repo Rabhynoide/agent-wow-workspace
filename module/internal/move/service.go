@@ -23,6 +23,7 @@ import (
 	"wowagent/internal/jobs"
 	"wowagent/internal/moveio"
 	"wowagent/internal/nav"
+	"wowagent/internal/roads"
 	"wowagent/internal/terrain"
 	"wowagent/internal/vmap"
 )
@@ -60,6 +61,9 @@ type Service struct {
 	terr   map[uint32]*terrain.Maps
 	vmaps  map[uint32]*vmap.Tree // nil value: no vmaps for that map
 	maps   string
+	roads  map[uint32]*roads.Map // nil value: no road grid for that map
+	// roadsDir: where the road grids are ("" = ROADS_DIR, else /roads; "-" = none)
+	roadsDir string
 
 	rmu       sync.Mutex
 	walking   bool   // a walk loop is running and accepts new routes
@@ -76,7 +80,8 @@ func Register(s grpc.ServiceRegistrar, session modv1.SessionClient) {
 	runner := jobs.NewRunner(&pb.MoveStatus{State: "idle"})
 	runner.Decorate = func(j *job, st *pb.MoveStatus) { st.ElapsedS = float32(time.Since(j.Start).Seconds()) }
 	pb.RegisterMoveServer(s, &Service{session: session, api: api.C{S: session}, dir: dir, guid: guid, jobs: runner,
-		meshes: map[uint32]*nav.Mesh{}, terr: map[uint32]*terrain.Maps{}, vmaps: map[uint32]*vmap.Tree{}, maps: mapsDir()})
+		meshes: map[uint32]*nav.Mesh{}, terr: map[uint32]*terrain.Maps{}, vmaps: map[uint32]*vmap.Tree{}, maps: mapsDir(),
+		roads: map[uint32]*roads.Map{}})
 }
 
 func mapsDir() string {
@@ -104,6 +109,37 @@ func (s *Service) vmapFor(id uint32) *vmap.Tree {
 	}
 	s.vmaps[id] = t
 	return t
+}
+
+// roadFor gives the road test of a map for nav.Filter.Road (nil without a road grid: cmd/roads).
+func (s *Service) roadFor(id uint32) func(nav.V3) bool {
+	s.mu.Lock()
+	r, ok := s.roads[id]
+	if !ok {
+		dir := s.roadsDir
+		if dir == "" {
+			dir = os.Getenv("ROADS_DIR")
+		}
+		if dir == "" {
+			dir = "/roads"
+		}
+		var err error
+		if dir == "-" {
+			r = nil
+		} else if r, err = roads.Load(dir, id); err != nil {
+			slog.Info("no road grid: paths do not prefer roads", "map", id, "err", err)
+			r = nil
+		}
+		s.roads[id] = r
+	}
+	s.mu.Unlock()
+	if r == nil {
+		return nil
+	}
+	return func(p nav.V3) bool {
+		x, y, _ := p.ToWoW()
+		return r.On(x, y)
+	}
 }
 
 func (s *Service) terrainFor(id uint32) *terrain.Maps {
@@ -230,6 +266,7 @@ func (s *Service) planReach(mapID uint32, from [3]float32, x, y, z float32, avoi
 	f := nav.GroundOnly
 	f.Avoid = avoid
 	f.EndReach, f.Partial = reach, reach > 0
+	f.Road = s.roadFor(mapID)
 	dense, err := navPlan(m, tm, vm, from, to, f)
 	// Only when the START is the problem: an unreachable destination would make every escape try
 	// search the whole area (seconds each).

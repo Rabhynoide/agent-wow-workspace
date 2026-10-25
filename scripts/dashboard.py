@@ -13,6 +13,7 @@ import os
 import re
 import struct
 import sys
+import threading
 import time
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -288,19 +289,100 @@ def quests(snap, run):
             "log": log, "route": hist}
 
 
+# Map card: trail of the character, sampled in the background (every 3 s, whether the page is open or not).
+TRAIL = []          # [map, x, y] points, 5 yards apart at least
+TRAIL_MAX = 4000
+MAP_KINDS = ("flight", "enter", "exit", "pier", "inn")
+_graph = {"mtime": 0, "nodes": []}
+
+
+def sample_trail():
+    while True:
+        b = rpc("state.brief") or {}
+        me = b.get("self") or {}
+        if "level" in me:
+            p = [me.get("map", 0), round(me.get("x", 0), 1), round(me.get("y", 0), 1)]
+            last = TRAIL[-1] if TRAIL else None
+            if not last or last[0] != p[0] or (last[1] - p[1]) ** 2 + (last[2] - p[2]) ** 2 > 25:
+                TRAIL.append(p)
+                del TRAIL[:-TRAIL_MAX]
+        time.sleep(3)
+
+
+def graph_nodes():
+    """Places of the travel graph (assets/travel/graph.json): flight masters, portals, piers, inns."""
+    f = path("assets", "travel", "graph.json")
+    try:
+        mt = os.path.getmtime(f)
+    except OSError:
+        return []
+    if mt != _graph["mtime"]:
+        with open(f) as fh:
+            g = json.load(fh)
+        _graph["nodes"] = [{"k": n["k"], "m": n["m"], "x": round(n["x"]), "y": round(n["y"]), "n": n.get("n", ""), "taxi": n.get("taxi", 0)}
+                           for n in g["nodes"] if n["k"] in MAP_KINDS]
+        _graph["mtime"] = mt
+        _graph["built"] = g.get("built", "")
+    return _graph["nodes"]
+
+
+def map_data(brief):
+    """Map card: trail, deaths (fight lines with a position), graph places, known flight nodes, last journey."""
+    me = (brief or {}).get("self") or {}
+    known = []
+    try:
+        with open(path("logs", "travel_%x.json" % int(me.get("guid", 0)))) as fh:
+            known = json.load(fh).get("nodes") or []
+    except (OSError, ValueError):
+        pass
+    deaths = []
+    for l in tail(path("logs", "combat.log"), 60, lambda l: "msg=fight " in l and "result=died" in l and " map=" in l):
+        f = dict((k, v.strip('"')) for k, v in FIELD.findall(l))
+        deaths.append({"time": f.get("time", "")[11:16], "m": int(f.get("map", 0)), "x": float(f.get("x", 0)), "y": float(f.get("y", 0)),
+                       "target": f.get("target", ""), "level": f.get("level", "")})
+    journey = None
+    for l in tail(path("logs", "auto.log"), 1, lambda l: "msg=travel " in l):
+        f = dict((k, v.strip('"')) for k, v in FIELD.findall(l))
+        m = re.match(r"(\d+):\((-?\d+),(-?\d+)\)", f.get("to", ""))
+        journey = {"time": f.get("time", "")[11:16], "s": f.get("s"), "walk_s": f.get("walk_s"), "legs": f.get("legs", "").strip(" ;"),
+                   "to": [int(m.group(1)), int(m.group(2)), int(m.group(3))] if m else None}
+    return {"trail": TRAIL[-TRAIL_MAX:], "deaths": deaths, "places": graph_nodes(), "known": known, "journey": journey,
+            "graph_built": _graph.get("built", ""), "tiles": sorted(os.listdir(path("assets", "minimap"))) if os.path.isdir(path("assets", "minimap")) else []}
+
+
 def data():
     brief = rpc("state.brief")
     combat = rpc("combat.status") or {}  # places fled from (combat/zones.go), avoided for 5 min
     snap = rpc("state.snapshot")
     run = current_run()
     return {"live": brief, "zones": combat.get("avoid", []), "gear": gear(snap), "doing": combat.get("doing", ""), "run": run,
-            "quests": quests(snap, run), "fights": fights(), "pull_size": pull_size(), "bags": bags_events(), "learned": learned(), "benches": benches()}
+            "quests": quests(snap, run), "fights": fights(), "pull_size": pull_size(), "bags": bags_events(), "learned": learned(), "benches": benches(), "map": map_data(brief)}
 
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith("/api/data"):
             body, kind = json.dumps(data()).encode(), "application/json"
+        elif self.path.startswith("/tiles/"):
+            # Map tiles (cmd/minimap): /tiles/<map>/[roads/]<z>/<x>_<y>.jpg|png, nothing else.
+            rel = self.path[len("/tiles/"):].split("?")[0]
+            if not re.fullmatch(r"\d+/(roads/)?\d/\d+_\d+\.(jpg|png)", rel):
+                self.send_error(404)
+                return
+            try:
+                with open(path("assets", "minimap", rel), "rb") as f:
+                    body = f.read()
+            except OSError:
+                self.send_error(404)
+                return
+            kind = "image/png" if rel.endswith(".png") else "image/jpeg"
+            self.send_response(200)
+            self.send_header("Content-Type", kind)
+            self.send_header("Cache-Control", "max-age=86400")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
         elif self.path in ("/", "/index.html"):
             with open(path("scripts", "dashboard.html"), "rb") as f:
                 body, kind = f.read(), "text/html; charset=utf-8"
@@ -315,11 +397,12 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def log_message(self, fmt, *a):  # logs/dashboard.log: who asked what (to check LAN access)
-        if not self.path.startswith("/api/data"):
+        if not self.path.startswith(("/api/data", "/tiles/")):
             sys.stderr.write("%s %s %s\n" % (self.log_date_time_string(), self.client_address[0], fmt % a))
 
 
 if __name__ == "__main__":
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8790
     host = sys.argv[2] if len(sys.argv) > 2 else "127.0.0.1"
+    threading.Thread(target=sample_trail, daemon=True).start()
     ThreadingHTTPServer((host, port), Handler).serve_forever()

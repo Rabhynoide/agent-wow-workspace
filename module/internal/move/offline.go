@@ -5,6 +5,7 @@ import (
 
 	pb "wowagent/gen/movev1"
 	"wowagent/internal/nav"
+	"wowagent/internal/roads"
 	"wowagent/internal/terrain"
 	"wowagent/internal/vmap"
 )
@@ -13,9 +14,20 @@ import (
 // One per goroutine: meshes are not shared.
 type Planner struct{ s *Service }
 
-func NewPlanner(mmaps, maps, vmaps string) *Planner {
+// roadsDir: road grids (cmd/roads), "" for none.
+func NewPlanner(mmaps, maps, vmaps, roadsDir string) *Planner {
 	os.Setenv("VMAPS_DIR", vmaps)
-	return &Planner{&Service{dir: mmaps, maps: maps, meshes: map[uint32]*nav.Mesh{}, terr: map[uint32]*terrain.Maps{}, vmaps: map[uint32]*vmap.Tree{}}}
+	if roadsDir == "" {
+		roadsDir = "-"
+	}
+	return &Planner{&Service{dir: mmaps, maps: maps, meshes: map[uint32]*nav.Mesh{}, terr: map[uint32]*terrain.Maps{},
+		vmaps: map[uint32]*vmap.Tree{}, roads: map[uint32]*roads.Map{}, roadsDir: roadsDir}}
+}
+
+// OnRoad tells whether WoW (x, y) is on a road of the map.
+func (p *Planner) OnRoad(mapID uint32, x, y float32) bool {
+	f := p.s.roadFor(mapID)
+	return f != nil && f(nav.ToRecast(x, y, 0))
 }
 
 // Path is move.path from a point: the points and the length; reach > 0 ends at the closest walkable

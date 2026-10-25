@@ -536,7 +536,9 @@ func (s *Service) checkWalk(level uint32, deadline time.Time) func(a, b Point) (
 func (s *Service) walkFor(a, b Point, level uint32) (float32, bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 	defer cancel()
-	res, err := s.api.PathFrom(ctx, a.Map, a.X, a.Y, a.Z, b.X, b.Y, b.Z)
+	// A destination given a few yards off the ground (a guessed height) ends on the closest walkable
+	// point: the end is checked in 2D.
+	res, err := s.api.PathFromSnap(ctx, a.Map, a.X, a.Y, a.Z, b.X, b.Y, b.Z, walkSnap)
 	if err != nil {
 		return 0, false, err
 	}
@@ -544,7 +546,7 @@ func (s *Service) walkFor(a, b Point, level uint32) (float32, bool, error) {
 		slog.Info("travel: no walk", "from", a, "to", b, "err", res.Error)
 		return 0, false, nil
 	}
-	if res.End != nil && dist(Point{b.Map, res.End.X, res.End.Y, res.End.Z}, b) > 5 {
+	if res.End != nil && dist2D(Point{b.Map, res.End.X, res.End.Y, 0}, b) > 5 {
 		slog.Info("travel: walk ends short", "from", a, "to", b)
 		return 0, false, nil
 	}
@@ -563,6 +565,9 @@ func (s *Service) walkFor(a, b Point, level uint32) (float32, bool, error) {
 	}
 	return res.Length / RunSpeed, true, nil
 }
+
+// walkSnap: a joining walk to a point off the navmesh ends at the walkable point within this reach.
+const walkSnap = 10
 
 // Joining walks: the start is joined to the destination directly when closer than directWalk, and to
 // the nearGraph graph points closest to it within nearReach (the 2 closest when none is that close).

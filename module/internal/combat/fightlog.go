@@ -14,19 +14,22 @@ import (
 // end), the most attackers at once and who they were. Without it a death could not be explained
 // (bench c8edda2: "combat: dead" and nothing else).
 type fightRecord struct {
-	stop     context.CancelFunc
-	wg       sync.WaitGroup
-	start    time.Time
-	target   uint64
-	entry    uint32
-	level    uint32
-	myLevel  uint32
-	class    uint32
-	maxHP    uint32
-	hpStart  uint32
-	sampled  bool // hpStart, myLevel, class, maxHP are set
-	hpMin    uint32
-	hpEnd    uint32
+	stop    context.CancelFunc
+	wg      sync.WaitGroup
+	start   time.Time
+	target  uint64
+	entry   uint32
+	level   uint32
+	myLevel uint32
+	class   uint32
+	maxHP   uint32
+	hpStart uint32
+	sampled bool // hpStart, myLevel, class, maxHP are set
+	hpMin   uint32
+	hpEnd   uint32
+	// where we were at the last sample (dashboard map: deaths)
+	mapID    uint32
+	x, y     float32
 	most     int
 	attacker map[uint32]bool // entries that targeted us
 	taken    [3]sideStats    // melee.taken at the start (blows by side, melee.go)
@@ -67,6 +70,7 @@ func (s *Service) sampleFight(ctx context.Context, r *fightRecord) {
 		r.hpStart, r.myLevel, r.class, r.maxHP = hp, me.Level, me.ClassId, me.MaxHp
 	}
 	r.hpMin, r.hpEnd = min(r.hpMin, hp), hp
+	r.mapID, r.x, r.y = me.Map, me.X, me.Y
 	n, err := s.api.Nearby(ctx, &statepb.NearbyRequest{Kind: "unit", Radius: 40, Max: 12, AliveOnly: true})
 	if err != nil {
 		return
@@ -104,7 +108,7 @@ func (r *fightRecord) done(s *Service, dead bool, why string) string {
 	}
 	slog.Info("fight", "result", result, "target", r.entry, "target_level", r.level, "level", r.myLevel, "class", r.class, "max_hp", r.maxHP,
 		"hp_start", r.hpStart, "hp_min", r.hpMin, "hp_end", r.hpEnd, "attackers_max", r.most,
-		"attackers", entries, "s", int(time.Since(r.start).Seconds()))
+		"attackers", entries, "s", int(time.Since(r.start).Seconds()), "map", r.mapID, "x", int(r.x), "y", int(r.y))
 	// Blows taken in this fight by side ("front" = blows, damage, dodged, parried, blocked, missed).
 	now := s.melee.takenSoFar()
 	var side [3][6]uint32

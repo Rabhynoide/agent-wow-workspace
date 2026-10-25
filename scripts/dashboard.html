@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Bot WoW</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
 :root {
   --bg: #f6f5f2; --card: #ffffff; --text: #1d1c1a; --muted: #6b6862; --line: #e4e1db;
@@ -82,6 +84,10 @@ td.wrap { white-space: normal; min-width: 220px; }
 #tip { position: fixed; z-index: 10; pointer-events: none; display: none; max-width: 300px; background: #070b1ef0; border: 1px solid #5a6a8a; border-radius: 5px; padding: 8px 10px; color: #fff; font-size: 13px; line-height: 1.4; box-shadow: 0 4px 14px #0008; }
 #tip .n { font-size: 14px; font-weight: 600; } #tip .row { display: flex; justify-content: space-between; gap: 16px; }
 #tip .g { color: #1eff00; } #tip .y { color: #ffd100; } #tip .m { color: #9d9d9d; } #tip .r { color: #ff2020; }
+#wmap { height: 520px; border-radius: 8px; background: #101820; }
+.leaflet-container { font: 12px system-ui, sans-serif; }
+.maplegend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 8px; }
+.maplegend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
 </style>
 </head>
 <body>
@@ -99,6 +105,18 @@ td.wrap { white-space: normal; min-width: 220px; }
       <h2>Run en cours</h2>
       <div id="levels" class="steps"></div>
       <pre id="log" style="margin-top:10px"></pre>
+    </section>
+    <section class="card s12">
+      <h2>Carte</h2>
+      <div id="wmap"></div>
+      <div class="maplegend muted">
+        <span><i style="background:#ffd23f"></i>bot</span><span><i style="background:#57c7ff"></i>trace</span>
+        <span><i style="background:#ffaa28"></i>routes (calque)</span><span><i style="background:#ef6f5c"></i>morts</span>
+        <span><i style="background:#c36bff"></i>zones fuies</span><span><i style="background:#3fbf6f"></i>vol connu</span>
+        <span><i style="background:#8a8a8a"></i>vol inconnu</span><span><i style="background:#ff6bd5"></i>portail</span>
+        <span><i style="background:#3de0d0"></i>ponton</span><span><i style="background:#ffffff"></i>destination du voyage</span>
+      </div>
+      <div class="muted" id="mapinfo" style="margin-top:6px"></div>
     </section>
     <section class="card s12">
       <h2>Quêtes</h2>
@@ -333,8 +351,94 @@ function questTracker(d) {
   if (!q.route.length) { const tr = el('tr'); const td = el('td', 'pas encore de quête dans ce run', 'muted'); td.colSpan = 4; tr.append(td); t.append(tr); }
 }
 
+
+// Map card: client minimap tiles (cmd/minimap), z 6 = one 256-pixel tile per ADT. At zoom 0 the 64 × 64
+// ADT world is 256 units: an ADT is 4 units; ADT x (east) = 32 - y/533.33, ADT y (south) = 32 - x/533.33.
+const ADT = 533.33333, MAPNAMES = { 0: 'Royaumes de l\'Est', 1: 'Kalimdor', 530: 'Outreterre', 571: 'Norfendre', 369: 'Tram des Profondeurs' };
+const ll = (x, y) => L.latLng(-(32 - x / ADT) * 4, (32 - y / ADT) * 4);
+const yards = r => r / ADT * 4;
+let W = null;
+function mapCard(d) {
+  const m = d.map || {}, me = (d.live || {}).self;
+  if (me) me.map = me.map || 0; // proto JSON leaves out zero values (map 0)
+  if (typeof L === 'undefined') { $('mapinfo').textContent = 'Leaflet non chargé (pas d\'accès à cdnjs).'; return; }
+  let mapId = me ? (me.map || 0) : (W ? W.mapId : 0);
+  const shown = mapId === 369 ? 0 : mapId; // the tram has no minimap: show the Eastern Kingdoms
+  if (!W) {
+    const lm = L.map('wmap', { crs: L.CRS.Simple, minZoom: 0, maxZoom: 9, zoomSnap: 0.5, attributionControl: false });
+    W = { map: lm, mapId: null, follow: true, layers: {} };
+    lm.on('dragstart', () => { W.follow = false; });
+    const Follow = L.Control.extend({ onAdd: () => { const b = L.DomUtil.create('button'); b.textContent = 'suivre le bot';
+      b.style.cssText = 'padding:4px 8px;cursor:pointer'; L.DomEvent.on(b, 'click', e => { L.DomEvent.stop(e); W.follow = true; W.centred = false; }); return b; } });
+    new Follow({ position: 'topleft' }).addTo(lm);
+  }
+  if (W.mapId !== shown) {
+    Object.values(W.layers).forEach(l => W.map.removeLayer(l));
+    if (W.ctl) W.map.removeControl(W.ctl);
+    const opts = { tileSize: 256, minZoom: 0, maxZoom: 9, maxNativeZoom: 6, noWrap: true, bounds: [[-256, 0], [0, 256]] };
+    W.layers = {
+      base: L.tileLayer(`/tiles/${shown}/{z}/{x}_{y}.jpg`, opts),
+      roads: L.tileLayer(`/tiles/${shown}/roads/{z}/{x}_{y}.png`, opts),
+      places: L.layerGroup(), trail: L.layerGroup(), deaths: L.layerGroup(), zones: L.layerGroup(), bot: L.layerGroup(), journey: L.layerGroup(),
+    };
+    ['base', 'roads', 'places', 'trail', 'deaths', 'zones', 'journey', 'bot'].forEach(k => W.layers[k].addTo(W.map));
+    W.ctl = L.control.layers(null, { 'Routes': W.layers.roads, 'Lieux du graphe': W.layers.places, 'Trace': W.layers.trail,
+      'Morts': W.layers.deaths, 'Zones fuies': W.layers.zones, 'Voyage': W.layers.journey }, { collapsed: true }).addTo(W.map);
+    W.mapId = shown; W.centred = false; W.placesBuilt = null;
+  }
+  const on = p => p.m === shown;
+  // Graph places (rebuilt when the known flight nodes change).
+  const key = (m.known || []).join(',') + '|' + (m.places || []).length;
+  if (W.placesBuilt !== key) {
+    W.layers.places.clearLayers();
+    const known = new Set(m.known || []);
+    (m.places || []).filter(on).forEach(p => {
+      const color = p.k === 'flight' ? (known.has(p.taxi) ? '#3fbf6f' : '#8a8a8a') : p.k === 'pier' ? '#3de0d0' : p.k === 'inn' ? '#e0c890' : '#ff6bd5';
+      const label = { flight: 'Maître de vol', enter: 'Portail', exit: 'Arrivée de portail', pier: 'Ponton', inn: 'Aubergiste' }[p.k];
+      L.circleMarker(ll(p.x, p.y), { radius: p.k === 'inn' ? 3 : 5, color, weight: 1, fillOpacity: .85 })
+        .bindTooltip(`${label} : ${p.n}${p.k === 'flight' ? (known.has(p.taxi) ? ' (connu)' : ' (inconnu)') : ''}`).addTo(W.layers.places);
+    });
+    W.placesBuilt = key;
+  }
+  // Trail: points of this map, cut where the bot jumped (teleport, other map).
+  W.layers.trail.clearLayers();
+  const segs = []; let cur = [], prev = null;
+  (m.trail || []).forEach(p => {
+    if (p[0] !== shown && !(shown === 0 && p[0] === 369)) { prev = null; return; }
+    if (p[0] === 369) { prev = null; return; }
+    if (prev && ((prev[1] - p[1]) ** 2 + (prev[2] - p[2]) ** 2) > 200 * 200) { if (cur.length > 1) segs.push(cur); cur = []; }
+    cur.push(ll(p[1], p[2])); prev = p;
+  });
+  if (cur.length > 1) segs.push(cur);
+  segs.forEach(s => L.polyline(s, { color: '#57c7ff', weight: 2, opacity: .8 }).addTo(W.layers.trail));
+  W.layers.deaths.clearLayers();
+  (m.deaths || []).filter(on).forEach(p => L.circleMarker(ll(p.x, p.y), { radius: 6, color: '#ef6f5c', weight: 2, fillOpacity: .3 })
+    .bindTooltip(`Mort ${p.time} (niveau ${p.level}) contre ${mob(+p.target)}`).addTo(W.layers.deaths));
+  W.layers.zones.clearLayers();
+  (d.zones || []).filter(z => (z.map || 0) === shown).forEach(z => L.circle(ll(z.x || 0, z.y || 0), { radius: yards(z.radius || 40), color: '#c36bff', weight: 1, fillOpacity: .15 })
+    .bindTooltip(`Zone fuie (oubliée dans ${z.leftS || 0} s)`).addTo(W.layers.zones));
+  W.layers.journey.clearLayers();
+  const j = m.journey;
+  if (j && j.to && j.to[0] === shown) L.circleMarker(ll(j.to[1], j.to[2]), { radius: 7, color: '#ffffff', weight: 2, fillOpacity: 0 })
+    .bindTooltip(`Destination du dernier voyage (${j.time}) : ${j.s} s prévues${j.legs ? ' — ' + j.legs : ''}`).addTo(W.layers.journey);
+  W.layers.bot.clearLayers();
+  if (me && (me.map === shown)) {
+    const p = ll(me.x || 0, me.y || 0), o = me.o || 0, len = yards(25);
+    // WoW orientation: 0 = north (+x), counter-clockwise towards +y (west).
+    const tip = ll((me.x || 0) + Math.cos(o) * 25, (me.y || 0) + Math.sin(o) * 25);
+    L.polyline([p, tip], { color: '#ffd23f', weight: 3 }).addTo(W.layers.bot);
+    L.circleMarker(p, { radius: 7, color: '#1d1c1a', weight: 2, fillColor: '#ffd23f', fillOpacity: 1 })
+      .bindTooltip(`${me.name || 'bot'} (${Math.round(me.x || 0)}, ${Math.round(me.y || 0)})`).addTo(W.layers.bot);
+    if (W.follow && !W.centred) { W.map.setView(p, 6); W.centred = true; } else if (W.follow) W.map.panTo(p, { animate: true });
+  } else if (!W.centred) { W.map.setView([-128, 128], 2); W.centred = true; }
+  const where = me ? `${MAPNAMES[me.map] || 'carte ' + me.map}${me.map === 369 ? ' (affiché : Royaumes de l\'Est)' : ''}` : 'session non joignable';
+  const jt = j ? ` · dernier voyage ${j.time} : ${j.s} s prévues (à pied ${j.walk_s || 0} s)${j.legs ? ' — ' + j.legs : ''}` : '';
+  $('mapinfo').textContent = `${where} · ${(m.deaths || []).filter(on).length} morts récentes ici · graphe calculé ${(m.graph_built || '?').slice(0, 16).replace('T', ' ')}${jt}`;
+}
+
 function render(d) {
   live(d); run(d); questTracker(d); armory(d);
+  try { mapCard(d); } catch (e) { $('mapinfo').textContent = 'carte : ' + e.message; }
   const ps = d.pull_size || [];
   document.getElementById('pullsize').textContent = ps.length
     ? `Taille de pull : ${ps[0].size} (${ps[0].why} à ${ps[0].time}) — historique : ` + ps.map(p => p.size).reverse().join(' → ')

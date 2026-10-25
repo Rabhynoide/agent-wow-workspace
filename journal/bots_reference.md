@@ -205,7 +205,8 @@ idée par idée.
   - Bloqué sans progrès de 5 yards → reset, sinon téléportation (triche).
   - Évitent l'eau comme destination et nagent en ligne droite.
 - **Nous :** navmesh dans le module, contournement des monstres dans l'A* (aucun des deux ne le fait),
-  déblocage en ligne droite, `safe_point`.
+  préférence pour les routes lues dans les textures du terrain du client (2026-10-25, aucun des deux non
+  plus), déblocage en ligne droite, `safe_point`.
 - **Faisable sans triche :** tout. Le vol 3D se fait avec les vmaps comme obstacles.
 - **À reprendre :**
   - Déblocage gradué : saut (MSG_MOVE_JUMP), pas de côté, blackspot appris là où on reste coincé.

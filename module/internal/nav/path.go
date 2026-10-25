@@ -27,7 +27,14 @@ type Filter struct {
 	// EndReach: with Partial, how far (yards, 2D) the closest walkable point to an unreachable
 	// destination may be (default 30): a boat's pier is farther from its dock point.
 	EndReach float32
+	// Road: whether a point (Recast space) is on a road or a path (client terrain textures,
+	// internal/roads); off them a step costs OffRoad times its length, so paths keep to the roads like
+	// a player (fewer monsters). nil: no preference.
+	Road func(p V3) bool
 }
+
+// OffRoad: cost of a yard off the roads (a yard on them costs 1, which keeps the A* estimate exact).
+const OffRoad = 2.5
 
 // Danger is a disc (Recast space, 2D) a path pays to cross: up to AvoidWeight times its length at
 // the centre, nothing at the edge. Paths through it stay possible (the only way through a gorge).
@@ -44,6 +51,18 @@ const AvoidWeight = 6
 // halfway).
 func (f Filter) stepCost(a, b V3) float32 {
 	d := dist3D(a, b)
+	if f.Road != nil {
+		// One sample every 4 yards.
+		n := int(d/4) + 1
+		off := 0
+		for i := 0; i < n; i++ {
+			t := (float32(i) + 0.5) / float32(n)
+			if !f.Road(V3{a[0] + (b[0]-a[0])*t, a[1] + (b[1]-a[1])*t, a[2] + (b[2]-a[2])*t}) {
+				off++
+			}
+		}
+		d *= 1 + (OffRoad-1)*float32(off)/float32(n)
+	}
 	if len(f.Avoid) == 0 {
 		return d
 	}
