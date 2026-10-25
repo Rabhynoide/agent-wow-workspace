@@ -433,7 +433,7 @@ function mapCard(d) {
   } else if (!W.centred) { W.map.setView([-128, 128], 2); W.centred = true; }
   const where = me ? `${MAPNAMES[me.map] || 'carte ' + me.map}${me.map === 369 ? ' (affiché : Royaumes de l\'Est)' : ''}` : 'session non joignable';
   const jt = j ? ` · dernier voyage ${j.time} : ${j.s} s prévues (à pied ${j.walk_s || 0} s)${j.legs ? ' — ' + j.legs : ''}` : '';
-  $('mapinfo').textContent = `${where} · ${(m.deaths || []).filter(on).length} morts récentes ici · graphe calculé ${(m.graph_built || '?').slice(0, 16).replace('T', ' ')}${jt}`;
+  $('mapinfo').textContent = `${where} · ${(m.deaths || []).filter(on).length} morts ici depuis le début du run · graphe calculé ${(m.graph_built || '?').slice(0, 16).replace('T', ' ')}${jt}`;
 }
 
 function render(d) {

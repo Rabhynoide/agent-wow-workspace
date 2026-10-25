@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	statepb "wowagent/gen/statev1"
 	"wowagent/internal/wire"
 )
 
@@ -48,11 +49,8 @@ func TestDamagePackets(t *testing.T) {
 	w.U32(0)
 	w.U32(0)
 	w.U8(0)
-	if from, amount, ok := spellDamage(me, w.B); !ok || from != mob || amount != 40 {
-		t.Fatalf("spell damage: %x %d %v", from, amount, ok)
-	}
-	if _, _, ok := spellDamage(0x11, w.B); ok {
-		t.Fatal("spell damage on someone else")
+	if target, from, amount, ok := spellDamage(w.B); !ok || target != me || from != mob || amount != 40 {
+		t.Fatalf("spell damage: %x %x %d %v", target, from, amount, ok)
 	}
 	p := &wire.Writer{}
 	p.PackedGUID(me)
@@ -66,7 +64,60 @@ func TestDamagePackets(t *testing.T) {
 	p.U32(0)
 	p.U32(0)
 	p.U8(0)
-	if from, amount, ok := periodicDamage(me, p.B); !ok || from != mob || amount != 12 {
-		t.Fatalf("periodic damage: %x %d %v", from, amount, ok)
+	if target, from, amount, ok := periodicDamage(p.B); !ok || target != me || from != mob || amount != 12 {
+		t.Fatalf("periodic damage: %x %x %d %v", target, from, amount, ok)
+	}
+	s := &Service{guid: me}
+	s.damageSeen(me, mob, 10)
+	s.damageSeen(mob, me, 25)
+	if len(s.dmg.hits) != 1 || len(s.dealt.hits) != 1 || s.dealt.hits[0].from != mob {
+		t.Fatalf("routing: taken %v dealt %v", s.dmg.hits, s.dealt.hits)
+	}
+}
+
+// fill puts damage over the last 4 s in a log.
+func fill(d *damageLog, from uint64, perSecond uint32) {
+	now := time.Now()
+	d.first = now.Add(-4 * time.Second)
+	for i := 0; i < 4; i++ {
+		d.hits = append(d.hits, damageHit{now.Add(-time.Duration(i) * time.Second), from, perSecond})
+	}
+}
+
+func TestKillOrderByDamage(t *testing.T) {
+	strong := &statepb.Obj{Guid: 1, Hp: 100, MaxHp: 100, Dist: 3}
+	weak := &statepb.Obj{Guid: 2, Hp: 60, MaxHp: 100, Dist: 3}
+	// Without measures: the weakest first.
+	if a := pickAttacker([]*statepb.Obj{strong, weak}, nil); a.Guid != 2 {
+		t.Fatalf("no measure: %d", a.Guid)
+	}
+	// The full-health one hits 6 times harder: 30/100 beats 5/60.
+	dps := map[uint64]float64{1: 30, 2: 5}
+	if a := pickAttacker([]*statepb.Obj{strong, weak}, dps); a.Guid != 1 {
+		t.Fatalf("by damage: %d", a.Guid)
+	}
+	if b := focusTarget(weak, []*statepb.Obj{strong, weak}, dps); b == nil || b.Guid != 1 {
+		t.Fatalf("switch to the strong hitter: %v", b)
+	}
+}
+
+func TestLateHold(t *testing.T) {
+	me := &statepb.SelfInfo{Hp: 200, MaxHp: 250} // 80 %
+	mob := &statepb.Obj{Guid: 9, Entry: 46, Hp: 60, MaxHp: 200, Dist: 3}
+	s := &Service{guid: 1}
+	// Not measured yet: hold above flee_late_hold (60 %).
+	if hold, why := s.lateHold(me, []*statepb.Obj{mob}); !hold || why != "measuring" {
+		t.Fatalf("measuring: %v %s", hold, why)
+	}
+	// 10 damage/s taken (4 %/s: threshold 4*6+5 = 29 %, 12.75 s away), 20 dealt/s: 3 s to kill.
+	fill(&s.dmg, 9, 10)
+	fill(&s.dealt, 9, 20)
+	if hold, _ := s.lateHold(me, []*statepb.Obj{mob}); !hold {
+		t.Fatal("should finish the weak monster")
+	}
+	// A tough one (400 health: 20 s to kill) is not worth it.
+	tough := &statepb.Obj{Guid: 9, Entry: 46, Hp: 400, MaxHp: 400, Dist: 3}
+	if hold, _ := s.lateHold(me, []*statepb.Obj{tough}); hold {
+		t.Fatal("should run from a monster it cannot finish")
 	}
 }

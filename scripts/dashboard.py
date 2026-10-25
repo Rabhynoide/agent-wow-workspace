@@ -304,7 +304,7 @@ def sample_trail():
             p = [me.get("map", 0), round(me.get("x", 0), 1), round(me.get("y", 0), 1)]
             last = TRAIL[-1] if TRAIL else None
             if not last or last[0] != p[0] or (last[1] - p[1]) ** 2 + (last[2] - p[2]) ** 2 > 25:
-                TRAIL.append(p)
+                TRAIL.append(p + [int(time.time())])
                 del TRAIL[:-TRAIL_MAX]
         time.sleep(3)
 
@@ -326,9 +326,24 @@ def graph_nodes():
     return _graph["nodes"]
 
 
-def map_data(brief):
-    """Map card: trail, deaths (fight lines with a position), graph places, known flight nodes, last journey."""
+def run_start(run):
+    """Start of the current run (first line of logs/level_<name>.log, local time) as epoch seconds."""
+    if not run:
+        return 0
+    try:
+        with open(path("logs", "level_%s.log" % run["name"]), encoding="utf-8", errors="replace") as f:
+            first = f.readline()
+        return time.mktime(time.strptime(first[:19], "%Y-%m-%d %H:%M:%S"))
+    except (OSError, ValueError):
+        return 0
+
+
+def map_data(brief, run):
+    """Map card: trail and deaths of the current run (fight lines with a position), graph places, known
+    flight nodes, last journey."""
     me = (brief or {}).get("self") or {}
+    since = run_start(run)
+    since_utc = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(since))
     known = []
     try:
         with open(path("logs", "travel_%x.json" % int(me.get("guid", 0)))) as fh:
@@ -338,6 +353,8 @@ def map_data(brief):
     deaths = []
     for l in tail(path("logs", "combat.log"), 60, lambda l: "msg=fight " in l and "result=died" in l and " map=" in l):
         f = dict((k, v.strip('"')) for k, v in FIELD.findall(l))
+        if f.get("time", "") < since_utc:
+            continue
         deaths.append({"time": f.get("time", "")[11:16], "m": int(f.get("map", 0)), "x": float(f.get("x", 0)), "y": float(f.get("y", 0)),
                        "target": f.get("target", ""), "level": f.get("level", "")})
     journey = None
@@ -346,7 +363,7 @@ def map_data(brief):
         m = re.match(r"(\d+):\((-?\d+),(-?\d+)\)", f.get("to", ""))
         journey = {"time": f.get("time", "")[11:16], "s": f.get("s"), "walk_s": f.get("walk_s"), "legs": f.get("legs", "").strip(" ;"),
                    "to": [int(m.group(1)), int(m.group(2)), int(m.group(3))] if m else None}
-    return {"trail": TRAIL[-TRAIL_MAX:], "deaths": deaths, "places": graph_nodes(), "known": known, "journey": journey,
+    return {"trail": [p for p in TRAIL if p[3] >= since], "deaths": deaths, "run_start": since, "places": graph_nodes(), "known": known, "journey": journey,
             "graph_built": _graph.get("built", ""), "tiles": sorted(os.listdir(path("assets", "minimap"))) if os.path.isdir(path("assets", "minimap")) else []}
 
 
@@ -356,7 +373,7 @@ def data():
     snap = rpc("state.snapshot")
     run = current_run()
     return {"live": brief, "zones": combat.get("avoid", []), "gear": gear(snap), "doing": combat.get("doing", ""), "run": run,
-            "quests": quests(snap, run), "fights": fights(), "pull_size": pull_size(), "bags": bags_events(), "learned": learned(), "benches": benches(), "map": map_data(brief)}
+            "quests": quests(snap, run), "fights": fights(), "pull_size": pull_size(), "bags": bags_events(), "learned": learned(), "benches": benches(), "map": map_data(brief, run)}
 
 
 class Handler(BaseHTTPRequestHandler):

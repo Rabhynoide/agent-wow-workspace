@@ -55,6 +55,8 @@ for l in combat:
 # Fled zones (combat/zones.go): spawn points the grind skipped, pull choices that left monsters there.
 # Multi-target fights (combat/focus.go, near_attackers): target switches and spells cast with 2+ attackers.
 switches = sum(1 for l in combat if "msg=\"switching target\"" in l)
+# Lost fights held to finish a monster before running (combat lateHold, 2026-10-25).
+holds = sum(1 for l in combat if "late flee: holding" in l)
 group_casts = collections.Counter(re.sub(r'.*spell="?([^"]+?)"? attackers.*', r'\1', l) for l in combat if "msg=\"group cast\"" in l)
 group_fights = sum(1 for l in fights if not re.search(r"attackers_max=[01]\b", l))
 zone_spawns = sum(1 for l in level_log if "near where we fled from" in l)
@@ -147,7 +149,7 @@ lines = [f"# Bench {name} — {race} {cls} {first_level} → {target} ({date})",
          f"- Combats : {len(fights)} ; perdus : {len(lost)}"] + [f"  - {l}" for l in lost] + [
          f"- Fuites : {len(fled)} ; semées : {escaped} ; par vie au départ (fuites/morts) : " +
          " ; ".join(f"{b} % {flight_hp[b][0]}/{flight_hp[b][1]}" for b in ("<30", "30-44", "45-74", "75+") if b in flight_hp)] + [f"  - {l}" for l in fled] + [
-         f"- Combats à plusieurs : {group_fights} ; changements de cible : {switches} ; sorts lancés à plusieurs : {dict(group_casts.most_common(8))}",
+         f"- Combats à plusieurs : {group_fights} ; changements de cible : {switches} ; combats perdus tenus pour finir un monstre : {holds} ; sorts lancés à plusieurs : {dict(group_casts.most_common(8))}",
          f"- Taille de pull : {len(sizes)} changements, finale {sizes[-1] if sizes else '—'} ; pulls de groupe (monstres: nombre) : {dict(sorted(group_pulls.items()))}",
          f"- Zones fuies évitées : points d'apparition {zone_spawns} ; choix de pull {zone_pulls}",
          f"- Coups reçus par côté : {' ; '.join(blow_line(k) for k in blows)}",

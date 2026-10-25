@@ -68,7 +68,8 @@ func (d *damageLog) rate() (float64, bool) {
 	return float64(sum) / span.Seconds(), true
 }
 
-// byAttacker returns the damage per second of each attacker over the window (focus order, logs).
+// byAttacker returns the damage per second of each source (or target, for the damage we deal) over
+// the window (focus order, logs).
 func (d *damageLog) byAttacker() map[uint64]float64 {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -87,21 +88,21 @@ func (d *damageLog) byAttacker() map[uint64]float64 {
 }
 
 // spellDamage reads SMSG_SPELLNONMELEEDAMAGELOG (Unit::SendSpellNonMeleeDamageLog): packed target,
-// packed caster, spell, damage, overkill...: the damage when we are the target.
-func spellDamage(self uint64, payload []byte) (from uint64, amount uint32, ok bool) {
+// packed caster, spell, damage, overkill...
+func spellDamage(payload []byte) (target, caster uint64, amount uint32, ok bool) {
 	r := wire.NewReader(payload)
-	target := r.PackedGUID()
-	caster := r.PackedGUID()
+	target = r.PackedGUID()
+	caster = r.PackedGUID()
 	r.U32() // spell
 	damage := r.U32()
 	overkill := r.U32()
-	if r.Err || target != self || caster == self {
-		return 0, 0, false
+	if r.Err {
+		return 0, 0, 0, false
 	}
 	if overkill <= damage {
 		damage -= overkill
 	}
-	return caster, damage, true
+	return target, caster, damage, true
 }
 
 // Aura types of SMSG_PERIODICAURALOG that hurt (SPELL_AURA_PERIODIC_DAMAGE, _PERCENT).
@@ -112,25 +113,36 @@ const (
 
 // periodicDamage reads SMSG_PERIODICAURALOG (Unit::SendPeriodicAuraLog): packed target, packed
 // caster, spell, count (1), aura type, then for damage: damage, overkill, school, absorb, resist, crit.
-func periodicDamage(self uint64, payload []byte) (from uint64, amount uint32, ok bool) {
+func periodicDamage(payload []byte) (target, caster uint64, amount uint32, ok bool) {
 	r := wire.NewReader(payload)
-	target := r.PackedGUID()
-	caster := r.PackedGUID()
+	target = r.PackedGUID()
+	caster = r.PackedGUID()
 	r.U32() // spell
 	if n := r.U32(); n == 0 {
-		return 0, 0, false
+		return 0, 0, 0, false
 	}
 	aura := r.U32()
 	if aura != auraPeriodicDamage && aura != auraPeriodicDamagePercent {
-		return 0, 0, false
+		return 0, 0, 0, false
 	}
 	damage := r.U32()
 	overkill := r.U32()
-	if r.Err || target != self || caster == self {
-		return 0, 0, false
+	if r.Err {
+		return 0, 0, 0, false
 	}
 	if overkill <= damage {
 		damage -= overkill
 	}
-	return caster, damage, true
+	return target, caster, damage, true
+}
+
+// damageSeen routes one damage event: to the damage we take (from its source) or the damage we deal
+// (to its target).
+func (s *Service) damageSeen(target, caster uint64, amount uint32) {
+	switch {
+	case target == s.guid && caster != s.guid:
+		s.dmg.add(caster, amount)
+	case caster == s.guid && target != s.guid:
+		s.dealt.add(target, amount)
+	}
 }

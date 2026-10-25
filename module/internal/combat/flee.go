@@ -2,6 +2,7 @@ package combat
 
 import (
 	"context"
+	"fmt"
 	"google.golang.org/protobuf/proto"
 	"log/slog"
 	"math"
@@ -78,9 +79,65 @@ func (s *Service) mustFlee(ctx context.Context, me *statepb.SelfInfo) (bool, flo
 	}
 	ok, loss := s.losing(me, att)
 	if !ok {
+		s.setHolding(false, "")
 		return false, loss, att
 	}
+	if hold, why := s.lateHold(me, att); hold {
+		s.setHolding(true, why)
+		return false, loss, att
+	}
+	s.setHolding(false, "")
 	return s.decide(me, att, loss), loss, att
+}
+
+// lateHold: the fight is lost, but we stay while the weakest attacker in reach can still die before
+// our health reaches the safe flight threshold (dpsMargin): what we kill before running is ours (XP,
+// quest, one monster fewer at the next try), damage done to the survivors is lost (they heal going
+// home). Idea of the user, 2026-10-25: 8 flights in 11 were decided in the first 3 s, at 84-96 % of
+// health, before a blow was measured. Before the measure, we hold above flee_late_hold.
+func (s *Service) lateHold(me *statepb.SelfInfo, att []*statepb.Obj) (bool, string) {
+	t := s.tuneGet()
+	if !t.FleeLate || me.MaxHp == 0 {
+		return false, ""
+	}
+	hp := float64(pct(me.Hp, me.MaxHp))
+	threshold, measured := s.dpsMargin(me, t)
+	if !measured {
+		return hp >= t.FleeLateHold, "measuring"
+	}
+	in, _ := s.dmg.rate()
+	ours, ok := s.dealt.rate()
+	if !ok || ours <= 0 || in <= 0 {
+		return false, ""
+	}
+	var weakest *statepb.Obj
+	for _, a := range att {
+		if a.Dist <= areaRange && (weakest == nil || a.Hp < weakest.Hp) {
+			weakest = a
+		}
+	}
+	if weakest == nil {
+		return false, ""
+	}
+	toKill := float64(weakest.Hp) / ours                      // s
+	left := (hp - threshold) / (100 * in / float64(me.MaxHp)) // s before the threshold
+	return left > lateMargin*toKill, fmt.Sprintf("finishing %d: %.0f s to kill, %.0f s before the threshold", weakest.Entry, toKill, left)
+}
+
+// lateMargin: hold only when the time left is this much longer than the time to kill (estimates).
+const lateMargin = 1.2
+
+// setHolding logs when a lost fight starts or stops being held (lateHold).
+func (s *Service) setHolding(on bool, why string) {
+	s.mu.Lock()
+	was := s.holding
+	s.holding = on
+	s.mu.Unlock()
+	if on && !was {
+		slog.Info("late flee: holding", "why", why)
+	} else if !on && was {
+		slog.Info("late flee: released")
+	}
 }
 
 // fleeDecision: the first borderline decision of an encounter (the rule says flee), logged with the

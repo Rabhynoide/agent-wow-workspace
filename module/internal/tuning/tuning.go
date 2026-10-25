@@ -31,9 +31,14 @@ type Tuning struct {
 	FleeDPS      bool    `json:"flee_dps"`
 	FleeExposure float64 `json:"flee_exposure"` // seconds the attackers keep hitting while we run
 	FleeReserve  float64 `json:"flee_reserve"`  // % of health kept on top
-	CrowdFlee    int     `json:"crowd_flee"`    // fresh attackers that make a crowd (0 = no crowd rule)
-	CrowdLoss    float64 `json:"crowd_loss"`    // expected loss over which a crowd makes us flee
-	Avoid        bool    `json:"avoid"`         // paths walk around monsters (move/avoid.go)
+	// FleeLate: a lost fight goes on while the weakest attacker in reach can die before our health
+	// reaches the flight threshold (combat lateHold): what dies before we run is ours. Before the
+	// damage is measured, we hold above FleeLateHold % of health.
+	FleeLate     bool    `json:"flee_late"`
+	FleeLateHold float64 `json:"flee_late_hold"`
+	CrowdFlee    int     `json:"crowd_flee"` // fresh attackers that make a crowd (0 = no crowd rule)
+	CrowdLoss    float64 `json:"crowd_loss"` // expected loss over which a crowd makes us flee
+	Avoid        bool    `json:"avoid"`      // paths walk around monsters (move/avoid.go)
 	// guidecheck: flights in a quest before it is postponed to the next level.
 	PostponeAfterFlights int `json:"postpone_after_flights"`
 	// Learning: in a borderline case (expected to survive, the rule says flee), stay and fight with
@@ -104,7 +109,7 @@ type Tuning struct {
 //   - chase_margin 10 per fresh attacker beyond the first: Prowler + Young Forest Bear at level 9,
 //     flight started at 34 %, dead 8 s later.
 func Defaults() Tuning {
-	return Tuning{FleeMargin: 15, HighMargin: 10, ChaseMargin: 10, FleeDPS: true, FleeExposure: 6, FleeReserve: 5, CrowdFlee: 3, CrowdLoss: 30, Avoid: false,
+	return Tuning{FleeMargin: 15, HighMargin: 10, ChaseMargin: 10, FleeDPS: true, FleeExposure: 6, FleeReserve: 5, FleeLate: true, FleeLateHold: 60, CrowdFlee: 3, CrowdLoss: 30, Avoid: false,
 		PostponeAfterFlights: 1, Explore: 0.25, Learn: true, MinFights: 6, DeathCostS: 180, FleeCostS: 90,
 		FleeDeathPrior: 0.1, ExploreFleeDeath: 0.2,
 		AddCost: 1.5, PullAdapt: false, PullSize: 2, PullSizeMax: 4, PullUpAfter: 2,

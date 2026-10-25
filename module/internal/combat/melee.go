@@ -130,16 +130,16 @@ func (m *meleeLog) dodged(target uint64, within time.Duration) bool {
 	return time.Since(m.dodge[target]) < within
 }
 
-// attackerState records one SMSG_ATTACKERSTATEUPDATE; a blow aimed at us is returned (attacker,
-// damage, onMe) for the damage log (dps.go).
-func (m *meleeLog) attackerState(self uint64, payload []byte) (uint64, uint32, bool) {
+// attackerState records one SMSG_ATTACKERSTATEUPDATE and returns it (target, attacker, damage, ok)
+// for the damage logs (dps.go).
+func (m *meleeLog) attackerState(self uint64, payload []byte) (uint64, uint64, uint32, bool) {
 	hitInfo, attacker, target, damage, state, ok := parseAttackerState(payload)
 	if ok && target == self && attacker != self {
 		m.takeBlow(attacker, hitInfo, damage, state)
-		return attacker, damage, true
+		return target, attacker, damage, true
 	}
 	if !ok || attacker != self {
-		return 0, 0, false
+		return 0, 0, 0, false
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -149,7 +149,7 @@ func (m *meleeLog) attackerState(self uint64, payload []byte) (uint64, uint32, b
 	if state == victimDodge {
 		m.dodge[target] = time.Now()
 	}
-	return 0, 0, false
+	return target, attacker, damage, true
 }
 
 // parseAttackerState decodes Unit::SendAttackStateUpdate: hit info, packed attacker and target,

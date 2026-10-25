@@ -67,6 +67,8 @@ type Service struct {
 	decision     *fleeDecision           // borderline decision of the fight running (flee.go)
 	melee        *meleeLog
 	dmg          damageLog            // damage we take (dps.go)
+	dealt        damageLog            // damage we deal, by target (dps.go)
+	holding      bool                 // a lost fight held (flee.go lateHold)
 	abandoned    map[uint64]time.Time // targets given up (no damage dealt): not picked again for a while
 	crowded      map[uint64]time.Time // targets skipped for their adds: not pulled for a while, still fought back
 	fledAt       time.Time            // last flight (flee.go)
@@ -107,16 +109,16 @@ func (s *Service) OnPacket(_ context.Context, p *modv1.WorldPacket) (*emptypb.Em
 	case uint32(opcode.SMSGAttackswingBadfacing):
 		s.melee.refusedFacing()
 	case uint32(opcode.SMSGAttackerstateupdate):
-		if from, amount, onMe := s.melee.attackerState(s.guid, p.GetPayload()); onMe {
-			s.dmg.add(from, amount)
+		if target, attacker, amount, ok := s.melee.attackerState(s.guid, p.GetPayload()); ok {
+			s.damageSeen(target, attacker, amount)
 		}
 	case uint32(opcode.SMSGSpellnonmeleedamagelog):
-		if from, amount, ok := spellDamage(s.guid, p.GetPayload()); ok {
-			s.dmg.add(from, amount)
+		if target, caster, amount, ok := spellDamage(p.GetPayload()); ok {
+			s.damageSeen(target, caster, amount)
 		}
 	case uint32(opcode.SMSGPeriodicauralog):
-		if from, amount, ok := periodicDamage(s.guid, p.GetPayload()); ok {
-			s.dmg.add(from, amount)
+		if target, caster, amount, ok := periodicDamage(p.GetPayload()); ok {
+			s.damageSeen(target, caster, amount)
 		}
 	case uint32(opcode.SMSGSpellCooldown):
 		s.book.onCooldown(p.GetPayload(), s.guid)
@@ -292,6 +294,9 @@ func (s *Service) defend(ctx context.Context, j *job) (string, string) {
 		}
 		quiet = time.Now()
 	}
+	// Fights on the way loot too: a bag looted at 19:08:11 waited for the end of the quest, 19:12:54
+	// (user remark, 2026-10-25). The fight is over (4 s quiet): the server accepts gear changes.
+	s.gearIfLooted(ctx)
 	return "done", ""
 }
 
@@ -429,7 +434,7 @@ func (s *Service) aggressor(ctx context.Context, me *statepb.SelfInfo) *statepb.
 			slog.Info("attacker after a broken rest", "entry", att[0].Entry, "on_me", att[0].Target == me.Guid, "abandoned", s.wasAbandoned(att[0].Guid))
 		}
 	}
-	return pickAttacker(att) // the weakest within reach first (focus.go)
+	return pickAttacker(att, s.dmg.byAttacker()) // kill order (focus.go)
 }
 
 // fledReason ends a kill job after a flight: going on sent us back into the monsters we ran from (three
@@ -994,8 +999,10 @@ func (s *Service) fightWarrior(ctx context.Context, j *job, guid uint64) (bool, 
 					att = append(att, a)
 				}
 			}
-			if b := focusTarget(t, att); b != nil {
-				slog.Info("switching target", "from", t.Entry, "from_hp", pct(t.Hp, t.MaxHp), "to", b.Entry, "to_hp", pct(b.Hp, b.MaxHp))
+			dps := s.dmg.byAttacker()
+			if b := focusTarget(t, att, dps); b != nil {
+				slog.Info("switching target", "from", t.Entry, "from_hp", pct(t.Hp, t.MaxHp), "to", b.Entry, "to_hp", pct(b.Hp, b.MaxHp),
+					"from_dps", int(attackerDPS(t.Guid, dps)), "to_dps", int(attackerDPS(b.Guid, dps)))
 				return false, "switched"
 			}
 		}
