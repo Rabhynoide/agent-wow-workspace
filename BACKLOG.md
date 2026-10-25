@@ -100,6 +100,22 @@ Référence humaine (journal/sessions/20261014_humain_1-8.md) : **1 → 8 en ~60
 - [ ] Manger/boire : `combat.rest` ne mange ni ne boit ; la nourriture gardée ne sert à rien tant que ce n'est pas fait (gain de temps de repos).
 - [ ] Argent pour l'entraînement : `progress.train` achète du moins cher au plus cher ; si l'argent manque, noter le déficit dans le statut.
 
+## Prochaines étapes (validées par l'utilisateur le 2026-10-25, après le run de mesure en cours)
+Run de mesure lancé le 2026-10-25 : 10 → 12 depuis `warrior_human_10` avec les corrections du commit
+4cd16de (arrêts potions, quêtes proches d'abord), à comparer au run `20261025_1221_Benchrrtfnw` (162 min).
+1. [ ] **Monture au niveau 20** : achat chez le vendeur de montures de la race (humain : Katie Hunter,
+   Eastvale Logging Camp, Elwynn ; apprentissage du sort Apprenti cavalier chez le maître d'équitation à
+   côté, 35-40 po en 3.3.5 avec la réduction de réputation), puis l'utiliser pour toute marche longue en
+   extérieur (hors combat ; descendre avant un pull ; pas en intérieur ni dans les grottes : sort refusé, se
+   souvenir de l'endroit). Plus gros gain de temps attendu de la tranche 20-40 (60 % de vitesse en plus sur
+   la marche, 32 % du temps au dernier run). Garder l'or nécessaire avant 20 : budget dans `town.restock`.
+2. [ ] **Respec au niveau 25** (`journal/classes/warrior.yaml` le prévoit : retirer Improved Thunder
+   Clap) : parler au maître de classe (dialogue « je veux désapprendre mes talents » = gossip, puis
+   confirmation MSG_TALENT_WIPE_CONFIRM), payer (1 po la première fois), puis replacer les points dans
+   l'ordre. Demande le support minimal des menus de dialogue (CMSG_GOSSIP_HELLO / SELECT_OPTION).
+3. [ ] **Tram en rame** (détail plus bas, « Voyages longue distance ») : rames de TransportAnimation.dbc
+   au lieu du tunnel à pied ; gain ~3-4 min par passage (2 passages au run 10 → 12).
+
 ## Voyages longue distance (module travel, idées du 2026-10-25)
 Constat des runs 10 → 12 du 2026-10-25 : `travel.plan` vérifie les marches en jeu (`move.path` sur des milliers de yards) et dépasse les 30 s d'un appel de module ; le premier plan d'une session calcule aussi les pontons de tous les bateaux. Repli sur la marche directe (supprimé) : 3 morts dans la Gorge des Vents brûlants.
 - [x] (2026-10-25, `cmd/travelgraph`, MODULES « travel » ; danger = monstres près du chemin au lieu du niveau d'exploration ; reste : test en jeu, aubergistes utilisés pour le lien) **Graphe de trajets précalculé hors jeu** (comme mod-playerbots, `TravelNodeMap` et tables `playerbots_travelnode*`) : nœuds fixes (maîtres de vol, entrées et sorties de portails, pontons des bateaux, auberges) et marches entre nœuds proches calculées une fois (longueur, niveau d'exploration maximal des zones traversées), dans un fichier de `journal/` lu par `travel`. En jeu, ne vérifier que la marche position → premier nœud et dernier nœud → destination. Supprime le problème des 30 s au lieu de le contourner par des reprises (`busy`). Choix du plan selon le niveau du personnage au moment du voyage.
