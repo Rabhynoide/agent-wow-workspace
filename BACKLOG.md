@@ -130,9 +130,11 @@ Run de mesure lancé le 2026-10-25 : 10 → 12 depuis `warrior_human_10` avec le
    - exploration « rester » à 61 % contre 3 monstres frais avec une perte prévue de 117 % (slack −56) :
      autorisée parce que fuir tue souvent dans cette case (`explore_flee_death`) ; ne jamais explorer
      quand la perte prévue dépasse la vie de plus de ~20 % ;
-   - fuite à 75 % contre Prowler (118) + Defias, morte pendant la fuite : loups au moins aussi rapides que
-     nous (lire `speed_run` des monstres : fuir un plus rapide ne sert à rien, finir le combat ou fuir plus
-     tôt) ; le bot venait de ressusciter dans le même camp.
+   - fuite à 75 % contre Prowler (118) + Riverpaw Outrunner, morte pendant la fuite (Prowler : 0,86 de
+     notre vitesse en base, pas plus rapides) ; le bot venait de ressusciter dans le même camp ;
+   - tenue « en attendant la mesure » contre 4 Defias (groupe de Morgan the Collector) : 93 → 64 % en 2 s ;
+   - corrigé le 2026-10-26 : pas de tenue avant mesure contre 3 attaquants ou plus, pas d'exploration
+     quand la perte prévue dépasse la vie de plus de 20 %.
    - cause commune : choix du pull (camps de 3-4 monstres engagés d'un coup).
 1. [ ] **Monture au niveau 20** : achat chez le vendeur de montures de la race (humain : Katie Hunter,
    Eastvale Logging Camp, Elwynn ; apprentissage du sort Apprenti cavalier chez le maître d'équitation à

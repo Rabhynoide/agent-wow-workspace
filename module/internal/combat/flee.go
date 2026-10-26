@@ -109,7 +109,9 @@ func (s *Service) lateHold(me *statepb.SelfInfo, att []*statepb.Obj) (bool, stri
 	}
 	threshold, measured := s.dpsMargin(me, t, fresh)
 	if !measured {
-		return hp >= t.FleeLateHold, "measuring"
+		// Not against a group: 4 Defias took 29 % of health in the 2 s held to measure them, and the
+		// flight that followed died (run of 2026-10-26 00:09).
+		return hp >= t.FleeLateHold && len(att) < lateGroup, "measuring"
 	}
 	in, _ := s.dmg.rate()
 	ours, ok := s.dealt.rate()
@@ -129,6 +131,12 @@ func (s *Service) lateHold(me *statepb.SelfInfo, att []*statepb.Obj) (bool, stri
 	left := (hp - threshold) / (100 * in / float64(me.MaxHp)) // s before the threshold
 	return left > lateMargin*toKill, fmt.Sprintf("finishing %d: %.0f s to kill, %.0f s before the threshold", weakest.Entry, toKill, left)
 }
+
+// exploreHopeless: no exploration when the expected loss is above our health by more than this (%).
+const exploreHopeless = 20
+
+// lateGroup: from this many attackers, no hold before the damage is measured.
+const lateGroup = 3
 
 // lateMargin: hold only when the time left is this much longer than the time to kill (estimates).
 const lateMargin = 1.2
@@ -402,6 +410,11 @@ const unhittable = "unhittable"
 // exploreProb is the probability to explore a borderline case not learned yet: only when the fight is
 // expected to leave us more than ExploreMinSlack % of health, or where fleeing kills often.
 func exploreProb(t tuning.Tuning, slack float64, fleeKills bool) float64 {
+	// Never a hopeless stay: even where fleeing often kills, a fight expected to cost 117 % of a 61 %
+	// health (slack -56, 3 fresh attackers) was explored and died (run of 2026-10-26 00:09).
+	if slack < -exploreHopeless {
+		return 0
+	}
 	if slack > max(t.ExploreMinSlack, 0) || fleeKills {
 		return exploreRate(t, slack)
 	}
