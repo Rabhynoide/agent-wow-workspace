@@ -203,10 +203,23 @@ func TestHopelessFlight(t *testing.T) {
 	if h, why := s.hopelessFlight(&statepb.SelfInfo{Hp: 139, MaxHp: 232}, att, 57); !h {
 		t.Fatalf("60 %%, fight 57 %%: should stay (%s)", why)
 	}
-	if h, _ := s.hopelessFlight(&statepb.SelfInfo{Hp: 139, MaxHp: 232}, att, 70); h {
-		t.Fatal("the fight kills us too: flee")
+	if h, _ := s.hopelessFlight(&statepb.SelfInfo{Hp: 139, MaxHp: 232}, att, 70); !h {
+		t.Fatal("the fight kills us too, but the flight surely: stay")
 	}
 	if h, _ := s.hopelessFlight(&statepb.SelfInfo{Hp: 209, MaxHp: 232}, att, 57); h {
 		t.Fatal("90 %: the flight is tried")
+	}
+}
+
+// A trail back past idle monsters (the Fargodeep miners) is not taken; one that passes them after the
+// first fleeLook yards is.
+func TestTrailNearIdle(t *testing.T) {
+	me := &statepb.SelfInfo{X: 0, Y: 0}
+	legs := []trailPt{{x: 20, y: 0}, {x: 40, y: 0}, {x: 80, y: 0}}
+	if !trailNearIdle(me, legs, []*statepb.Obj{{X: 30, Y: 8}}) {
+		t.Fatal("miner 8 yards from the trail at 30 yards")
+	}
+	if trailNearIdle(me, legs, []*statepb.Obj{{X: 75, Y: 2}}) {
+		t.Fatal("a monster past the first 45 yards does not count")
 	}
 }

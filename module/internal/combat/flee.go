@@ -107,16 +107,18 @@ func (s *Service) mustFlee(ctx context.Context, me *statepb.SelfInfo) (bool, flo
 const hopelessBelow = 75
 
 // hopelessFlight: the flight would cost more health than we have (the damage we take times the time
-// they keep hitting us, dpsMargin without its reserve) while staying is expected to leave us alive:
-// we stay. The 3 deaths of the bench of 2026-10-26 13:19 were flights from kobolds and Prowlers that
-// kept up (4 kobolds at 60 % with 57 % to lose, 2 at 35 % with 26 %); of all the flights logged, those
-// started under 45 % of health against 4 monsters or more died 4 times in 5.
+// they keep hitting us, dpsMargin without its reserve): we stay, even when the fight is expected to
+// kill us too (a hopeless stay at 41 % became a flight at 32 % once the fight's loss passed our
+// health, dead 6 s later, bench of 2026-10-26 14:19). The 3 deaths of the bench of 2026-10-26 13:19
+// were flights from kobolds and Prowlers that kept up (4 kobolds at 60 % with 57 % to lose, 2 at 35 %
+// with 26 %); of all the flights logged, those started under 45 % of health against 4 monsters or
+// more died 4 times in 5.
 func (s *Service) hopelessFlight(me *statepb.SelfInfo, att []*statepb.Obj, loss float64) (bool, string) {
 	t := s.tuneGet()
 	hp := float64(pct(me.Hp, me.MaxHp))
 	// Above hopelessBelow the flights still mostly escape (against 4 monsters or more: 34 in 41 from
 	// 75 % and up, 12 in 19 below): the expected losses of crowds were too low before.
-	if loss >= hp || hp >= hopelessBelow {
+	if hp >= hopelessBelow {
 		return false, ""
 	}
 	fresh := 0
@@ -376,9 +378,13 @@ func (s *Service) flee(ctx context.Context, j *job, me *statepb.SelfInfo, att []
 	// before we reach it (move.goto re-targets the running walk). Legs that stopped at each point and
 	// safe points chosen again at each leg ran back towards the chasers: 50 yards in 15 s, 21 blows taken,
 	// dead, against 3 Prowlers at 76 % and 3 boars at 91 % (run of 2026-10-26 07:56).
-	dir := s.fleeDirection(ctx, me, awayFrom(me, att))
+	dir, idle := s.fleeDirection(ctx, me, awayFrom(me, att))
 	if len(legs) > 0 && !sameWay(me, legs[min(len(legs)-1, 1)], dir) {
 		legs = nil // the trail turns back towards them
+	}
+	if len(legs) > 0 && trailNearIdle(me, legs, idle) {
+		slog.Info("flight trail passes idle monsters: straight way")
+		legs = nil
 	}
 	turn := 0 // index in fleeTurns
 	var target *[3]float32
@@ -468,10 +474,10 @@ func awayFrom(me *statepb.SelfInfo, att []*statepb.Obj) [2]float64 {
 // the chasers call for help every 3 s within 10 yards of where they are (Creature::CallAssistance), so
 // a run past a camp brings it along (the pack of 7 wolves, 2026-10-26). Each idle monster closer than
 // fleeClear yards to the first fleeLook yards of a way counts against it; the straightest way wins ties.
-func (s *Service) fleeDirection(ctx context.Context, me *statepb.SelfInfo, base [2]float64) [2]float64 {
+func (s *Service) fleeDirection(ctx context.Context, me *statepb.SelfInfo, base [2]float64) ([2]float64, []*statepb.Obj) {
 	r, err := s.api.Nearby(ctx, &statepb.NearbyRequest{Kind: "unit", Radius: fleeLook + fleeClear, Max: 40, AliveOnly: true, HostileOnly: true})
 	if err != nil {
-		return base
+		return base, nil
 	}
 	var idle []*statepb.Obj
 	for _, o := range r.Objs {
@@ -479,7 +485,31 @@ func (s *Service) fleeDirection(ctx context.Context, me *statepb.SelfInfo, base 
 			idle = append(idle, o)
 		}
 	}
-	return bestFleeWay(me, base, idle)
+	return bestFleeWay(me, base, idle), idle
+}
+
+// trailNearIdle tells whether the first fleeLook yards of the trail pass within fleeClear of an idle
+// monster: back the way we came past the Fargodeep mine entrance, 4 flights in 4 met the miners there
+// and died (bench of 2026-10-26 14:19, up to 9 monsters).
+func trailNearIdle(me *statepb.SelfInfo, legs []trailPt, idle []*statepb.Obj) bool {
+	ax, ay, done := me.X, me.Y, float32(0)
+	for _, l := range legs {
+		bx, by := l.x, l.y
+		d := dist2(ax, ay, bx, by)
+		if left := fleeLook - done; d > left { // the leg cut at fleeLook
+			bx, by = ax+(bx-ax)*left/d, ay+(by-ay)*left/d
+		}
+		for _, o := range idle {
+			if segDist(o.X, o.Y, ax, ay, bx, by) < fleeClear {
+				return true
+			}
+		}
+		if done += d; done >= fleeLook {
+			return false
+		}
+		ax, ay = bx, by
+	}
+	return false
 }
 
 // bestFleeWay: see fleeDirection.
