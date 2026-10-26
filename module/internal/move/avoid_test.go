@@ -3,6 +3,8 @@ package move
 import (
 	"testing"
 
+	statepb "wowagent/gen/statev1"
+	worldpb "wowagent/gen/worldv1"
 	"wowagent/internal/nav"
 )
 
@@ -26,5 +28,23 @@ func TestNewOnPath(t *testing.T) {
 		if got := newOnPath([]danger{c.d}, known, path, 1); got != c.want {
 			t.Errorf("%s: %v", c.name, got)
 		}
+	}
+}
+
+// A wandering wolf is matched to its spawn point; an idle one and a far spawn are not.
+func TestHomeOf(t *testing.T) {
+	homes := []*worldpb.Spawn{
+		{Entry: 299, X: 100, Y: 100, MovementType: 1, Wander: 10},
+		{Entry: 299, X: 300, Y: 100, MovementType: 1, Wander: 10},
+		{Entry: 40, X: 100, Y: 100, MovementType: 0},
+	}
+	if h := homeOf(homes, &statepb.Obj{Entry: 299, X: 108, Y: 104}); h == nil || h.X != 100 {
+		t.Fatalf("wolf home: %v", h)
+	}
+	if h := homeOf(homes, &statepb.Obj{Entry: 40, X: 101, Y: 100}); h != nil {
+		t.Fatal("an idle kobold has no wander home")
+	}
+	if h := homeOf(homes, &statepb.Obj{Entry: 299, X: 200, Y: 100}); h != nil {
+		t.Fatal("too far from any spawn")
 	}
 }

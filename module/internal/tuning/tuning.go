@@ -42,6 +42,9 @@ type Tuning struct {
 	CrowdFlee    int     `json:"crowd_flee"` // fresh attackers that make a crowd (0 = no crowd rule)
 	CrowdLoss    float64 `json:"crowd_loss"` // expected loss over which a crowd makes us flee
 	Avoid        bool    `json:"avoid"`      // paths walk around monsters (move/avoid.go)
+	// AvoidWander: share of a wandering monster's wander radius (creature.wander_distance) added to
+	// the disc a path keeps out of around it (move/avoid.go); 0 = its aggro range only.
+	AvoidWander float32 `json:"avoid_wander"`
 	// guidecheck: flights in a quest before it is postponed to the next level.
 	PostponeAfterFlights int `json:"postpone_after_flights"`
 	// Learning: in a borderline case (expected to survive, the rule says flee), stay and fight with
@@ -118,7 +121,7 @@ type Tuning struct {
 //   - chase_margin 10 per fresh attacker beyond the first: Prowler + Young Forest Bear at level 9,
 //     flight started at 34 %, dead 8 s later.
 func Defaults() Tuning {
-	return Tuning{FleeMargin: 15, HighMargin: 10, ChaseMargin: 10, FleeDPS: true, FleeExposure: 8, FleeExposureFresh: 3, FleeReserve: 5, FleeLate: true, FleeLateHold: 60, CrowdFlee: 3, CrowdLoss: 30, Avoid: false,
+	return Tuning{FleeMargin: 15, HighMargin: 10, ChaseMargin: 10, FleeDPS: true, FleeExposure: 8, FleeExposureFresh: 3, FleeReserve: 5, FleeLate: true, FleeLateHold: 60, CrowdFlee: 3, CrowdLoss: 30, Avoid: false, AvoidWander: 0.5,
 		PostponeAfterFlights: 1, Explore: 0.25, Learn: true, MinFights: 6, DeathCostS: 180, FleeCostS: 90,
 		FleeDeathPrior: 0.1, ExploreFleeDeath: 0.2,
 		AddCost: 1.5, PullAdapt: false, PullSize: 2, PullSizeMax: 4, PullUpAfter: 2,
