@@ -45,6 +45,9 @@ type Tuning struct {
 	// AvoidWander: share of a wandering monster's wander radius (creature.wander_distance) added to
 	// the disc a path keeps out of around it (move/avoid.go); 0 = its aggro range only.
 	AvoidWander float32 `json:"avoid_wander"`
+	// BodyPull: a target with too many monsters around is pulled alone (step into its aggro range
+	// only, run back at once: combat/pull.go bodyPull) instead of being left.
+	BodyPull bool `json:"body_pull"`
 	// guidecheck: flights in a quest before it is postponed to the next level.
 	PostponeAfterFlights int `json:"postpone_after_flights"`
 	// Learning: in a borderline case (expected to survive, the rule says flee), stay and fight with
