@@ -586,6 +586,7 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 	}
 	defer savePlan(planPath(char), ps)
 	deaths, idle := 0, 0
+	lastXP := time.Now()
 	tune := tuning.NewSource(learnPath)
 	var quests *questTable
 	// learnAll adds the new log lines to the learned tables (fights, borderline flee decisions, quest
@@ -635,9 +636,19 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 			say("STOP: 3 deaths in this run (see %s)", "logs/level_"+char+".log")
 			return 1
 		}
-		if idle >= 4 {
-			say("STOP: no progress in 4 rounds (see logs/level_%s.log)", char)
+		// Rounds that only postpone quests (retried in 3 min) end in a second: four of them stopped the
+		// run 3 min after its last kill (bench of 2026-10-26). Stop after 4 idle rounds and 10 min
+		// without experience; before that, wait for the postponed quests.
+		if idle >= 4 && time.Since(lastXP) > 10*time.Minute {
+			say("STOP: no progress in %d rounds and %d min (see logs/level_%s.log)", idle, int(time.Since(lastXP).Minutes()), char)
 			return 1
+		}
+		if idle >= 4 {
+			say("  nothing gained in %d rounds: waiting 30 s for the postponed quests", idle)
+			for t := 0; t < 3; t++ {
+				time.Sleep(10 * time.Second)
+				r.defend()
+			}
 		}
 		if t := tune.Get(); t.QuestDefer > 0 {
 			ps.hard = quests.hard(me.Level, t.QuestDefer, t.QuestDeferMin)
@@ -727,6 +738,11 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 							ps.retryAt[q] = me.Level + 1
 							say("  %d postponed to level %d: %s", q, me.Level+1, reason)
 						}
+					case strings.Contains(reason, "hearthstone:") && ps.tries[q] < 2:
+						// A failed cast (moving, interrupted) is not the quest's fault (bench of 2026-10-26).
+						ps.tries[q]++
+						ps.waitUntil[q] = time.Now().Add(time.Minute)
+						say("  %d %s postponed 1 min (%s)", q, c.cache[q].Title, reason)
 					case strings.Contains(reason, "no live entry") && ps.tries[q] < 2:
 						ps.tries[q]++
 						ps.waitUntil[q] = time.Now().Add(4 * time.Minute)
@@ -802,7 +818,7 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 			if b.Self.Level == levelBefore && b.Self.XP == xpBefore {
 				idle++
 			} else {
-				idle = 0
+				idle, lastXP = 0, time.Now()
 			}
 		}
 	}

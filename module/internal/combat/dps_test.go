@@ -177,3 +177,19 @@ func TestFleeAvoidsCamps(t *testing.T) {
 		t.Fatalf("no camp: straight, got %v", d)
 	}
 }
+
+// An exploration (stay) is released below the last safe moment to flee: 2 Defias at 10 damage/s on
+// 203 health say flee below ~59 %; at 37 % we run (bench of 2026-10-26).
+func TestExplorationReleasedWhenUnsafe(t *testing.T) {
+	me := &statepb.SelfInfo{Hp: 75, MaxHp: 203}
+	att := []*statepb.Obj{{Guid: 7, Entry: 116, Hp: 150, MaxHp: 160}, {Guid: 8, Entry: 116, Hp: 150, MaxHp: 160}}
+	s := &Service{guid: 1}
+	s.decision = &fleeDecision{key: "3:-20", stayed: true, how: "explore", fresh: 3}
+	if s.decide(me, att, 60) {
+		t.Fatal("nothing measured: the exploration holds")
+	}
+	fill(&s.dmg, 7, 10)
+	if !s.decide(me, att, 60) {
+		t.Fatal("below the safe flight threshold: the exploration is released")
+	}
+}

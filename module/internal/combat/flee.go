@@ -188,8 +188,18 @@ func (s *Service) decide(me *statepb.SelfInfo, att []*statepb.Obj, loss float64)
 	// of those cells, held to the end, won 33 times in 37.
 	// Held for the whole encounter now (encounter.go), an exploration stops holding when more fresh
 	// monsters join than when it was taken (an encounter of series QR had 11 monsters).
-	if d != nil && d.stayed && ((d.how == "explore" && fresh <= d.fresh) || slack >= 0) {
+	// Neither holds below the last safe moment to flee (dpsMargin, measured or learned): 3 Defias
+	// Bandits, explored at 66 % with a loss of 80 %, killed us at 37 % with 2 left whose damage said
+	// flee below 59 % (bench of 2026-10-26).
+	unsafe := false
+	if m, ok := s.dpsMargin(me, t, fresh, att); ok && float64(pct(me.Hp, me.MaxHp)) < m {
+		unsafe = true
+	}
+	if d != nil && d.stayed && !unsafe && ((d.how == "explore" && fresh <= d.fresh) || slack >= 0) {
 		return false
+	}
+	if d != nil && d.stayed && unsafe {
+		slog.Info("flee decision released", "how", d.how, "hp", pct(me.Hp, me.MaxHp), "dps_pct", s.dpsPct(me))
 	}
 	key := tuning.Key(fresh, slack)
 	flee, how := true, "rule"
@@ -197,6 +207,8 @@ func (s *Service) decide(me *statepb.SelfInfo, att []*statepb.Obj, loss float64)
 	if s.fleeTab != nil {
 		if f, learned := tuning.Decide(s.fleeTab.Get(), key, t); learned {
 			flee, how = f, "learned"
+		} else if unsafe {
+			p = 0
 		} else if p = exploreProb(t, slack, t.ExploreFleeDeath > 0 && tuning.FleeDeath(s.fleeTab.Get(), key, t) >= t.ExploreFleeDeath); rand.Float64() < p {
 			flee, how = false, "explore"
 		}

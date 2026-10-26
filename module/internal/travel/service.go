@@ -18,6 +18,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 
+	questpb "wowagent/gen/questv1"
 	statepb "wowagent/gen/statev1"
 	pb "wowagent/gen/travelv1"
 	"wowagent/internal/api"
@@ -803,7 +804,16 @@ func (s *Service) Hearth(ctx context.Context, _ *emptypb.Empty) (*pb.TravelResul
 	if b == nil {
 		return &pb.TravelResult{Reason: "bind point unknown"}, nil
 	}
-	res, err := s.api.UseItem(ctx, hearthItem, hearthSpell, 0, "")
+	// The cast fails while we move (SpellCastResult 51 SPELL_FAILED_MOVING: a flight or a walk had not
+	// stopped yet, bench of 2026-10-26): stop first, and try again once.
+	var res *questpb.QuestResult
+	for try := 0; try < 2; try++ {
+		_ = s.api.MoveStop(ctx)
+		time.Sleep(700 * time.Millisecond)
+		if res, err = s.api.UseItem(ctx, hearthItem, hearthSpell, 0, ""); err == nil && res.Ok {
+			break
+		}
+	}
 	if err != nil || !res.Ok {
 		return &pb.TravelResult{Reason: fmt.Sprintf("hearthstone: %v %s", err, res.GetReason())}, nil
 	}
