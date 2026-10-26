@@ -135,3 +135,18 @@ func TestGroupGuards(t *testing.T) {
 		t.Fatalf("hopeless exploration: %v", p)
 	}
 }
+
+// Two Defias at 6 damage/s each, 200 health each, we deal 20/s: the first dies at 10 s, the second at
+// 20 s: 6*10 + 6*20 = 180 damage.
+func TestOrderedDamage(t *testing.T) {
+	g := []*statepb.Obj{{Guid: 1, Hp: 200}, {Guid: 2, Hp: 200}}
+	if d := orderedDamage(g, map[uint64]float64{1: 6, 2: 6}, 20); d < 179.9 || d > 180.1 {
+		t.Fatalf("damage %v", d)
+	}
+	// The strong hitter first: 12/s with 200 health and 2/s with 100: 12*10 + 2*15 = 150 (the other
+	// order: 2*5 + 12*15 = 190).
+	g = []*statepb.Obj{{Guid: 1, Hp: 200}, {Guid: 2, Hp: 100}}
+	if d := orderedDamage(g, map[uint64]float64{1: 12, 2: 2}, 20); d < 149.9 || d > 150.1 {
+		t.Fatalf("ordered damage %v", d)
+	}
+}

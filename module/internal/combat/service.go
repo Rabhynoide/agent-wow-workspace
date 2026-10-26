@@ -23,6 +23,7 @@ import (
 	statepb "wowagent/gen/statev1"
 	worldpb "wowagent/gen/worldv1"
 	"wowagent/internal/api"
+	"wowagent/internal/dpslearn"
 	"wowagent/internal/jobs"
 	"wowagent/internal/loot"
 	"wowagent/internal/moveio"
@@ -68,6 +69,7 @@ type Service struct {
 	melee        *meleeLog
 	dmg          damageLog            // damage we take (dps.go)
 	dealt        damageLog            // damage we deal, by target (dps.go)
+	dpsTab       *dpslearn.File       // learned damage rates (journal/learn/dps.json)
 	holding      bool                 // a lost fight held (flee.go lateHold)
 	abandoned    map[uint64]time.Time // targets given up (no damage dealt): not picked again for a while
 	crowded      map[uint64]time.Time // targets skipped for their adds: not pulled for a while, still fought back
@@ -96,7 +98,7 @@ func Register(g grpc.ServiceRegistrar, s modv1.SessionClient) {
 	runner.Decorate = func(j *job, st *pb.CombatStatus) { st.ElapsedS = uint32(time.Since(j.Start).Seconds()) }
 	pb.RegisterCombatServer(g, &Service{s: s, api: api.C{S: s}, loot: loot.NewTracker(), guid: guid, jobs: runner, failures: map[uint8]castFailure{},
 		rotations: map[uint32]*classTables{}, melee: newMeleeLog(), abandoned: map[uint64]time.Time{}, crowded: map[uint64]time.Time{}, items: map[uint32]*worldpb.ItemInfo{}, detection: map[uint32]float32{}, book: &spellBook{ready: map[uint32]time.Time{}},
-		fights: xpscore.LearnedFile(), trail: tr, tune: tuning.NewSource(""), fleeTab: tuning.NewFleeTable("")})
+		fights: xpscore.LearnedFile(), dpsTab: dpslearn.NewFile(""), trail: tr, tune: tuning.NewSource(""), fleeTab: tuning.NewFleeTable("")})
 	go tr.follow(api.C{S: s})
 }
 

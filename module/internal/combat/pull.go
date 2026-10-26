@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"math"
+	"sort"
 	"time"
 
 	pb "wowagent/gen/combatv1"
@@ -167,8 +168,46 @@ func (s *Service) pullFits(me *statepb.SelfInfo, maxPull float32) func(t *statep
 			levels = append(levels, a.Level)
 		}
 		loss := float32(xpscore.PullLoss(levels, me.Level, me.ClassId, table, tune.AddCost))
+		// The learned damage rates (dpslearn), when known: the 5 deaths of the runs of 2026-10-25/26
+		// were groups of 2-4 that the learned losses let through.
+		if dl, ok := s.groupLoss(me, append([]*statepb.Obj{t}, adds...)); ok {
+			loss = max(loss, dl)
+		}
 		return loss <= limit && (size == 0 || len(levels) <= size), loss, limit
 	}
+}
+
+// groupLoss is the health (% of the maximum) a group is expected to cost with the learned damage
+// rates: killed in the kill order (focus.go), each monster hits us until it dies. ok false when our
+// damage or no monster's damage is known yet.
+func (s *Service) groupLoss(me *statepb.SelfInfo, group []*statepb.Obj) (float32, bool) {
+	ours, ok := s.ours(me)
+	if !ok || ours <= 0 || me.MaxHp == 0 {
+		return 0, false
+	}
+	tab := s.dpsTab.Get()
+	dps := map[uint64]float64{}
+	for _, o := range group {
+		if d, ok := tab.Taken(o.Entry, o.Level, me.Armor); ok {
+			dps[o.Guid] = d
+		}
+	}
+	if len(dps) == 0 {
+		return 0, false
+	}
+	return float32(100 * orderedDamage(group, dps, ours) / float64(me.MaxHp)), true
+}
+
+// orderedDamage is the damage taken killing the group in the kill order at ours damage per second.
+func orderedDamage(group []*statepb.Obj, dps map[uint64]float64, ours float64) float64 {
+	left := append([]*statepb.Obj(nil), group...)
+	sort.Slice(left, func(i, j int) bool { return focusScore(left[i], dps) > focusScore(left[j], dps) })
+	var t, dmg float64
+	for _, o := range left {
+		t += float64(o.Hp) / ours
+		dmg += attackerDPS(o.Guid, dps) * t
+	}
+	return dmg
 }
 
 // choosePull returns the target to fight, after a body pull when needed; nil when no monster of the

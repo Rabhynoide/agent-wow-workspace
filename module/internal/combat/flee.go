@@ -107,14 +107,14 @@ func (s *Service) lateHold(me *statepb.SelfInfo, att []*statepb.Obj) (bool, stri
 			fresh++
 		}
 	}
-	threshold, measured := s.dpsMargin(me, t, fresh)
+	threshold, measured := s.dpsMargin(me, t, fresh, att) // measured in the fight, or learned
 	if !measured {
 		// Not against a group: 4 Defias took 29 % of health in the 2 s held to measure them, and the
 		// flight that followed died (run of 2026-10-26 00:09).
 		return hp >= t.FleeLateHold && len(att) < lateGroup, "measuring"
 	}
-	in, _ := s.dmg.rate()
-	ours, ok := s.dealt.rate()
+	in, _ := s.incoming(me, att)
+	ours, ok := s.ours(me)
 	if !ok || ours <= 0 || in <= 0 {
 		return false, ""
 	}
@@ -243,7 +243,7 @@ func (s *Service) losing(me *statepb.SelfInfo, att []*statepb.Obj) (bool, float6
 	}
 	// Never later than the fixed margins: a monster that just joined has not hit us yet, so the
 	// measured damage is low while it is fresh (staying in borderline cases is the learned table's job).
-	if m, ok := s.dpsMargin(me, t, fresh); ok {
+	if m, ok := s.dpsMargin(me, t, fresh, att); ok {
 		margin = max(margin, m)
 	}
 	crowded := t.CrowdFlee > 0 && fresh >= max(t.CrowdFlee, s.pullSize.cap(t)+1)
@@ -253,12 +253,12 @@ func (s *Service) losing(me *statepb.SelfInfo, att []*statepb.Obj) (bool, float6
 // dpsMargin is the flee margin from the damage we take (tuning flee_dps): what it costs during a
 // flight (dps × (flee_exposure + flee_exposure_fresh per fresh attacker beyond the first) s, % of
 // health) plus flee_reserve; ok false while not measured.
-func (s *Service) dpsMargin(me *statepb.SelfInfo, t tuning.Tuning, fresh int) (float64, bool) {
+func (s *Service) dpsMargin(me *statepb.SelfInfo, t tuning.Tuning, fresh int, att []*statepb.Obj) (float64, bool) {
 	if !t.FleeDPS || me.MaxHp == 0 {
 		return 0, false
 	}
-	dps, ok := s.dmg.rate()
-	if !ok {
+	dps, how := s.incoming(me, att)
+	if how == "" || dps <= 0 {
 		return 0, false
 	}
 	exposure := t.FleeExposure + t.FleeExposureFresh*float64(max(fresh-1, 0))

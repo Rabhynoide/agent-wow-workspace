@@ -30,6 +30,7 @@ const (
 	fUnitFaction = 55
 	fUnitFlags   = 59
 	fAuraState   = 61 // UNIT_FIELD_AURASTATE
+	fArmor       = 99 // UNIT_FIELD_RESISTANCES[0] (OBJECT_END + 0x5D), sent to its owner only
 	fUnitDyn     = 79
 	fUnitNpc     = 82
 	fQuestLog    = 158

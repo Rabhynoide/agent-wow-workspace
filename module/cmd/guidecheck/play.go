@@ -24,6 +24,7 @@ import (
 	"syscall"
 	"time"
 
+	"wowagent/internal/dpslearn"
 	"wowagent/internal/faction"
 	"wowagent/internal/tuning"
 	"wowagent/internal/xpscore"
@@ -187,6 +188,19 @@ const (
 	fightsFile = "../journal/learn/fights.json"
 	combatLog  = "../logs/combat.log"
 )
+
+// dpsFile: the learned damage rates (internal/dpslearn), rebuilt from the whole combat log (its averages
+// forget, so the order of the lines is what matters).
+const dpsFile = "../journal/learn/dps.json"
+
+func learnDPS() (int, error) {
+	t := dpslearn.New()
+	n, err := t.Learn(combatLog)
+	if err != nil {
+		return 0, err
+	}
+	return n, t.Save(dpsFile)
+}
 
 // learnFights adds the new fight lines of the combat log to the learned table and saves it.
 func (c *checker) learnFights() (int, error) {
@@ -587,6 +601,11 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 			say("learned borderline fights: %v", err)
 		} else if n > 0 {
 			say("learned %d borderline fights", n)
+		}
+		if n, err := learnDPS(); err != nil {
+			say("learned damage rates: %v", err)
+		} else if n > 0 {
+			say("learned %d damage rates", n)
 		}
 		if t, n, err := learnQuests(); err != nil {
 			say("learned quests: %v", err)

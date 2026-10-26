@@ -49,6 +49,8 @@ message SelfInfo {
   // 10 = Victory Rush usable, 1 = Revenge/defense, ...).
   uint32 aura_state = 24;
   repeated Aura auras = 25;
+  // Armor (UNIT_FIELD_RESISTANCES[0]): the damage monsters deal us is learned before it (combat/dpslearn.go).
+  uint32 armor = 26;
 }
 
 message Item {

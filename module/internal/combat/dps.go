@@ -4,6 +4,7 @@ import (
 	"sync"
 	"time"
 
+	statepb "wowagent/gen/statev1"
 	"wowagent/internal/wire"
 )
 
@@ -27,7 +28,58 @@ type damageHit struct {
 type damageLog struct {
 	mu    sync.Mutex
 	hits  []damageHit
-	first time.Time // first hit of the current run of hits (a pause of dpsWindow starts a new one)
+	first time.Time             // first hit of the current run of hits (a pause of dpsWindow starts a new one)
+	tot   map[uint64]*damageTot // since resetTotals (the encounter), by source
+}
+
+// damageTot: damage of one source (or to one target) during an encounter, for the learning.
+type damageTot struct {
+	amount      uint64
+	hits        int
+	first, last time.Time
+}
+
+// rate is the damage per second of a total: its damage over the time from its first hit to its last
+// plus one mean interval between hits (0 with fewer than minHits hits or minSpan of fight).
+func (t damageTot) rate() float64 {
+	span := t.last.Sub(t.first)
+	if t.hits < learnMinHits || span < learnMinSpan {
+		return 0
+	}
+	span += span / time.Duration(t.hits-1)
+	return float64(t.amount) / span.Seconds()
+}
+
+// An encounter teaches a damage rate from learnMinHits hits over learnMinSpan.
+const (
+	learnMinHits = 3
+	learnMinSpan = 3 * time.Second
+)
+
+func (d *damageLog) resetTotals() {
+	d.mu.Lock()
+	d.tot = map[uint64]*damageTot{}
+	d.mu.Unlock()
+}
+
+// totals returns the totals since resetTotals, by source, and all sources together.
+func (d *damageLog) totals() (map[uint64]damageTot, damageTot) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	out := map[uint64]damageTot{}
+	var all damageTot
+	for k, t := range d.tot {
+		out[k] = *t
+		all.amount += t.amount
+		all.hits += t.hits
+		if all.first.IsZero() || t.first.Before(all.first) {
+			all.first = t.first
+		}
+		if t.last.After(all.last) {
+			all.last = t.last
+		}
+	}
+	return out, all
 }
 
 func (d *damageLog) add(from uint64, amount uint32) {
@@ -41,6 +93,16 @@ func (d *damageLog) add(from uint64, amount uint32) {
 		d.first = now
 	}
 	d.hits = append(d.hits, damageHit{now, from, amount})
+	if d.tot != nil {
+		t := d.tot[from]
+		if t == nil {
+			t = &damageTot{first: now}
+			d.tot[from] = t
+		}
+		t.amount += uint64(amount)
+		t.hits++
+		t.last = now
+	}
 	// Keep the window only.
 	i := 0
 	for i < len(d.hits) && now.Sub(d.hits[i].at) > dpsWindow {
@@ -134,6 +196,46 @@ func periodicDamage(payload []byte) (target, caster uint64, amount uint32, ok bo
 		damage -= overkill
 	}
 	return target, caster, damage, true
+}
+
+// incoming is the damage per second we take from these attackers: measured once the fight has gone
+// on for dpsMinSpan, else learned (dpslearn, at our armor; an attacker never met counts as the mean of
+// the known ones). how: "measured", "learned", or "" when neither is known.
+func (s *Service) incoming(me *statepb.SelfInfo, att []*statepb.Obj) (float64, string) {
+	if r, ok := s.dmg.rate(); ok {
+		return r, "measured"
+	}
+	sum, known := s.predictTaken(me, att)
+	if known == 0 {
+		return 0, ""
+	}
+	return sum, "learned"
+}
+
+// predictTaken is the learned damage per second of these monsters on us (unknown ones count as the
+// mean of the known ones), with how many were known.
+func (s *Service) predictTaken(me *statepb.SelfInfo, att []*statepb.Obj) (float64, int) {
+	tab := s.dpsTab.Get()
+	var sum float64
+	known := 0
+	for _, a := range att {
+		if d, ok := tab.Taken(a.Entry, a.Level, me.Armor); ok {
+			sum += d
+			known++
+		}
+	}
+	if known == 0 {
+		return 0, 0
+	}
+	return sum * float64(len(att)) / float64(known), known
+}
+
+// ours is our damage per second: measured in this fight, else learned for our class and level.
+func (s *Service) ours(me *statepb.SelfInfo) (float64, bool) {
+	if r, ok := s.dealt.rate(); ok && r > 0 {
+		return r, true
+	}
+	return s.dpsTab.Get().Dealt(me.ClassId, me.Level)
 }
 
 // damageSeen routes one damage event: to the damage we take (from its source) or the damage we deal

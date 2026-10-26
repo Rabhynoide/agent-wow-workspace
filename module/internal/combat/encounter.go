@@ -24,6 +24,9 @@ type encounter struct {
 	decisions []*fleeDecision
 	hpStart   uint32
 	hpMin     uint32
+	// for the damage learning (dpslearn): who the monsters were, and us at the start
+	mobs                map[uint64][2]uint32 // guid -> entry, level
+	armor, level, class uint32
 }
 
 // encounterStale: an encounter with no monster on us for this long is over even if no check saw it
@@ -47,21 +50,28 @@ func (s *Service) encounterBegin(me *statepb.SelfInfo) {
 		hp = pct(me.Hp, me.MaxHp)
 	}
 	s.mu.Lock()
-	s.enc = &encounter{start: time.Now(), lastFoe: time.Now(), foes: map[uint64]bool{}, hpStart: hp, hpMin: hp}
+	s.enc = &encounter{start: time.Now(), lastFoe: time.Now(), foes: map[uint64]bool{}, hpStart: hp, hpMin: hp,
+		mobs: map[uint64][2]uint32{}}
+	if me != nil {
+		s.enc.armor, s.enc.level, s.enc.class = me.Armor, me.Level, me.ClassId
+	}
+	s.dmg.resetTotals()
+	s.dealt.resetTotals()
 	s.decision = nil
 	s.mu.Unlock()
 }
 
 // encounterSaw records the monsters on us and our health (fight samples, once a second).
-func (s *Service) encounterSaw(foes []uint64, hp uint32) {
+func (s *Service) encounterSaw(foes []*statepb.Obj, hp uint32) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	e := s.enc
 	if e == nil {
 		return
 	}
-	for _, g := range foes {
-		e.foes[g] = true
+	for _, o := range foes {
+		e.foes[o.Guid] = true
+		e.mobs[o.Guid] = [2]uint32{o.Entry, o.Level}
 	}
 	if len(foes) > 0 {
 		e.lastFoe = time.Now()
@@ -105,4 +115,17 @@ func (s *Service) encounterEnd(result string) {
 	for _, d := range e.decisions {
 		slog.Info("flee outcome", "key", d.key, "stayed", d.stayed, "how", d.how, "hp", d.hp, "slack", int(d.slack), "foes", len(e.foes), "result", result)
 	}
+	// Damage learning (dpslearn, learned by guidecheck from these lines).
+	taken, _ := s.dmg.totals()
+	for g, t := range taken {
+		m, ok := e.mobs[g]
+		if r := t.rate(); ok && r > 0 && e.armor > 0 {
+			slog.Info("damage taken", "entry", m[0], "level", m[1], "armor", e.armor, "dps", round1(r), "hits", t.hits, "s", int(t.last.Sub(t.first).Seconds()))
+		}
+	}
+	if _, all := s.dealt.totals(); all.rate() > 0 && e.level > 0 {
+		slog.Info("damage dealt", "class", e.class, "level", e.level, "dps", round1(all.rate()), "hits", all.hits, "s", int(all.last.Sub(all.first).Seconds()))
+	}
 }
+
+func round1(x float64) float64 { return float64(int(x*10+0.5)) / 10 }

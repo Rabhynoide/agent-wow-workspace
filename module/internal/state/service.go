@@ -137,7 +137,7 @@ func (st *Store) selfInfo(me *Obj) *pb.SelfInfo {
 		Target: me.guid(fUnitTarget), Ghost: me.u(fPlayerFlags)&0x10 != 0,
 		Dead:     (me.u(fUnitHealth) == 0 && me.u(fUnitMaxHP) > 0) || me.u(fPlayerFlags)&0x10 != 0,
 		RunSpeed: me.Speeds[1], UnitFlags: me.u(fUnitFlags),
-		AuraState: me.u(fAuraState), Auras: aurasPB(me, me.Guid),
+		AuraState: me.u(fAuraState), Auras: aurasPB(me, me.Guid), Armor: me.u(fArmor),
 	}
 }
 

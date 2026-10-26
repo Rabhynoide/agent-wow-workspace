@@ -15,9 +15,9 @@ func TestEncounter(t *testing.T) {
 	s.encounterBegin(me)
 	first := s.enc
 	s.encounterDecision(&fleeDecision{key: "3:10", stayed: true})
-	s.encounterSaw([]uint64{1, 2, 3}, 60)
+	s.encounterSaw([]*statepb.Obj{{Guid: 1}, {Guid: 2}, {Guid: 3}}, 60)
 	s.encounterBegin(me) // the next kobold of the pack: same encounter
-	s.encounterSaw([]uint64{2, 3}, 40)
+	s.encounterSaw([]*statepb.Obj{{Guid: 2}, {Guid: 3}}, 40)
 	if s.enc != first || len(s.enc.foes) != 3 || len(s.enc.decisions) != 1 || s.enc.hpMin != 40 {
 		t.Fatalf("encounter %+v", s.enc)
 	}

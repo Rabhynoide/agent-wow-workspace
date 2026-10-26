@@ -31,7 +31,7 @@ EmptyProtoPZ.google.golang.org/protobuf/types/known/emptypbø¢GPBªGoogle.P
 SendPacket%.agentwow.module.v1.SendPacketRequest.google.protobuf.EmptyE
 GetClock.google.protobuf.Empty!.agentwow.module.v1.ClockResponsea
 InvokeModule'.agentwow.module.v1.InvokeModuleRequest(.agentwow.module.v1.InvokeModuleResponseB5Z3github.com/agent-wow/agent-wow/pkg/modules/v1;modv1bproto3
-¿
+Õ
 state.protowowagent.state.v1api/module/v1/session.protogoogle/protobuf/empty.proto"¨
 Aura
 slot (Rslot
@@ -40,7 +40,7 @@ SendPacket%.agentwow.module.v1.SendPacketRequest.google.protobuf.EmptyE
 left_ms (RleftMs
 max_ms (RmaxMs
 mine (Rmine
-positive (Rpositive"Ö
+positive (Rpositive"ì
 SelfInfo
 guid (Rguid
 map (Rmap
@@ -70,7 +70,8 @@ unit_flags (R	unitFlags
 talent_points (RtalentPoints
 
 aura_state (R	auraState-
-auras (2.wowagent.state.v1.AuraRauras"ì
+auras (2.wowagent.state.v1.AuraRauras
+armor (Rarmor"ì
 Item
 slot (Rslot
 entry (Rentry

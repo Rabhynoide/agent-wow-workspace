@@ -120,6 +120,8 @@ func main() {
 		fmt.Println("learned borderline fights:", nb, err)
 		_, nq, err := learnQuests()
 		fmt.Println("learned quest outcomes:", nq, err)
+		nd, err := learnDPS()
+		fmt.Println("learned damage rates:", nd, err)
 		os.Exit(0)
 	}
 	// Files given as arguments are checked in that order (one race's chain); else the whole directory.

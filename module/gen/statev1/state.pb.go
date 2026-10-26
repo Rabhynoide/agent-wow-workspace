@@ -147,8 +147,10 @@ type SelfInfo struct {
 	TalentPoints uint32 `protobuf:"varint,23,opt,name=talent_points,json=talentPoints,proto3" json:"talent_points,omitempty"`
 	// UNIT_FIELD_AURASTATE: bit (state-1) set when a spell condition holds (Spell.dbc CasterAuraState:
 	// 10 = Victory Rush usable, 1 = Revenge/defense, ...).
-	AuraState     uint32  `protobuf:"varint,24,opt,name=aura_state,json=auraState,proto3" json:"aura_state,omitempty"`
-	Auras         []*Aura `protobuf:"bytes,25,rep,name=auras,proto3" json:"auras,omitempty"`
+	AuraState uint32  `protobuf:"varint,24,opt,name=aura_state,json=auraState,proto3" json:"aura_state,omitempty"`
+	Auras     []*Aura `protobuf:"bytes,25,rep,name=auras,proto3" json:"auras,omitempty"`
+	// Armor (UNIT_FIELD_RESISTANCES[0]): the damage monsters deal us is learned before it (combat/dpslearn.go).
+	Armor         uint32 `protobuf:"varint,26,opt,name=armor,proto3" json:"armor,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -356,6 +358,13 @@ func (x *SelfInfo) GetAuras() []*Aura {
 		return x.Auras
 	}
 	return nil
+}
+
+func (x *SelfInfo) GetArmor() uint32 {
+	if x != nil {
+		return x.Armor
+	}
+	return 0
 }
 
 type Item struct {
@@ -1238,7 +1247,7 @@ const file_state_proto_rawDesc = "" +
 	"\aleft_ms\x18\x04 \x01(\rR\x06leftMs\x12\x15\n" +
 	"\x06max_ms\x18\x05 \x01(\rR\x05maxMs\x12\x12\n" +
 	"\x04mine\x18\x06 \x01(\bR\x04mine\x12\x1a\n" +
-	"\bpositive\x18\a \x01(\bR\bpositive\"\xd6\x04\n" +
+	"\bpositive\x18\a \x01(\bR\bpositive\"\xec\x04\n" +
 	"\bSelfInfo\x12\x12\n" +
 	"\x04guid\x18\x01 \x01(\x04R\x04guid\x12\x10\n" +
 	"\x03map\x18\x02 \x01(\rR\x03map\x12\f\n" +
@@ -1268,7 +1277,8 @@ const file_state_proto_rawDesc = "" +
 	"\rtalent_points\x18\x17 \x01(\rR\ftalentPoints\x12\x1d\n" +
 	"\n" +
 	"aura_state\x18\x18 \x01(\rR\tauraState\x12-\n" +
-	"\x05auras\x18\x19 \x03(\v2\x17.wowagent.state.v1.AuraR\x05auras\"\xec\x01\n" +
+	"\x05auras\x18\x19 \x03(\v2\x17.wowagent.state.v1.AuraR\x05auras\x12\x14\n" +
+	"\x05armor\x18\x1a \x01(\rR\x05armor\"\xec\x01\n" +
 	"\x04Item\x12\x12\n" +
 	"\x04slot\x18\x01 \x01(\x05R\x04slot\x12\x14\n" +
 	"\x05entry\x18\x02 \x01(\rR\x05entry\x12\x14\n" +
