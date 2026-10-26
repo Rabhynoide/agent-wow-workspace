@@ -1,0 +1,209 @@
+{
+ "source": "warcrafttavern:https://www.warcrafttavern.com/wotlk/guides/alliance-leveling-human-1-10/",
+ "faction": "Alliance",
+ "race": "Human",
+ "zone": "Elwynn Forest & Dun Morogh (1-10)",
+ "levels": "1-10",
+ "startlevel": 1,
+ "steps": [
+  {
+   "n": 1,
+   "action": "accept",
+   "quest": "A Threat Within",
+   "quest_id": 783
+  },
+  {
+   "n": 2,
+   "action": "accept",
+   "quest": "Kobold Camp Cleanup",
+   "quest_id": 7
+  },
+  {
+   "n": 3,
+   "action": "accept",
+   "quest": "Eagan Peltskinner",
+   "quest_id": 5261
+  },
+  {
+   "n": 4,
+   "action": "accept",
+   "quest": "Wolves Across the Border",
+   "quest_id": 33
+  },
+  {
+   "n": 5,
+   "action": "accept",
+   "quest": "Investigate Echo Ridge",
+   "quest_id": 15
+  },
+  {
+   "n": 6,
+   "action": "accept",
+   "quest": "Brotherhood of Thieves",
+   "quest_id": 18
+  },
+  {
+   "n": 7,
+   "action": "accept",
+   "quest": "Simple Letter",
+   "quest_id": 3100,
+   "class": "Warrior"
+  },
+  {
+   "n": 8,
+   "action": "accept",
+   "quest": "Skirmish at Echo Ridge",
+   "quest_id": 21
+  },
+  {
+   "n": 9,
+   "action": "accept",
+   "quest": "Milly Osworth",
+   "quest_id": 3903
+  },
+  {
+   "n": 10,
+   "action": "accept",
+   "quest": "Bounty on Garrick Padfoot",
+   "quest_id": 6
+  },
+  {
+   "n": 11,
+   "action": "accept",
+   "quest": "Milly's Harvest",
+   "quest_id": 3904
+  },
+  {
+   "n": 12,
+   "action": "accept",
+   "quest": "Grape Manifest",
+   "quest_id": 3905
+  },
+  {
+   "n": 13,
+   "action": "accept",
+   "quest": "Report to Goldshire",
+   "quest_id": 54
+  },
+  {
+   "n": 14,
+   "action": "accept",
+   "quest": "Rest and Relaxation",
+   "quest_id": 2158
+  },
+  {
+   "n": 15,
+   "action": "accept",
+   "quest": "Tools for Steelgrill",
+   "quest_id": 400
+  },
+  {
+   "n": 16,
+   "action": "accept",
+   "quest": "Ammo for Rumbleshot",
+   "quest_id": 5541
+  },
+  {
+   "n": 17,
+   "action": "accept",
+   "quest": "Stocking Jetsteam",
+   "quest_id": 317
+  },
+  {
+   "n": 18,
+   "action": "accept",
+   "quest": "The Grizzled Den",
+   "quest_id": 313
+  },
+  {
+   "n": 19,
+   "action": "accept",
+   "quest": "Evershine",
+   "quest_id": 318
+  },
+  {
+   "n": 20,
+   "action": "accept",
+   "quest": "A Favor for Evershine",
+   "quest_id": 319
+  },
+  {
+   "n": 21,
+   "action": "accept",
+   "quest": "The Perfect Stout",
+   "quest_id": 315
+  },
+  {
+   "n": 22,
+   "action": "accept",
+   "quest": "Return to Bellowfiz",
+   "quest_id": 320
+  },
+  {
+   "n": 23,
+   "action": "accept",
+   "quest": "Operation Recombobulation",
+   "quest_id": 412
+  },
+  {
+   "n": 24,
+   "action": "accept",
+   "quest": "Shimmer Stout",
+   "quest_id": 413
+  },
+  {
+   "n": 25,
+   "action": "accept",
+   "quest": "Protecting the Herd",
+   "quest_id": 314
+  },
+  {
+   "n": 26,
+   "action": "accept",
+   "quest": "The Public Servant",
+   "quest_id": 433
+  },
+  {
+   "n": 27,
+   "action": "accept",
+   "quest": "Those Blasted Troggs!",
+   "quest_id": 432
+  },
+  {
+   "n": 28,
+   "action": "accept",
+   "quest": "The Lost Pilot",
+   "quest_id": 419
+  },
+  {
+   "n": 29,
+   "action": "accept",
+   "quest": "A Pilot's Revenge",
+   "quest_id": 417
+  },
+  {
+   "n": 30,
+   "action": "accept",
+   "quest": "Stout to Kadrell",
+   "quest_id": 414
+  },
+  {
+   "n": 31,
+   "action": "accept",
+   "quest": "Deeprun Rat Roundup",
+   "quest_id": 6661
+  },
+  {
+   "n": 32,
+   "action": "accept",
+   "quest": "Me Brother, Nipsy",
+   "quest_id": 6662
+  },
+  {
+   "n": 33,
+   "action": "accept",
+   "quest": "Humble Beginnings",
+   "quest_id": 399
+  }
+ ]
+}

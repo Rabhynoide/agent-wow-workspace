@@ -1,0 +1,178 @@
+{
+ "source": "warcrafttavern:https://www.warcrafttavern.com/wotlk/guides/alliance-leveling-10-12/",
+ "faction": "Alliance",
+ "race": "",
+ "zone": "Elwynn Forest (10-12)",
+ "levels": "10-12",
+ "startlevel": 10,
+ "steps": [
+  {
+   "n": 1,
+   "action": "note",
+   "level": "10",
+   "note": "reach this level"
+  },
+  {
+   "n": 2,
+   "action": "accept",
+   "quest": "Gold Dust Exchange",
+   "quest_id": 47
+  },
+  {
+   "n": 3,
+   "action": "accept",
+   "quest": "Kobold Candles",
+   "quest_id": 60
+  },
+  {
+   "n": 4,
+   "action": "accept",
+   "quest": "The Fargodeep Mine",
+   "quest_id": 62
+  },
+  {
+   "n": 5,
+   "action": "accept",
+   "quest": "A Fishy Peril",
+   "quest_id": 40
+  },
+  {
+   "n": 6,
+   "action": "accept",
+   "quest": "Further Concerns",
+   "quest_id": 35
+  },
+  {
+   "n": 7,
+   "action": "accept",
+   "quest": "Lost Necklace",
+   "quest_id": 85
+  },
+  {
+   "n": 8,
+   "action": "accept",
+   "quest": "Princess Must Die!",
+   "quest_id": 88
+  },
+  {
+   "n": 9,
+   "action": "accept",
+   "quest": "Pie for Billy",
+   "quest_id": 86
+  },
+  {
+   "n": 10,
+   "action": "accept",
+   "quest": "Young Lovers",
+   "quest_id": 106
+  },
+  {
+   "n": 11,
+   "action": "accept",
+   "quest": "Back to Billy",
+   "quest_id": 84
+  },
+  {
+   "n": 12,
+   "action": "accept",
+   "quest": "Speak with Gramma",
+   "quest_id": 111
+  },
+  {
+   "n": 13,
+   "action": "accept",
+   "quest": "Note to William",
+   "quest_id": 107
+  },
+  {
+   "n": 14,
+   "action": "accept",
+   "quest": "Goldtooth",
+   "quest_id": 87
+  },
+  {
+   "n": 15,
+   "action": "accept",
+   "quest": "The Jasperlode Mine",
+   "quest_id": 76
+  },
+  {
+   "n": 16,
+   "action": "accept",
+   "quest": "Collecting Kelp",
+   "quest_id": 112
+  },
+  {
+   "n": 17,
+   "action": "accept",
+   "quest": "Find the Lost Guards",
+   "quest_id": 37
+  },
+  {
+   "n": 18,
+   "action": "accept",
+   "quest": "Protect the Frontier",
+   "quest_id": 52
+  },
+  {
+   "n": 19,
+   "action": "accept",
+   "quest": "Discover Rolf's Fate",
+   "quest_id": 45
+  },
+  {
+   "n": 20,
+   "action": "accept",
+   "quest": "Report to Thomas",
+   "quest_id": 71
+  },
+  {
+   "n": 21,
+   "action": "accept",
+   "quest": "A Bundle of Trouble",
+   "quest_id": 5545
+  },
+  {
+   "n": 22,
+   "action": "accept",
+   "quest": "Red Linen Goods",
+   "quest_id": 83
+  },
+  {
+   "n": 23,
+   "action": "accept",
+   "quest": "Deliver Thomas' Report",
+   "quest_id": 39
+  },
+  {
+   "n": 24,
+   "action": "accept",
+   "quest": "The Escape",
+   "quest_id": 114
+  },
+  {
+   "n": 25,
+   "action": "accept",
+   "quest": "Westbrook Garrison Needs Help!",
+   "quest_id": 239
+  },
+  {
+   "n": 26,
+   "action": "accept",
+   "quest": "Riverpaw Gnoll Bounty",
+   "quest_id": 11
+  },
+  {
+   "n": 27,
+   "action": "accept",
+   "quest": "Shipment to Stormwind",
+   "quest_id": 61
+  },
+  {
+   "n": 28,
+   "action": "accept",
+   "quest": "Elmore's Task",
+   "quest_id": 1097
+  }
+ ]
+}

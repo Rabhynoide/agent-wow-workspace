@@ -1,0 +1,118 @@
+{
+ "source": "warcrafttavern:https://www.warcrafttavern.com/wotlk/guides/alliance-leveling-12-15/",
+ "faction": "Alliance",
+ "race": "",
+ "zone": "Westfall (12-15)",
+ "levels": "12-15",
+ "startlevel": 12,
+ "steps": [
+  {
+   "n": 1,
+   "action": "note",
+   "level": "12",
+   "note": "reach this level"
+  },
+  {
+   "n": 2,
+   "action": "accept",
+   "quest": "Report to Gryan Stoutmantle",
+   "quest_id": 109
+  },
+  {
+   "n": 3,
+   "action": "accept",
+   "quest": "Westfall Stew",
+   "quest_id": 36
+  },
+  {
+   "n": 4,
+   "action": "accept",
+   "quest": "The Forgotten Heirloom",
+   "quest_id": 64
+  },
+  {
+   "n": 5,
+   "action": "accept",
+   "quest": "Poor Old Blanchy",
+   "quest_id": 151
+  },
+  {
+   "n": 6,
+   "action": "accept",
+   "quest": "Westfall Stew",
+   "quest_id": 38
+  },
+  {
+   "n": 7,
+   "action": "accept",
+   "quest": "Goretusk Liver Pie",
+   "quest_id": 22
+  },
+  {
+   "n": 8,
+   "action": "accept",
+   "quest": "The Killing Fields",
+   "quest_id": 9
+  },
+  {
+   "n": 9,
+   "action": "accept",
+   "quest": "The People's Militia",
+   "quest_id": 12
+  },
+  {
+   "n": 10,
+   "action": "accept",
+   "quest": "Patrolling Westfall",
+   "quest_id": 102
+  },
+  {
+   "n": 11,
+   "action": "accept",
+   "quest": "A Swift Message",
+   "quest_id": 6181
+  },
+  {
+   "n": 12,
+   "action": "accept",
+   "quest": "Red Leather Bandanas",
+   "quest_id": 153
+  },
+  {
+   "n": 13,
+   "action": "accept",
+   "quest": "The People's Militia",
+   "quest_id": 13
+  },
+  {
+   "n": 14,
+   "action": "accept",
+   "quest": "The People's Militia",
+   "quest_id": 14
+  },
+  {
+   "n": 15,
+   "action": "accept",
+   "quest": "Continue to Stormwind",
+   "quest_id": 6281
+  },
+  {
+   "n": 16,
+   "action": "accept",
+   "quest": "Dungar Longdrink",
+   "quest_id": 6261
+  },
+  {
+   "n": 17,
+   "action": "accept",
+   "quest": "Stormpike's Delivery",
+   "quest_id": 353
+  },
+  {
+   "n": 18,
+   "action": "accept",
+   "quest": "Find Bingles",
+   "quest_id": 2039
+  }
+ ]
+}

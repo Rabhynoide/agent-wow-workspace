@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # usage: level.sh <Name> <target_level> [max_minutes]
-# "Continue leveling": follows the Zygor route in order (auto.run), grinds one level at a time when the
+# "Continue leveling": follows the route in order (ROUTES: directory of route files relative to module/,
+# default the Warcraft Tavern guide in routes/warcrafttavern; ROUTES=../assets/routes for Zygor) (auto.run), grinds one level at a time when the
 # next quest needs a higher level (auto.grind), skips the quests auto cannot do. The session must be
 # started (start.sh). Short lines on stdout, details in logs/level_<Name>.log. Exit 0 = level reached
 # or route finished, 1 = stopped on an incident (read the last lines), 2 = time limit.
@@ -8,4 +9,4 @@
 set -u
 cd "$(dirname "$0")/../module" || exit 1
 go build -o bin/guidecheck ./cmd/guidecheck || exit 1
-exec ./bin/guidecheck -play -char "$1" -until "$2" -max_min "${3:-180}"
+exec ./bin/guidecheck -play -char "$1" -until "$2" -max_min "${3:-180}" -routes "${ROUTES:-../routes/warcrafttavern}"
