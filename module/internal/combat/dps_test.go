@@ -150,3 +150,16 @@ func TestOrderedDamage(t *testing.T) {
 		t.Fatalf("ordered damage %v", d)
 	}
 }
+
+// The flight goes away from the attackers' centre, and the trail only when it goes that way.
+func TestFleeDirection(t *testing.T) {
+	me := &statepb.SelfInfo{X: 0, Y: 0}
+	att := []*statepb.Obj{{X: 10, Y: 2}, {X: 10, Y: -2}, {X: 12, Y: 0}}
+	d := awayFrom(me, att)
+	if d[0] > -0.99 {
+		t.Fatalf("direction %v, want -x", d)
+	}
+	if !sameWay(me, trailPt{x: -15, y: 3}, d) || sameWay(me, trailPt{x: 5, y: 10}, d) {
+		t.Fatal("trail filter")
+	}
+}

@@ -317,6 +317,16 @@ func (s *Service) flee(ctx context.Context, j *job, me *statepb.SelfInfo, att []
 	end := -1
 	defer func() { s.trail.cut(end) }()
 	started := time.Now()
+	// One direction for the whole flight, away from the attackers, and no stop: the target moves ahead
+	// before we reach it (move.goto re-targets the running walk). Legs that stopped at each point and
+	// safe points chosen again at each leg ran back towards the chasers: 50 yards in 15 s, 21 blows taken,
+	// dead, against 3 Prowlers at 76 % and 3 boars at 91 % (run of 2026-10-26 07:56).
+	dir := awayFrom(me, att)
+	if len(legs) > 0 && !sameWay(me, legs[min(len(legs)-1, 1)], dir) {
+		legs = nil // the trail turns back towards them
+	}
+	turn := 0 // index in fleeTurns
+	var target *[3]float32
 	leg, clear := 0, 0
 	for time.Since(started) < fleeMaxS*time.Second {
 		b, err := s.api.Brief(ctx)
@@ -337,31 +347,89 @@ func (s *Service) flee(ctx context.Context, j *job, me *statepb.SelfInfo, att []
 		if len(s.onMe(ctx, me)) > 0 {
 			clear = 0
 		} else if clear++; clear >= 2 {
-			slog.Info("fled", "hp", pct(me.Hp, me.MaxHp), "s", int(time.Since(started).Seconds()), "legs", leg)
+			slog.Info("fled", "hp", pct(me.Hp, me.MaxHp), "s", int(time.Since(started).Seconds()), "legs", leg, "dist", int(dist2(me.X, me.Y, z.x, z.y)))
 			return false
 		}
-		if leg < len(legs) {
-			p := legs[leg]
-			if _, err := s.api.GotoWait(ctx, p.x, p.y, p.z, 3, 8); err != nil && ctx.Err() != nil {
+		// The next point: along the trail while it goes our way, else straight ahead; a new one when
+		// the current one is near (before we stop on it).
+		if target == nil || dist2(me.X, me.Y, target[0], target[1]) < fleeAhead {
+			target = nil
+			for leg < len(legs) && dist2(me.X, me.Y, legs[leg].x, legs[leg].y) < fleeAhead {
+				end = idx[leg]
+				leg++
+			}
+			if leg < len(legs) {
+				target = &[3]float32{legs[leg].x, legs[leg].y, legs[leg].z}
+			}
+			for target == nil && turn < len(fleeTurns) {
+				if p, ok := s.fleePoint(ctx, me, dir, fleeTurns[turn]); ok {
+					target = &p
+				} else {
+					turn++ // a cliff, water or a wall that way
+				}
+			}
+			if target == nil {
+				slog.Info("nowhere to flee", "s", int(time.Since(started).Seconds()))
 				return false
 			}
-			end = idx[leg]
-			leg++
-			continue
 		}
-		// The attackers are threats too: the point is away from them and from the other monsters
-		// (not path_clear: our own spot, next to them, would rule out every path).
-		sp, err := s.api.SafePoint(ctx, me.X, me.Y, me.Z, fleeDist, false)
-		if err != nil || !sp.Ok {
-			slog.Info("nowhere to flee", "err", err, "reason", sp.GetReason())
-			return false
-		}
-		if _, err := s.api.GotoWait(ctx, sp.X, sp.Y, sp.Z, 2, 12); err != nil && ctx.Err() != nil {
+		if _, err := s.api.Goto(ctx, target[0], target[1], target[2], 2, 1); err != nil && ctx.Err() != nil {
 			return false
 		}
 	}
 	slog.Info("still chased after fleeing", "s", fleeMaxS)
 	return false
+}
+
+// Flight geometry: a new point when the current one is fleeAhead yards away, points fleeStep yards
+// ahead, turned by fleeTurns (degrees) when the straight way is blocked.
+const (
+	fleeAhead = 8
+	fleeStep  = 30
+)
+
+var fleeTurns = []float64{0, 30, -30, 60, -60, 90, -90, 120, -120}
+
+// awayFrom is the unit vector from the attackers' centre to us (2D); when they stand on us, the way
+// we face turned around.
+func awayFrom(me *statepb.SelfInfo, att []*statepb.Obj) [2]float64 {
+	var cx, cy float64
+	for _, a := range att {
+		cx += float64(a.X)
+		cy += float64(a.Y)
+	}
+	if len(att) > 0 {
+		cx /= float64(len(att))
+		cy /= float64(len(att))
+	}
+	dx, dy := float64(me.X)-cx, float64(me.Y)-cy
+	if l := math.Hypot(dx, dy); len(att) > 0 && l > 1 {
+		return [2]float64{dx / l, dy / l}
+	}
+	return [2]float64{-math.Cos(float64(me.O)), -math.Sin(float64(me.O))}
+}
+
+// sameWay tells whether a trail point lies within 60 degrees of the flight direction.
+func sameWay(me *statepb.SelfInfo, p trailPt, dir [2]float64) bool {
+	dx, dy := float64(p.x-me.X), float64(p.y-me.Y)
+	l := math.Hypot(dx, dy)
+	return l < 1 || (dx*dir[0]+dy*dir[1])/l >= 0.5
+}
+
+// fleePoint is a walkable point about fleeStep yards from us in the flight direction turned by deg
+// (move.path towards it, ending at the closest walkable point within 12 yards); ok false when the walk
+// would not get us at least half of the way.
+func (s *Service) fleePoint(ctx context.Context, me *statepb.SelfInfo, dir [2]float64, deg float64) ([3]float32, bool) {
+	a := deg * math.Pi / 180
+	dx := dir[0]*math.Cos(a) - dir[1]*math.Sin(a)
+	dy := dir[0]*math.Sin(a) + dir[1]*math.Cos(a)
+	x, y := me.X+float32(dx*fleeStep), me.Y+float32(dy*fleeStep)
+	res, err := s.api.PathFromSnap(ctx, me.Map, me.X, me.Y, me.Z, x, y, me.Z, 12)
+	if err != nil || res.Error != "" || res.End == nil || dist2(me.X, me.Y, res.End.X, res.End.Y) < fleeStep/2 ||
+		res.Length > 2*fleeStep {
+		return [3]float32{}, false
+	}
+	return [3]float32{res.End.X, res.End.Y, res.End.Z}, true
 }
 
 // giveUp abandons a target we have not damaged for noProgress. When it keeps hitting us, staying
