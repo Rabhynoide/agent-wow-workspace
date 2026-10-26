@@ -320,12 +320,33 @@ func (r *run) restAfterRez() {
 	}
 }
 
-// healerRez walks to a spirit healer within 150 yards and resurrects there.
+// spiritHealer is the creature entry of the graveyard spirit healers.
+const spiritHealer = 6491
+
+// healerRez walks to the nearest spirit healer and resurrects there. The ghost waits at the corpse by
+// then and the server only shows units within ~100 yards: the healer is found among the spawns of
+// the database (the run of 2026-10-26 stopped dead near the leper gnomes of Dun Morogh, with no healer
+// within 150 yards of the corpse).
 func (r *run) healerRez(send func(uint32, []byte)) bool {
 	const spiritHealerFlag = 0x4000
 	vis, err := r.s.api.Nearby(r.ctx, &statepb.NearbyRequest{Kind: "unit", NpcFlags: spiritHealerFlag, Radius: 150, Max: 1})
 	if err != nil || len(vis.Objs) == 0 {
-		return false
+		b, err := r.s.api.Brief(r.ctx)
+		if err != nil || b.Self == nil {
+			return false
+		}
+		sp, err := r.s.api.Spawns(r.ctx, spiritHealer, b.Self.Map, b.Self.X, b.Self.Y, 2000, "creature")
+		if err != nil || len(sp) == 0 {
+			return false
+		}
+		r.step("going to the graveyard's spirit healer (%.0f yards)", sp[0].Dist)
+		if err := r.walk(sp[0].X, sp[0].Y, sp[0].Z, 5); err != nil {
+			return false
+		}
+		vis, err = r.s.api.Nearby(r.ctx, &statepb.NearbyRequest{Kind: "unit", NpcFlags: spiritHealerFlag, Radius: 30, Max: 1})
+		if err != nil || len(vis.Objs) == 0 {
+			return false
+		}
 	}
 	h := vis.Objs[0]
 	r.step("going to the spirit healer (%.0f yards)", h.Dist)
