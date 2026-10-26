@@ -107,3 +107,17 @@ func TestPullFits(t *testing.T) {
 		t.Error("max_pull 1 must refuse a pair")
 	}
 }
+
+// A camp joins link by link: each monster in the fight calls for help within 10 yards of itself.
+func TestAddsChain(t *testing.T) {
+	target := &statepb.Obj{Guid: 1, X: 0, Y: 0, Z: 0, Level: 7}
+	var hostiles []*statepb.Obj
+	hostiles = append(hostiles, target)
+	for i := 1; i <= 4; i++ { // a line of wolves 8 yards apart, beyond aggro range of the target
+		hostiles = append(hostiles, &statepb.Obj{Guid: uint64(1 + i), X: float32(8 * i), Y: 0, Z: 0, Level: 7})
+	}
+	adds := addsOf(target, hostiles, func(o *statepb.Obj) float32 { return 5 })
+	if len(adds) != 4 {
+		t.Fatalf("%d adds, want the whole line of 4", len(adds))
+	}
+}

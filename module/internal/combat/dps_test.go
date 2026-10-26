@@ -163,3 +163,17 @@ func TestFleeDirection(t *testing.T) {
 		t.Fatal("trail filter")
 	}
 }
+
+// A camp straight behind us: the flight turns to pass it.
+func TestFleeAvoidsCamps(t *testing.T) {
+	me := &statepb.SelfInfo{X: 0, Y: 0}
+	base := [2]float64{1, 0}
+	camp := []*statepb.Obj{{X: 20, Y: 0}, {X: 25, Y: 3}, {X: 25, Y: -3}}
+	d := bestFleeWay(me, base, camp)
+	if d[0] > 0.9 {
+		t.Fatalf("still straight into the camp: %v", d)
+	}
+	if d := bestFleeWay(me, base, nil); d[0] < 0.999 {
+		t.Fatalf("no camp: straight, got %v", d)
+	}
+}

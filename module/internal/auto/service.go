@@ -240,7 +240,9 @@ func (r *run) corpseRez(send func(uint32, []byte)) error {
 			}
 			break
 		}
-		if sp.Clearance < 25 && wait < 4 {
+		// 2 minutes: resurrecting with kobolds 10-14 yards away after 1 minute killed at once
+		// (Fargodeep, 2026-10-26).
+		if sp.Clearance < 25 && wait < 8 {
 			r.step("monsters near the corpse (nearest %.0f yards): waiting for them to move", sp.Clearance)
 			if !jobs.Sleep(r.ctx, 15*time.Second) {
 				return r.ctx.Err()
@@ -285,11 +287,27 @@ func (r *run) reclaim(send func(uint32, []byte)) error {
 			return r.ctx.Err()
 		}
 		if s, err := r.s.api.Brief(r.ctx); err == nil && s.Self != nil && !s.Self.Dead {
+			r.awayFromMonsters(s.Self)
 			r.restAfterRez()
 			return nil
 		}
 	}
 	return fmt.Errorf("could not resurrect at corpse")
+}
+
+// awayFromMonsters walks to a safer spot (move.safe_point, 35 yards) when a hostile monster stands
+// within 20 yards: resting next to them right after resurrecting got us killed again.
+func (r *run) awayFromMonsters(me *statepb.SelfInfo) {
+	vis, err := r.s.api.Nearby(r.ctx, &statepb.NearbyRequest{Kind: "unit", Radius: 20, Max: 1, AliveOnly: true, HostileOnly: true})
+	if err != nil || len(vis.Objs) == 0 {
+		return
+	}
+	sp, err := r.s.api.SafePoint(r.ctx, me.X, me.Y, me.Z, 35, false)
+	if err != nil || !sp.Ok || sp.Clearance <= vis.Objs[0].Dist+5 {
+		return
+	}
+	r.step("monster %.0f yards away after resurrecting: moving to a safer spot", vis.Objs[0].Dist)
+	_ = r.walk(sp.X, sp.Y, sp.Z, 1.5)
 }
 
 // restAfterRez: back with half health, rest (and eat) before anything else; leaving at once got the
