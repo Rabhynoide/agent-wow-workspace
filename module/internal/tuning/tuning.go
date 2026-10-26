@@ -79,6 +79,12 @@ type Tuning struct {
 	// farthest from the hostile monsters when one stands closer than safeRestClear (combat/saferest.go).
 	// 0 = rest where we stand.
 	SafeRestBelow uint32 `json:"safe_rest_below"`
+	// RestAdaptive: before a pull, a warrior rests when its health is below what the pull is expected to
+	// cost (learned damage rates, else the learned fights) plus FleeMargin, and at least RestFloor;
+	// WarriorRestBelow is used when the pull's cost is not known (idea of the user, 2026-10-26: a fixed
+	// 55 % rests for a weak wolf and pulls a hard one at 56 %).
+	RestAdaptive bool   `json:"rest_adaptive"`
+	RestFloor    uint32 `json:"rest_floor"`
 	// VerticalGiveUp: a target right above or below that our walk to its floor did not reach is given
 	// up at once, without a flight (combat fightWarrior). false = the old way (step aside, then flee).
 	VerticalGiveUp bool `json:"vertical_give_up"`
@@ -116,7 +122,7 @@ func Defaults() Tuning {
 		PostponeAfterFlights: 1, Explore: 0.25, Learn: true, MinFights: 6, DeathCostS: 180, FleeCostS: 90,
 		FleeDeathPrior: 0.1, ExploreFleeDeath: 0.2,
 		AddCost: 1.5, PullAdapt: false, PullSize: 2, PullSizeMax: 4, PullUpAfter: 2,
-		WarriorRestBelow: 55, SafeRestBelow: 40, VerticalGiveUp: true, EatFromLevel: 10, ExploreSafe: 0.5, ExploreSafeSlack: 40, ExploreMinSlack: 15, QuestDefer: 0, QuestDeferMin: 4}
+		WarriorRestBelow: 55, SafeRestBelow: 40, RestAdaptive: true, RestFloor: 30, VerticalGiveUp: true, EatFromLevel: 10, ExploreSafe: 0.5, ExploreSafeSlack: 40, ExploreMinSlack: 15, QuestDefer: 0, QuestDeferMin: 4}
 }
 
 // cached reads a JSON file again when it changes (looked at every 10 s at most).

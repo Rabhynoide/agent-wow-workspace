@@ -488,6 +488,7 @@ func (s *Service) kill(ctx context.Context, j *job, r *pb.KillRequest) (string, 
 	}
 	var kills uint32
 	noTarget, unreachable := 0, 0
+	restedHP := uint32(0) // health when the last rest before a pull started
 	for time.Now().Before(deadline) {
 		if ctx.Err() != nil {
 			return "stopped", "cancelled"
@@ -538,15 +539,22 @@ func (s *Service) kill(ctx context.Context, j *job, r *pb.KillRequest) (string, 
 			continue
 		}
 		me := snap.Self
-		// Classes without a heal need more health before the next pull.
+		// Classes without a heal need more health before the next pull; a warrior with rest_adaptive
+		// only rests below rest_floor here, and below what the chosen pull costs further down.
 		restBelow := uint32(55)
+		adaptive := false
 		if me.ClassId == warrior.ClassID {
-			restBelow = s.tuneGet().WarriorRestBelow
+			tu := s.tuneGet()
+			restBelow, adaptive = tu.WarriorRestBelow, tu.RestAdaptive
+			if adaptive {
+				restBelow = tu.RestFloor
+			}
 		}
 		if pct(me.Hp, me.MaxHp) < restBelow || (me.PowerType == 0 && pct(me.Power, me.MaxPower) < 25) {
 			if st, why := s.rest(ctx, j, 90, 70, 90); st != "done" {
 				return st, why
 			}
+			restedHP = pct(me.Hp, me.MaxHp)
 			continue
 		}
 		s.gearIfLooted(ctx)
@@ -555,6 +563,18 @@ func (s *Service) kill(ctx context.Context, j *job, r *pb.KillRequest) (string, 
 		if err != nil {
 			return "failed", err.Error()
 		}
+		// A rest that gained nothing (a monster next to us) is not tried again for this pull.
+		if adaptive && t != nil && t.Target != me.Guid && pct(me.Hp, me.MaxHp) > restedHP {
+			if need, why := s.restNeed(ctx, me, t); pct(me.Hp, me.MaxHp) < need {
+				slog.Info("resting before pull", "entry", t.Entry, "hp", pct(me.Hp, me.MaxHp), "need", need, "why", why)
+				if st, why := s.rest(ctx, j, 90, 70, 90); st != "done" {
+					return st, why
+				}
+				restedHP = pct(me.Hp, me.MaxHp)
+				continue
+			}
+		}
+		restedHP = 0
 		if t == nil {
 			if noTarget++; noTarget > 6 {
 				return "failed", fmt.Sprintf("no live entry %d within %.0f yards (or only ones with too many monsters around)", r.Entry, radius)

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	statepb "wowagent/gen/statev1"
+	"wowagent/internal/tuning"
 	"wowagent/internal/safe"
 	"wowagent/internal/xpscore"
 )
@@ -119,5 +120,30 @@ func TestAddsChain(t *testing.T) {
 	adds := addsOf(target, hostiles, func(o *statepb.Obj) float32 { return 5 })
 	if len(adds) != 4 {
 		t.Fatalf("%d adds, want the whole line of 4", len(adds))
+	}
+}
+
+// Rest before a pull: the learned cost plus flee_margin, at least rest_floor, at most 90.
+func TestRestNeed(t *testing.T) {
+	tu := tuning.Defaults()
+	wolf := []*statepb.Obj{{Level: 7}}
+	known := func(l float32) func([]*statepb.Obj) (float32, bool) {
+		return func([]*statepb.Obj) (float32, bool) { return l, true }
+	}
+	unknown := func([]*statepb.Obj) (float32, bool) { return 0, false }
+	if need, _ := restNeedFor(wolf, tu, known(8), nil); need != tu.RestFloor {
+		t.Errorf("weak wolf: need %d, want the floor %d", need, tu.RestFloor)
+	}
+	if need, _ := restNeedFor(wolf, tu, known(50), nil); need != 65 {
+		t.Errorf("hard monster: need %d, want 50+15", need)
+	}
+	if need, _ := restNeedFor(wolf, tu, known(120), nil); need != 90 {
+		t.Errorf("capped at 90: %d", need)
+	}
+	if need, how := restNeedFor(wolf, tu, unknown, func([]uint32) float32 { return 30 }); need != 45 || how[:6] != "fights" {
+		t.Errorf("from the fights: %d %s", need, how)
+	}
+	if need, _ := restNeedFor(wolf, tu, unknown, func([]uint32) float32 { return 0 }); need != tu.WarriorRestBelow {
+		t.Errorf("unknown: %d", need)
 	}
 }

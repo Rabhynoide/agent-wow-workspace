@@ -2,6 +2,7 @@ package combat
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"math"
 	"sort"
@@ -10,6 +11,7 @@ import (
 	pb "wowagent/gen/combatv1"
 	statepb "wowagent/gen/statev1"
 	"wowagent/internal/safe"
+	"wowagent/internal/tuning"
 	"wowagent/internal/xpscore"
 )
 
@@ -371,4 +373,38 @@ func (s *Service) backOff(ctx context.Context) {
 		return
 	}
 	_, _ = s.api.GotoWait(ctx, sp.X, sp.Y, sp.Z, 2, 15)
+}
+
+// restNeed is the health (%) a warrior wants before pulling t (tuning rest_adaptive): what the pull is
+// expected to cost (t and the monsters that join it: learned damage rates, else the learned fights)
+// plus flee_margin, at least rest_floor and at most 90; warrior_rest_below when the cost is unknown.
+func (s *Service) restNeed(ctx context.Context, me *statepb.SelfInfo, t *statepb.Obj) (uint32, string) {
+	tu := s.tuneGet()
+	group := []*statepb.Obj{t}
+	if hostile, err := s.api.Nearby(ctx, &statepb.NearbyRequest{Kind: "unit", Radius: t.Dist + 40, Max: 60, AliveOnly: true, HostileOnly: true}); err == nil {
+		group = append(group, addsOf(t, hostile.Objs, s.aggroOf(ctx, me.Level))...)
+	}
+	return restNeedFor(group, tu, func(g []*statepb.Obj) (float32, bool) { return s.groupLoss(me, g) },
+		func(levels []uint32) float32 {
+			return float32(xpscore.PullLoss(levels, me.Level, me.ClassId, s.fights.Get(), tu.AddCost))
+		})
+}
+
+// restNeedFor: learned is the loss from the learned damage rates, fights the one from the learned
+// fights by level (used when no monster of the group has a learned rate).
+func restNeedFor(group []*statepb.Obj, tu tuning.Tuning, learned func([]*statepb.Obj) (float32, bool), fights func([]uint32) float32) (uint32, string) {
+	loss, ok := learned(group)
+	how := "dps"
+	if !ok {
+		levels := make([]uint32, len(group))
+		for i, o := range group {
+			levels[i] = o.Level
+		}
+		loss, how = fights(levels), "fights"
+	}
+	if loss <= 0 {
+		return tu.WarriorRestBelow, "unknown"
+	}
+	need := uint32(math.Ceil(float64(loss) + tu.FleeMargin))
+	return min(max(need, tu.RestFloor), 90), fmt.Sprintf("%s: %d monsters, loss %.0f %%", how, len(group), loss)
 }
