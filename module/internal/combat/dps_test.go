@@ -193,3 +193,20 @@ func TestExplorationReleasedWhenUnsafe(t *testing.T) {
 		t.Fatal("below the safe flight threshold: the exploration is released")
 	}
 }
+
+// 4 kobolds at ~4 damage/s each on 232 health: a flight costs far more than the 57 % the fight is
+// expected to cost, at 60 %: stay. At 90 % the flight is still tried.
+func TestHopelessFlight(t *testing.T) {
+	att := []*statepb.Obj{{Guid: 2, Hp: 90, MaxHp: 100}, {Guid: 3, Hp: 90, MaxHp: 100}, {Guid: 4, Hp: 90, MaxHp: 100}, {Guid: 5, Hp: 90, MaxHp: 100}}
+	s := &Service{guid: 1}
+	fill(&s.dmg, 2, 16)
+	if h, why := s.hopelessFlight(&statepb.SelfInfo{Hp: 139, MaxHp: 232}, att, 57); !h {
+		t.Fatalf("60 %%, fight 57 %%: should stay (%s)", why)
+	}
+	if h, _ := s.hopelessFlight(&statepb.SelfInfo{Hp: 139, MaxHp: 232}, att, 70); h {
+		t.Fatal("the fight kills us too: flee")
+	}
+	if h, _ := s.hopelessFlight(&statepb.SelfInfo{Hp: 209, MaxHp: 232}, att, 57); h {
+		t.Fatal("90 %: the flight is tried")
+	}
+}

@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	statepb "wowagent/gen/statev1"
-	"wowagent/internal/tuning"
 	"wowagent/internal/safe"
+	"wowagent/internal/tuning"
 	"wowagent/internal/xpscore"
 )
 

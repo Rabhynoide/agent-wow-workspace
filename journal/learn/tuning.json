@@ -30,5 +30,7 @@
  "flee_reserve": 5,
  "flee_late": true,
  "flee_late_hold": 60,
- "flee_exposure_fresh": 3
+ "flee_exposure_fresh": 3,
+ "rest_adaptive": true,
+ "rest_floor": 30
 }

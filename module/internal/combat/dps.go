@@ -202,10 +202,16 @@ func periodicDamage(payload []byte) (target, caster uint64, amount uint32, ok bo
 // on for dpsMinSpan, else learned (dpslearn, at our armor; an attacker never met counts as the mean of
 // the known ones). how: "measured", "learned", or "" when neither is known.
 func (s *Service) incoming(me *statepb.SelfInfo, att []*statepb.Obj) (float64, string) {
+	sum, known := s.predictTaken(me, att)
 	if r, ok := s.dmg.rate(); ok {
+		// Monsters that just joined have not hit us yet: the learned rate of the attackers of now when it
+		// is higher (a hold "33 s before the threshold" at 83 % against 4 kobolds released at 60 % 4 s
+		// later, bench of 2026-10-26).
+		if known > 0 && sum > r {
+			return sum, "learned"
+		}
 		return r, "measured"
 	}
-	sum, known := s.predictTaken(me, att)
 	if known == 0 {
 		return 0, ""
 	}

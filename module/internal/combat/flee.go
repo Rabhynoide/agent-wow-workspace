@@ -35,7 +35,16 @@ const (
 
 // onMe lists the units in combat that target us within 30 yards.
 func (s *Service) onMe(ctx context.Context, me *statepb.SelfInfo) []*statepb.Obj {
-	r, err := s.api.Nearby(ctx, &statepb.NearbyRequest{Kind: "unit", Radius: 30, Max: 12, AliveOnly: true})
+	return s.onMeWithin(ctx, me, 30)
+}
+
+// chaseRadius: a flight is over when nothing targets us within it. At 30 yards, kobolds a few yards
+// behind were not seen: "fled" after 5 s and 36 yards, caught resting 4 s later, dead (bench of
+// 2026-10-26 13:19).
+const chaseRadius = 60
+
+func (s *Service) onMeWithin(ctx context.Context, me *statepb.SelfInfo, radius float32) []*statepb.Obj {
+	r, err := s.api.Nearby(ctx, &statepb.NearbyRequest{Kind: "unit", Radius: radius, Max: 12, AliveOnly: true})
 	if err != nil {
 		return nil
 	}
@@ -87,7 +96,41 @@ func (s *Service) mustFlee(ctx context.Context, me *statepb.SelfInfo) (bool, flo
 		return false, loss, att
 	}
 	s.setHolding(false, "")
+	if hopeless, why := s.hopelessFlight(me, att, loss); hopeless {
+		slog.Info("flight hopeless: staying", "why", why, "hp", pct(me.Hp, me.MaxHp), "loss", int(loss))
+		return false, loss, att
+	}
 	return s.decide(me, att, loss), loss, att
+}
+
+// hopelessBelow: health (%) under which a hopeless flight is not tried (hopelessFlight).
+const hopelessBelow = 75
+
+// hopelessFlight: the flight would cost more health than we have (the damage we take times the time
+// they keep hitting us, dpsMargin without its reserve) while staying is expected to leave us alive:
+// we stay. The 3 deaths of the bench of 2026-10-26 13:19 were flights from kobolds and Prowlers that
+// kept up (4 kobolds at 60 % with 57 % to lose, 2 at 35 % with 26 %); of all the flights logged, those
+// started under 45 % of health against 4 monsters or more died 4 times in 5.
+func (s *Service) hopelessFlight(me *statepb.SelfInfo, att []*statepb.Obj, loss float64) (bool, string) {
+	t := s.tuneGet()
+	hp := float64(pct(me.Hp, me.MaxHp))
+	// Above hopelessBelow the flights still mostly escape (against 4 monsters or more: 34 in 41 from
+	// 75 % and up, 12 in 19 below): the expected losses of crowds were too low before.
+	if loss >= hp || hp >= hopelessBelow {
+		return false, ""
+	}
+	fresh := 0
+	for _, a := range att {
+		if a.MaxHp > 0 && 2*a.Hp > a.MaxHp {
+			fresh++
+		}
+	}
+	m, ok := s.dpsMargin(me, t, fresh, att)
+	if !ok {
+		return false, ""
+	}
+	cost := m - t.FleeReserve
+	return cost >= hp, fmt.Sprintf("flight costs %.0f %%, the fight %.0f %%", cost, loss)
 }
 
 // lateHold: the fight is lost, but we stay while the weakest attacker in reach can still die before
@@ -356,7 +399,7 @@ func (s *Service) flee(ctx context.Context, j *job, me *statepb.SelfInfo, att []
 		s.drinkPotion(ctx, me) // still hit while running
 		// Twice in a row, running on in between: the chasers lost us for a moment and caught up again
 		// right after "fled" (Fargodeep mine, 2026-10-13).
-		if len(s.onMe(ctx, me)) > 0 {
+		if len(s.onMeWithin(ctx, me, chaseRadius)) > 0 {
 			clear = 0
 		} else if clear++; clear >= 2 {
 			slog.Info("fled", "hp", pct(me.Hp, me.MaxHp), "s", int(time.Since(started).Seconds()), "legs", leg, "dist", int(dist2(me.X, me.Y, z.x, z.y)))

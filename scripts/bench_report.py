@@ -105,7 +105,15 @@ def rest_line(ate):
         return f"{'avec' if ate == 'true' else 'sans'} repas 0"
     gain = sum(int(m.group(3)) - int(m.group(2)) for m in r)
     secs = sum(int(m.group(4)) for m in r)
-    return f"{'avec' if ate == 'true' else 'sans'} repas {len(r)} ({secs} s, {gain / max(secs, 1):.1f} points/s)"
+    return f"{'avec' if ate == 'true' else 'sans'} repas {len(r)} ({secs} s, {gain / max(secs, 1):.1f} %/s)"
+def rest_by_level():
+    by = collections.defaultdict(lambda: [0, 0])
+    for m in rests:
+        by[int(m.group(1))][0] += 1
+        by[int(m.group(1))][1] += int(m.group(4))
+    return " ; ".join(f"{lv}: {n} ({secs} s)" for lv, (n, secs) in sorted(by.items())) or "—"
+rest_before_pull = sum(1 for l in combat if 'msg="resting before pull"' in l)
+hopeless = sum(1 for l in combat if 'msg="flight hopeless: staying"' in l)
 # Chests, vendors on the way, junk thrown away (auto/chest.go, auto/town.go, town/room.go, 2026-10-23):
 # auto.log and town.log hold every run, keep the lines of this one by time.
 def in_run(l):
@@ -155,7 +163,8 @@ lines = [f"# Bench {name} — {race} {cls} {first_level} → {target} ({date})",
          f"- Coups reçus par côté : {' ; '.join(blow_line(k) for k in blows)}",
          f"- Rencontres (entrée → sortie de combat) : {enc_line()}",
          f"- Défense : {defense[-1] if defense else '—'}",
-         f"- Repos : {rest_line('false')} ; {rest_line('true')}",
+         f"- Repos : {rest_line('false')} ; {rest_line('true')} ; par niveau (repos, durée) : {rest_by_level()} ; avant un pull (rest_adaptive) : {rest_before_pull}",
+         f"- Fuites jugées perdues d'avance (resté) : {hopeless}",
          f"- Fin : {stops[-1] if stops else '?'}"]
 os.makedirs(os.path.join(root, "journal/bench"), exist_ok=True)
 fname = f"journal/bench/{datetime.datetime.fromtimestamp(start).strftime('%Y%m%d_%H%M')}_{name}.md"
