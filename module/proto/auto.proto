@@ -15,6 +15,10 @@ message RunRequest {
   map<uint32, uint32> rewards = 2;
   // Seconds to block before returning the status (default 20, max 25).
   uint32 wait_s = 3;
+  // Quests of the batch to accept and complete but keep in the log: the guide turns them in later
+  // (a delivery to Stormwind taken at Goldshire and handed in when the route passes there). Done by
+  // quests (the hub way, auto/hub.go) whatever tuning quest_hub says.
+  repeated uint32 hold = 5;
 }
 
 message StatusRequest {

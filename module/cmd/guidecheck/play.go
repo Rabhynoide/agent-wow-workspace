@@ -46,6 +46,8 @@ type playState struct {
 	// hard: quests that often failed at this level (questlearn.go), passed over like the postponed
 	// ones but tried when nothing else is left
 	hard map[uint32]bool
+	// held: quests done but kept in the log for the guide's turn-in later, since when (holds.go)
+	held map[uint32]time.Time
 }
 
 // nextBatch walks the route in order. It returns the first quests doable now (up to n), or, when none
@@ -103,6 +105,9 @@ func nextBatch(entries []routeQuest, cache map[uint32]*quest, manual map[uint32]
 		q := cache[e.id]
 		if q == nil || seen[e.id] || ps.finished[e.id] || ps.skipped[e.id] != "" || manual[e.id] != "" {
 			continue
+		}
+		if _, held := ps.held[e.id]; held {
+			continue // done, waiting for its turn-in (holds.go)
 		}
 		if time.Now().Before(ps.waitUntil[e.id]) {
 			seen[e.id] = true
@@ -567,7 +572,7 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 	}
 	race, class := b.Self.Race, b.Self.ClassID
 	raceName, className := nameOf(raceIDs, race), nameOf(classIDs, class)
-	ps := &playState{finished: c.rewardedOf(char), skipped: map[uint32]string{}, retryAt: map[uint32]uint32{},
+	ps := &playState{finished: c.rewardedOf(char), skipped: map[uint32]string{}, retryAt: map[uint32]uint32{}, held: map[uint32]time.Time{},
 		waitUntil: map[uint32]time.Time{}, tries: map[uint32]int{}, skippedAt: map[uint32]time.Time{}, flights: map[uint32]int{}, failLevel: map[uint32]uint32{}}
 	say("%s (%s %s) level %d -> %d, %d quests already rewarded", char, raceName, className, b.Self.Level, until, len(ps.finished))
 	if ids := c.addClassQuests(className, raceName, class); len(ids) > 0 {
@@ -669,8 +674,23 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 			for _, id := range batch {
 				titles = append(titles, fmt.Sprintf("%d %s", id, c.cache[id].Title))
 			}
+			var hold, due []uint32
+			if tune.Get().HoldTurnins || len(ps.held) > 0 {
+				hold, due = holdsFor(c.entries, c.turnAt, batch, ps.held, func(id uint32) int { return c.cache[id].Level }, me.Level, time.Now())
+				if !tune.Get().HoldTurnins {
+					hold = nil
+				}
+			}
+			for _, id := range due {
+				batch = append(batch, id)
+				titles = append(titles, fmt.Sprintf("%d %s (turn-in)", id, c.cache[id].Title))
+				delete(ps.held, id)
+			}
 			say("L%d quests: %s", me.Level, strings.Join(titles, " | "))
-			st, err := r.job("auto.run", map[string]any{"quests": batch}, detail)
+			if len(hold) > 0 {
+				say("  kept for the guide's turn-in later: %v", hold)
+			}
+			st, err := r.job("auto.run", map[string]any{"quests": batch, "hold": hold}, detail)
 			if err != nil {
 				say("auto.run: %v", err)
 				return 1
@@ -678,6 +698,15 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 			deaths += int(st.Deaths) // recovered inside the job (3 deaths in quest 62 were counted as 1)
 			for _, id := range st.Done {
 				ps.finished[id] = true
+			}
+			failed := map[uint32]bool{st.Quest: st.State != "done"}
+			for _, f := range st.Failed {
+				failed[f.Quest] = true
+			}
+			for _, id := range hold {
+				if !ps.finished[id] && !failed[id] {
+					ps.held[id] = time.Now()
+				}
 			}
 			if len(st.Done) > 0 {
 				say("  done %v", st.Done)
@@ -797,6 +826,22 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 						r.defend() // returns at once when nothing attacks us
 					}
 				}
+			}
+		case len(ps.held) > 0:
+			// Nothing left in the route: the quests kept for later are turned in now.
+			var ids []uint32
+			for id := range ps.held {
+				ids = append(ids, id)
+			}
+			ps.held = map[uint32]time.Time{}
+			say("L%d turn-ins kept for later: %v", me.Level, ids)
+			st, err := r.job("auto.run", map[string]any{"quests": ids}, detail)
+			if err != nil {
+				say("auto.run: %v", err)
+				return 1
+			}
+			for _, id := range st.Done {
+				ps.finished[id] = true
 			}
 		default:
 			say("route finished for this character")

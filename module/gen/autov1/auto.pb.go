@@ -32,7 +32,11 @@ type RunRequest struct {
 	// Reward choice index per quest id (default 0).
 	Rewards map[uint32]uint32 `protobuf:"bytes,2,rep,name=rewards,proto3" json:"rewards,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
 	// Seconds to block before returning the status (default 20, max 25).
-	WaitS         uint32 `protobuf:"varint,3,opt,name=wait_s,json=waitS,proto3" json:"wait_s,omitempty"`
+	WaitS uint32 `protobuf:"varint,3,opt,name=wait_s,json=waitS,proto3" json:"wait_s,omitempty"`
+	// Quests of the batch to accept and complete but keep in the log: the guide turns them in later
+	// (a delivery to Stormwind taken at Goldshire and handed in when the route passes there). Done by
+	// quests (the hub way, auto/hub.go) whatever tuning quest_hub says.
+	Hold          []uint32 `protobuf:"varint,5,rep,packed,name=hold,proto3" json:"hold,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -93,6 +97,13 @@ func (x *RunRequest) GetWaitS() uint32 {
 		return x.WaitS
 	}
 	return 0
+}
+
+func (x *RunRequest) GetHold() []uint32 {
+	if x != nil {
+		return x.Hold
+	}
+	return nil
 }
 
 type StatusRequest struct {
@@ -491,14 +502,15 @@ var File_auto_proto protoreflect.FileDescriptor
 const file_auto_proto_rawDesc = "" +
 	"\n" +
 	"\n" +
-	"auto.proto\x12\x10wowagent.auto.v1\x1a\x1bapi/module/v1/session.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xdd\x01\n" +
+	"auto.proto\x12\x10wowagent.auto.v1\x1a\x1bapi/module/v1/session.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xf1\x01\n" +
 	"\n" +
 	"RunRequest\x12\x1f\n" +
 	"\vno_progress\x18\x04 \x01(\bR\n" +
 	"noProgress\x12\x16\n" +
 	"\x06quests\x18\x01 \x03(\rR\x06quests\x12C\n" +
 	"\arewards\x18\x02 \x03(\v2).wowagent.auto.v1.RunRequest.RewardsEntryR\arewards\x12\x15\n" +
-	"\x06wait_s\x18\x03 \x01(\rR\x05waitS\x1a:\n" +
+	"\x06wait_s\x18\x03 \x01(\rR\x05waitS\x12\x12\n" +
+	"\x04hold\x18\x05 \x03(\rR\x04hold\x1a:\n" +
 	"\fRewardsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\rR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\rR\x05value:\x028\x01\"&\n" +

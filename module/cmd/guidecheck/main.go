@@ -83,6 +83,10 @@ type checker struct {
 	order    []uint32
 	entries  []routeQuest
 	where    map[uint32]string // quest -> route file where it is first accepted
+	// turnAt: position in the whole route of each quest's first turn-in step after its accept; steps
+	// counts the steps of the files checked so far (positions continue from file to file).
+	turnAt map[uint32]int
+	steps  int
 	fights   *xpscore.Table    // learned fights (-play)
 }
 
@@ -239,7 +243,13 @@ func (c *checker) problem(file string, s step, format string, a ...any) {
 
 func (c *checker) check(file string, g *guide) {
 	race := raceIDs[strings.ToLower(g.Race)]
+	if c.turnAt == nil {
+		c.turnAt = map[uint32]int{}
+	}
+	base := c.steps
+	c.steps += len(g.Steps)
 	for i, s := range g.Steps {
+		at := base + i
 		if !actions[s.Action] {
 			c.problem(file, s, "unknown action")
 		}
@@ -250,7 +260,7 @@ func (c *checker) check(file string, g *guide) {
 		if s.Action == "note" && strings.EqualFold(strings.TrimSpace(s.Note), "reach this level") {
 			if m := firstInt.Find(s.Level); m != nil {
 				lvl, _ := strconv.Atoi(string(m))
-				c.entries = append(c.entries, routeQuest{gate: uint32(lvl), only: s.Only})
+				c.entries = append(c.entries, routeQuest{gate: uint32(lvl), only: s.Only, at: at})
 			}
 			continue
 		}
@@ -283,12 +293,15 @@ func (c *checker) check(file string, g *guide) {
 				c.accepted[q.ID] = true
 				c.order = append(c.order, q.ID)
 			}
-			c.entries = append(c.entries, routeQuest{id: q.ID, only: s.Only})
+			c.entries = append(c.entries, routeQuest{id: q.ID, only: s.Only, at: at})
 			if _, ok := c.where[q.ID]; !ok {
 				c.where[q.ID] = file
 			}
 			c.classify(q)
 		case "turnin":
+			if _, ok := c.turnAt[q.ID]; !ok && c.accepted[q.ID] {
+				c.turnAt[q.ID] = at
+			}
 			if s.NPC != "" && len(q.Enders) > 0 && !has(q.Enders, s.NPC) {
 				c.problem(file, s, "turn-in NPC is %v, guide says %q", q.Enders, s.NPC)
 			}
@@ -605,6 +618,7 @@ type routeQuest struct {
 	id   uint32
 	only []only
 	gate uint32 // a "reach this level" step (no quest): level to reach before going on
+	at   int    // position of the step in the whole route (all files, in order)
 }
 
 // printPlan lists the next quests of the route this character has not rewarded yet.

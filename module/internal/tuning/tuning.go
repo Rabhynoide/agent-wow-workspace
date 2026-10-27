@@ -51,6 +51,9 @@ type Tuning struct {
 	// EngageOnWay: a lone, cheap, green or yellow monster close ahead of a walk is charged first
 	// instead of letting it hit us in the back (auto/engage.go).
 	EngageOnWay bool `json:"engage_on_way"`
+	// HoldTurnins: a quest the guide turns in far later is kept in the log after its objectives and
+	// turned in when the route reaches that step (cmd/guidecheck/holds.go).
+	HoldTurnins bool `json:"hold_turnins"`
 	// guidecheck: flights in a quest before it is postponed to the next level.
 	PostponeAfterFlights int `json:"postpone_after_flights"`
 	// Learning: in a borderline case (expected to survive, the rule says flee), stay and fight with

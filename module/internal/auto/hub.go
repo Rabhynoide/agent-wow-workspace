@@ -2,6 +2,7 @@ package auto
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	pb "wowagent/gen/autov1"
@@ -22,6 +23,7 @@ const (
 	hubComplete
 	hubDone
 	hubFailed
+	hubHeld // complete, turned in later (RunRequest.hold)
 )
 
 type hubQuest struct {
@@ -123,7 +125,13 @@ func (r *run) hubQuests(req *pb.RunRequest) error {
 				}
 			}
 		}
-		// 3. Turn in, nearest ender first.
+		// 3. Turn in, nearest ender first, except the quests held for later (RunRequest.hold).
+		for _, q := range qs {
+			if q.state == hubComplete && slices.Contains(req.Hold, q.id) {
+				q.state = hubHeld
+				r.note("quest %d done, kept for the guide's turn-in later", q.id)
+			}
+		}
 		for {
 			if err := r.recover(); err != nil {
 				return fmt.Errorf("recover: %w", err)

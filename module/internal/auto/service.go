@@ -513,7 +513,7 @@ func (r *run) quests(req *pb.RunRequest) error {
 		}
 		r.progress()
 	}
-	if r.s.tune.Get().QuestHub {
+	if r.s.tune.Get().QuestHub || len(req.Hold) > 0 {
 		return r.hubQuests(req)
 	}
 	for _, id := range req.Quests {
