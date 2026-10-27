@@ -158,11 +158,11 @@ func TestExplorationReleasedWhenUnsafe(t *testing.T) {
 	att := []*statepb.Obj{{Guid: 7, Entry: 116, Hp: 150, MaxHp: 160}, {Guid: 8, Entry: 116, Hp: 150, MaxHp: 160}}
 	s := &Service{guid: 1}
 	s.decision = &fleeDecision{key: "3:-20", stayed: true, how: "explore", fresh: 3}
-	if s.decide(me, att, 60) {
+	if s.decide(me, att, 60, 0) {
 		t.Fatal("nothing measured: the exploration holds")
 	}
 	fill(&s.dmg, 7, 10)
-	if !s.decide(me, att, 60) {
+	if !s.decide(me, att, 60, 0) {
 		t.Fatal("below the safe flight threshold: the exploration is released")
 	}
 }
@@ -181,5 +181,19 @@ func TestHopelessFlight(t *testing.T) {
 	}
 	if h, _ := s.hopelessFlight(&statepb.SelfInfo{Hp: 209, MaxHp: 232}, att, 57); h {
 		t.Fatal("90 %: the flight is tried")
+	}
+}
+
+// A stay is released when monsters are about to join (3 kobolds at 94 % ended against 6, 2026-10-27).
+func TestStayReleasedByJoiners(t *testing.T) {
+	me := &statepb.SelfInfo{Hp: 190, MaxHp: 203}
+	att := []*statepb.Obj{{Guid: 7, Entry: 475, Hp: 150, MaxHp: 160}, {Guid: 8, Entry: 475, Hp: 150, MaxHp: 160}}
+	s := &Service{guid: 1}
+	s.decision = &fleeDecision{key: "2:40", stayed: true, how: "learned", fresh: 2}
+	if s.decide(me, att, 40, 0) {
+		t.Fatal("no joiners: the learned stay holds")
+	}
+	if !s.decide(me, att, 40, 2) {
+		t.Fatal("two kobolds coming: the stay is released")
 	}
 }

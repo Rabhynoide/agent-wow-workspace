@@ -84,9 +84,10 @@ type Tuning struct {
 	// WarriorRestBelow: a kill job rests (and eats) before the next pull below this health (percent)
 	// for a warrior; the classes with a heal rest below 55.
 	WarriorRestBelow uint32 `json:"warrior_rest_below"`
-	// SafeRestBelow: below this health (percent), a rest first walks to the spot within 40 yards
-	// farthest from the hostile monsters when one stands closer than safeRestClear (combat/saferest.go).
-	// 0 = rest where we stand.
+	// SafeRestBelow: non-zero, a rest started in the danger of an idle monster first walks to the
+	// quietest spot of the danger map nearby, whatever our health (combat/saferest.go; until
+	// 2026-10-27 only below this health, to the spot farthest from the monsters). 0 = rest where we
+	// stand.
 	SafeRestBelow uint32 `json:"safe_rest_below"`
 	// RestAdaptive: before a pull, a warrior rests when its health is below what the pull is expected to
 	// cost (learned damage rates, else the learned fights) plus FleeMargin, and at least RestFloor;
