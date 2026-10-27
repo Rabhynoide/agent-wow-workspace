@@ -186,7 +186,7 @@ func (r *run) recover() error {
 	// Back at the corpse (safe spot near it): only the death's 10 % durability. The spirit healer adds
 	// 25 % more (gear broke in the 2026-10-11 benches) and resurrection sickness from sicknessLevel:
 	// it is only the fallback when the corpse cannot be reclaimed, below that level.
-	err = r.corpseRez(send)
+	err = r.corpseRez(send, snap.Self.Level < sicknessLevel)
 	if err == nil || r.ctx.Err() != nil {
 		return err
 	}
@@ -201,7 +201,10 @@ func (r *run) recover() error {
 }
 
 // corpseRez runs to the corpse, waits at the safest spot within the reclaim radius, and reclaims it.
-func (r *run) corpseRez(send func(uint32, []byte)) error {
+// healer: the spirit healer is free (no resurrection sickness yet): when monsters still stand near
+// the corpse after the wait, give up the corpse instead of coming back among them (Fargodeep,
+// 2026-10-27: back at 33-42 % of health with kobolds 13-17 yards away, killed again twice in a row).
+func (r *run) corpseRez(send func(uint32, []byte), healer bool) error {
 	for len(r.s.corpse) > 0 {
 		<-r.s.corpse
 	}
@@ -242,6 +245,9 @@ func (r *run) corpseRez(send func(uint32, []byte)) error {
 		}
 		// 2 minutes: resurrecting with kobolds 10-14 yards away after 1 minute killed at once
 		// (Fargodeep, 2026-10-26).
+		if sp.Clearance < 25 && wait >= 8 && healer {
+			return fmt.Errorf("monsters still %.0f yards from the corpse", sp.Clearance)
+		}
 		if sp.Clearance < 25 && wait < 8 {
 			r.step("monsters near the corpse (nearest %.0f yards): waiting for them to move", sp.Clearance)
 			if !jobs.Sleep(r.ctx, 15*time.Second) {
