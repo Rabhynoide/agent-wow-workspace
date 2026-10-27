@@ -51,10 +51,6 @@ type Tuning struct {
 	// EngageOnWay: a lone, cheap, green or yellow monster close ahead of a walk is charged first
 	// instead of letting it hit us in the back (auto/engage.go).
 	EngageOnWay bool `json:"engage_on_way"`
-	// FleeDanger: a flight takes the way (our trail or one of a dozen around us, real walks on the
-	// navmesh) that meets the least danger: idle monsters' aggro plus their call-for-help range
-	// (combat/fleemap.go).
-	FleeDanger bool `json:"flee_danger"`
 	// guidecheck: flights in a quest before it is postponed to the next level.
 	PostponeAfterFlights int `json:"postpone_after_flights"`
 	// Learning: in a borderline case (expected to survive, the rule says flee), stay and fight with

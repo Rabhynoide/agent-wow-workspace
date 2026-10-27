@@ -358,14 +358,17 @@ func (s *Service) flee(ctx context.Context, j *job, me *statepb.SelfInfo, att []
 		entries[i] = a.Entry
 		s.skipCrowded(a.Guid)
 	}
-	// Back along the trail unless its first leg leads towards the attackers (they came from behind).
-	legs, idx := s.trail.back(me.Map, me.X, me.Y)
-	if len(legs) > 0 && dist2(legs[0].x, legs[0].y, z.x, z.y) < dist2(me.X, me.Y, z.x, z.y) {
-		legs = nil
-	}
-	way := "safe_point"
-	if len(legs) > 0 {
-		way = "trail"
+	// The way: our trail or one of a dozen real walks around us, the one meeting the least danger
+	// (fleemap.go), then on in the direction of its end. One direction for the whole flight and no
+	// stop: the target moves ahead before we reach it (move.goto re-targets the running walk). Legs that
+	// stopped at each point and safe points chosen again at each leg ran back towards the chasers: 50
+	// yards in 15 s, 21 blows taken, dead, against 3 Prowlers at 76 % and 3 boars at 91 % (run of
+	// 2026-10-26 07:56).
+	trailLegs, trailIdx := s.trail.back(me.Map, me.X, me.Y)
+	legs, dir, way := s.chooseFlight(ctx, me, att, trailLegs)
+	var idx []int // trail indices of the legs: the run back cuts the trail there
+	if way == "trail" {
+		idx = trailIdx
 	}
 	slog.Info("fleeing", "hp", pct(me.Hp, me.MaxHp), "loss_left", int(loss), "attackers", entries, "crowd", crowd(att, s.tuneGet().CrowdFlee),
 		"zone", [2]int{int(z.x), int(z.y)}, "way", way, "legs", len(legs), "dps_pct", s.dpsPct(me))
@@ -374,28 +377,6 @@ func (s *Service) flee(ctx context.Context, j *job, me *statepb.SelfInfo, att []
 	end := -1
 	defer func() { s.trail.cut(end) }()
 	started := time.Now()
-	// One direction for the whole flight, away from the attackers, and no stop: the target moves ahead
-	// before we reach it (move.goto re-targets the running walk). Legs that stopped at each point and
-	// safe points chosen again at each leg ran back towards the chasers: 50 yards in 15 s, 21 blows taken,
-	// dead, against 3 Prowlers at 76 % and 3 boars at 91 % (run of 2026-10-26 07:56).
-	dir, idle := s.fleeDirection(ctx, me, awayFrom(me, att))
-	if len(legs) > 0 && !sameWay(me, legs[min(len(legs)-1, 1)], dir) {
-		legs = nil // the trail turns back towards them
-	}
-	if len(legs) > 0 && trailNearIdle(me, legs, idle) {
-		slog.Info("flight trail passes idle monsters: straight way")
-		legs = nil
-	}
-	if s.tuneGet().FleeDanger { // the way scored on the danger map (fleemap.go) instead
-		trailLegs, _ := s.trail.back(me.Map, me.X, me.Y)
-		var how string
-		legs, dir, how = s.chooseFlight(ctx, me, att, trailLegs)
-		if how != "trail" {
-			idx = nil
-		} else {
-			_, idx = s.trail.back(me.Map, me.X, me.Y)
-		}
-	}
 	turn := 0 // index in fleeTurns
 	var target *[3]float32
 	leg, clear := 0, 0
@@ -482,95 +463,9 @@ func awayFrom(me *statepb.SelfInfo, att []*statepb.Obj) [2]float64 {
 	return [2]float64{-math.Cos(float64(me.O)), -math.Sin(float64(me.O))}
 }
 
-// fleeDirection turns the flight direction (within ±90°) to keep the run away from idle monsters:
-// the chasers call for help every 3 s within 10 yards of where they are (Creature::CallAssistance), so
-// a run past a camp brings it along (the pack of 7 wolves, 2026-10-26). Each idle monster closer than
-// fleeClear yards to the first fleeLook yards of a way counts against it; the straightest way wins ties.
-func (s *Service) fleeDirection(ctx context.Context, me *statepb.SelfInfo, base [2]float64) ([2]float64, []*statepb.Obj) {
-	r, err := s.api.Nearby(ctx, &statepb.NearbyRequest{Kind: "unit", Radius: fleeLook + fleeClear, Max: 40, AliveOnly: true, HostileOnly: true})
-	if err != nil {
-		return base, nil
-	}
-	var idle []*statepb.Obj
-	for _, o := range r.Objs {
-		if o.Target == 0 && o.UnitFlags&unitInCombat == 0 && math.Abs(float64(o.Z-me.Z)) <= 10 {
-			idle = append(idle, o)
-		}
-	}
-	return bestFleeWay(me, base, idle), idle
-}
-
-// trailNearIdle tells whether the first fleeLook yards of the trail pass within fleeClear of an idle
-// monster: back the way we came past the Fargodeep mine entrance, 4 flights in 4 met the miners there
-// and died (bench of 2026-10-26 14:19, up to 9 monsters).
-func trailNearIdle(me *statepb.SelfInfo, legs []trailPt, idle []*statepb.Obj) bool {
-	ax, ay, done := me.X, me.Y, float32(0)
-	for _, l := range legs {
-		bx, by := l.x, l.y
-		d := dist2(ax, ay, bx, by)
-		if left := fleeLook - done; d > left { // the leg cut at fleeLook
-			bx, by = ax+(bx-ax)*left/d, ay+(by-ay)*left/d
-		}
-		for _, o := range idle {
-			if segDist(o.X, o.Y, ax, ay, bx, by) < fleeClear {
-				return true
-			}
-		}
-		if done += d; done >= fleeLook {
-			return false
-		}
-		ax, ay = bx, by
-	}
-	return false
-}
-
-// bestFleeWay: see fleeDirection.
-func bestFleeWay(me *statepb.SelfInfo, base [2]float64, idle []*statepb.Obj) [2]float64 {
-	best, bestScore := base, math.MaxFloat64
-	for _, deg := range []float64{0, 30, -30, 60, -60, 90, -90} {
-		d := turned(base, deg)
-		ex, ey := me.X+float32(d[0]*fleeLook), me.Y+float32(d[1]*fleeLook)
-		score := math.Abs(deg) / 90 // the straight way first
-		for _, o := range idle {
-			if segDist(o.X, o.Y, me.X, me.Y, ex, ey) < fleeClear {
-				score += 3
-			}
-		}
-		if score < bestScore {
-			best, bestScore = d, score
-		}
-	}
-	return best
-}
-
-// fleeLook: the part of a flight way checked for idle monsters; fleeClear: how far from it they must
-// stand (the assistance range plus a margin).
-const (
-	fleeLook  = 45
-	fleeClear = assistRange + 4
-)
-
 func turned(d [2]float64, deg float64) [2]float64 {
 	a := deg * math.Pi / 180
 	return [2]float64{d[0]*math.Cos(a) - d[1]*math.Sin(a), d[0]*math.Sin(a) + d[1]*math.Cos(a)}
-}
-
-// segDist is the 2D distance from (px, py) to the segment a-b.
-func segDist(px, py, ax, ay, bx, by float32) float32 {
-	dx, dy := bx-ax, by-ay
-	l2 := dx*dx + dy*dy
-	t := float32(0)
-	if l2 > 0 {
-		t = max(0, min(1, ((px-ax)*dx+(py-ay)*dy)/l2))
-	}
-	return dist2(px, py, ax+t*dx, ay+t*dy)
-}
-
-// sameWay tells whether a trail point lies within 60 degrees of the flight direction.
-func sameWay(me *statepb.SelfInfo, p trailPt, dir [2]float64) bool {
-	dx, dy := float64(p.x-me.X), float64(p.y-me.Y)
-	l := math.Hypot(dx, dy)
-	return l < 1 || (dx*dir[0]+dy*dir[1])/l >= 0.5
 }
 
 // fleePoint is a walkable point about fleeStep yards from us in the flight direction turned by deg

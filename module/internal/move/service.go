@@ -301,6 +301,8 @@ func navPlan(m *nav.Mesh, tm *terrain.Maps, vm *vmap.Tree, from, to [3]float32, 
 		if pts, ok := bentPlan(m, src, dst, f); ok {
 			return onGround(pts, tm, vm), nil
 		}
+		// How often the old weighted A* is still needed (to remove it when it never is).
+		slog.Info("bent path failed: weighted path", "dangers", len(f.Avoid))
 	}
 	// Points every 2 yards that slide along the walkable polygons (the server's own smoothing), heights
 	// from the polygon reached; the old funnel + interpolation is the fallback.

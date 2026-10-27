@@ -72,7 +72,7 @@ func (s *Service) chooseFlight(ctx context.Context, me *statepb.SelfInfo, att []
 	for i := 0; i < fleeWays; i++ {
 		a := base + float64(i)*2*math.Pi/fleeWays
 		x, y := me.X+float32(math.Cos(a)*fleeWayDist), me.Y+float32(math.Sin(a)*fleeWayDist)
-		res, err := s.api.PathFromSnap(ctx, me.Map, me.X, me.Y, me.Z, x, y, me.Z, 12)
+		res, err := s.api.PathFromSnapPoints(ctx, me.Map, me.X, me.Y, me.Z, x, y, me.Z, 12)
 		if err != nil || res.Error != "" || res.End == nil || len(res.Pts) < 2 || res.Length > 2*fleeWayDist ||
 			dist2(me.X, me.Y, res.End.X, res.End.Y) < fleeWayDist/2 {
 			continue

@@ -55,9 +55,6 @@ func dist3D(a, b *statepb.Obj) float32 {
 	return float32(math.Sqrt(float64((a.X-b.X)*(a.X-b.X) + (a.Y-b.Y)*(a.Y-b.Y) + (a.Z-b.Z)*(a.Z-b.Z))))
 }
 
-// addMargin: yards added to an aggro radius for an add (we fight around the target, not on it).
-const addMargin = 2
-
 // groupYards: with the adaptive pull size, one more monster in a pull is worth this many yards of
 // walk (2-3 s per kill saved against about 3 s of walk).
 const groupYards = 20
@@ -85,48 +82,9 @@ func dist2D(ax, ay, bx, by float32) float32 {
 	return float32(math.Hypot(float64(ax-bx), float64(ay-by)))
 }
 
-// addsOf lists the hostile monsters that would join a fight at the target's spot: not engaged with
-// anyone, and either within their aggro radius of it (3D, at most safe.ZAggro yards above or below:
-// Creature::CanStartAttack) or called by the target or by another add (within the assistance range,
-// 3D, repeated: the whole chain of a camp). A kobold on
-// the floor above in Fargodeep mine is no add (it counted as one, 2D, and crowded the pulls).
+// addsOf: the monsters that would join a fight with t (safe.Adds).
 func addsOf(t *statepb.Obj, hostiles []*statepb.Obj, rangeOf aggroFn) []*statepb.Obj {
-	var out []*statepb.Obj
-	for _, h := range hostiles {
-		if h.Guid == t.Guid || h.Target != 0 {
-			continue
-		}
-		d := dist3D(h, t)
-		aggro := math.Abs(float64(h.Z-t.Z)) <= safe.ZAggro && d <= rangeOf(h)+addMargin
-		if aggro || d <= assistRange+1 {
-			out = append(out, h)
-		}
-	}
-	// Each monster in the fight calls for help again every 3 s (Creature::CallAssistance,
-	// CreatureFamilyAssistancePeriod), within the assistance range of where it stands: a camp joins
-	// link by link (the wolf pack of 7 and the Fargodeep kobolds of the runs of 2026-10-26).
-	in := map[uint64]bool{t.Guid: true}
-	for _, o := range out {
-		in[o.Guid] = true
-	}
-	for grew := true; grew; {
-		grew = false
-		for _, h := range hostiles {
-			// On the fight's floor only: the server wants a line of sight between them, which floors
-			// block (the stacked galleries of Fargodeep).
-			if in[h.Guid] || h.Target != 0 || math.Abs(float64(h.Z-t.Z)) > safe.ZAggro {
-				continue
-			}
-			for _, m := range out {
-				if dist3D(h, m) <= assistRange+1 {
-					out = append(out, h)
-					in[h.Guid], grew = true, true
-					break
-				}
-			}
-		}
-	}
-	return out
+	return safe.Adds(t, hostiles, rangeOf)
 }
 
 // pullLoad is the weighted count of the target and its adds, against an explicit max_pull. The

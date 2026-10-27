@@ -151,33 +151,6 @@ func TestOrderedDamage(t *testing.T) {
 	}
 }
 
-// The flight goes away from the attackers' centre, and the trail only when it goes that way.
-func TestFleeDirection(t *testing.T) {
-	me := &statepb.SelfInfo{X: 0, Y: 0}
-	att := []*statepb.Obj{{X: 10, Y: 2}, {X: 10, Y: -2}, {X: 12, Y: 0}}
-	d := awayFrom(me, att)
-	if d[0] > -0.99 {
-		t.Fatalf("direction %v, want -x", d)
-	}
-	if !sameWay(me, trailPt{x: -15, y: 3}, d) || sameWay(me, trailPt{x: 5, y: 10}, d) {
-		t.Fatal("trail filter")
-	}
-}
-
-// A camp straight behind us: the flight turns to pass it.
-func TestFleeAvoidsCamps(t *testing.T) {
-	me := &statepb.SelfInfo{X: 0, Y: 0}
-	base := [2]float64{1, 0}
-	camp := []*statepb.Obj{{X: 20, Y: 0}, {X: 25, Y: 3}, {X: 25, Y: -3}}
-	d := bestFleeWay(me, base, camp)
-	if d[0] > 0.9 {
-		t.Fatalf("still straight into the camp: %v", d)
-	}
-	if d := bestFleeWay(me, base, nil); d[0] < 0.999 {
-		t.Fatalf("no camp: straight, got %v", d)
-	}
-}
-
 // An exploration (stay) is released below the last safe moment to flee: 2 Defias at 10 damage/s on
 // 203 health say flee below ~59 %; at 37 % we run (bench of 2026-10-26).
 func TestExplorationReleasedWhenUnsafe(t *testing.T) {
@@ -208,18 +181,5 @@ func TestHopelessFlight(t *testing.T) {
 	}
 	if h, _ := s.hopelessFlight(&statepb.SelfInfo{Hp: 209, MaxHp: 232}, att, 57); h {
 		t.Fatal("90 %: the flight is tried")
-	}
-}
-
-// A trail back past idle monsters (the Fargodeep miners) is not taken; one that passes them after the
-// first fleeLook yards is.
-func TestTrailNearIdle(t *testing.T) {
-	me := &statepb.SelfInfo{X: 0, Y: 0}
-	legs := []trailPt{{x: 20, y: 0}, {x: 40, y: 0}, {x: 80, y: 0}}
-	if !trailNearIdle(me, legs, []*statepb.Obj{{X: 30, Y: 8}}) {
-		t.Fatal("miner 8 yards from the trail at 30 yards")
-	}
-	if trailNearIdle(me, legs, []*statepb.Obj{{X: 75, Y: 2}}) {
-		t.Fatal("a monster past the first 45 yards does not count")
 	}
 }

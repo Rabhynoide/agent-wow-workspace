@@ -6,6 +6,7 @@ import (
 
 	statepb "wowagent/gen/statev1"
 	worldpb "wowagent/gen/worldv1"
+	"wowagent/internal/safe"
 	"wowagent/internal/xpscore"
 )
 
@@ -49,7 +50,7 @@ func (r *run) engageOnTheWay(x, y float32) *statepb.Obj {
 		if !ahead(me, o, x, y) || offLine(me, o, x, y) > engageOffLine {
 			continue
 		}
-		if lonely := len(friendsOf(o, vis.Objs, rangeOf)) == 0; !lonely {
+		if len(safe.Adds(o, vis.Objs, rangeOf)) > 0 { // not alone
 			continue
 		}
 		sp := &worldpb.Spawn{Entry: o.Entry, MinLevel: o.Level, MaxLevel: o.Level}
@@ -82,20 +83,4 @@ func offLine(me *statepb.SelfInfo, o *statepb.Obj, x, y float32) float32 {
 		t = math.Max(0, math.Min(1, ((float64(o.X)-ax)*dx+(float64(o.Y)-ay)*dy)/l2))
 	}
 	return float32(math.Hypot(ax+t*dx-float64(o.X), ay+t*dy-float64(o.Y)))
-}
-
-// friendsOf lists the idle hostile monsters that would join a fight with o: within their aggro
-// range of it, or within the server's 10 yards of call for help.
-func friendsOf(o *statepb.Obj, all []*statepb.Obj, rangeOf func(*statepb.Obj) float32) []*statepb.Obj {
-	var out []*statepb.Obj
-	for _, h := range all {
-		if h.Guid == o.Guid || h.Target != 0 {
-			continue
-		}
-		d := float32(math.Hypot(float64(h.X-o.X), float64(h.Y-o.Y)))
-		if d <= max(rangeOf(h), 10) && math.Abs(float64(h.Z-o.Z)) <= 5 {
-			out = append(out, h)
-		}
-	}
-	return out
 }
