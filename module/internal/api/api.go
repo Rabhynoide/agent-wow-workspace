@@ -98,7 +98,7 @@ func (c C) PathFrom(ctx context.Context, mapID uint32, fx, fy, fz, x, y, z float
 // PathFromSnap is PathFrom ending at the closest walkable point within snap yards of the destination.
 func (c C) PathFromSnap(ctx context.Context, mapID uint32, fx, fy, fz, x, y, z, snap float32) (*movepb.PathResponse, error) {
 	var r movepb.PathResponse
-	err := invoke.Call(ctx, c.S, "move", "path", &movepb.PathRequest{X: x, Y: y, Z: z, FromSet: true, Map: mapID, FromX: fx, FromY: fy, FromZ: fz, WithAreas: true, Snap: snap}, &r)
+	err := invoke.Call(ctx, c.S, "move", "path", &movepb.PathRequest{X: x, Y: y, Z: z, FromSet: true, Map: mapID, FromX: fx, FromY: fy, FromZ: fz, WithAreas: true, Snap: snap, WithPoints: true}, &r)
 	return &r, err
 }
 

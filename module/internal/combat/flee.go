@@ -386,6 +386,16 @@ func (s *Service) flee(ctx context.Context, j *job, me *statepb.SelfInfo, att []
 		slog.Info("flight trail passes idle monsters: straight way")
 		legs = nil
 	}
+	if s.tuneGet().FleeDanger { // the way scored on the danger map (fleemap.go) instead
+		trailLegs, _ := s.trail.back(me.Map, me.X, me.Y)
+		var how string
+		legs, dir, how = s.chooseFlight(ctx, me, att, trailLegs)
+		if how != "trail" {
+			idx = nil
+		} else {
+			_, idx = s.trail.back(me.Map, me.X, me.Y)
+		}
+	}
 	turn := 0 // index in fleeTurns
 	var target *[3]float32
 	leg, clear := 0, 0
@@ -416,7 +426,9 @@ func (s *Service) flee(ctx context.Context, j *job, me *statepb.SelfInfo, att []
 		if target == nil || dist2(me.X, me.Y, target[0], target[1]) < fleeAhead {
 			target = nil
 			for leg < len(legs) && dist2(me.X, me.Y, legs[leg].x, legs[leg].y) < fleeAhead {
-				end = idx[leg]
+				if leg < len(idx) {
+					end = idx[leg]
+				}
 				leg++
 			}
 			if leg < len(legs) {
