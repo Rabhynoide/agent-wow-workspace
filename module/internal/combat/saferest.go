@@ -6,52 +6,89 @@ import (
 	"math"
 
 	statepb "wowagent/gen/statev1"
-	"wowagent/internal/safe"
 )
 
-// Resting low among respawning monsters (Fargodeep mine, RB75 series of 2026-10-23): kobolds came
-// back and attacked before the character sat down, it chained fights started at 10-49 % health and
-// three of the four deaths of the series were such fights (one right after a resurrection at the
-// corpse). Below tuning SafeRestBelow, a rest first walks away from them.
+// Resting among respawning monsters (Fargodeep mine, RB75 series of 2026-10-23): kobolds came back and
+// attacked before the character sat down, it chained fights started at 10-49 % health and three of
+// the four deaths of the series were such fights (one right after a resurrection at the corpse).
 
-// safeRestClear: a hostile monster closer than this makes us move before resting (aggro range of
-// a monster of our level, 20 yards, plus a margin for its wandering and respawns).
-const safeRestClear = 25
+// restSpot walks to a quieter spot before a rest when we stand in the danger of an idle monster (its
+// aggro disc or the halo of its friends' call for help, internal/danger), whatever our health: the
+// series 045436f lost a run resting at 54 % right after a flight, attacked while resting
+// (2026-10-27). The spots tried: our trail back and a ring of real walks around us (15 and 30 yards);
+// the one with the least danger at its end and on the way wins, our trail slightly preferred.
+// tuning SafeRestBelow 0 turns it off. Callers rest with no attacker on us (the combat flag lingers
+// a few seconds after a fight, so it is not checked).
+func (s *Service) restSpot(ctx context.Context, me *statepb.SelfInfo) {
+	if s.tuneGet().SafeRestBelow == 0 || me.MaxHp == 0 {
+		return
+	}
+	f := s.dangerField(ctx, me, nil)
+	here := f.At(me.X, me.Y, me.Z)
+	if here <= 0 {
+		return
+	}
+	type spot struct {
+		end   [3]float32
+		score float32
+	}
+	score := func(path [][3]float32, trail bool) spot {
+		end := path[len(path)-1]
+		sc := 4*f.At(end[0], end[1], end[2]) + f.Along(path)/20 + polyLen2(path)/40
+		if trail {
+			sc *= fleeTrailBonus
+		}
+		return spot{end, sc}
+	}
+	var best *spot
+	consider := func(sp spot) {
+		if best == nil || sp.score < best.score {
+			best = &sp
+		}
+	}
+	if legs, _ := s.trail.back(me.Map, me.X, me.Y); len(legs) > 0 {
+		path := [][3]float32{{me.X, me.Y, me.Z}}
+		for _, l := range legs {
+			path = append(path, [3]float32{l.x, l.y, l.z})
+			if polyLen2(path) >= safeRestDist {
+				break
+			}
+		}
+		consider(score(path, true))
+	}
+	for _, d := range []float32{15, 30} {
+		for i := 0; i < 12; i++ {
+			a := float64(i) * math.Pi / 6
+			x, y := me.X+d*float32(math.Cos(a)), me.Y+d*float32(math.Sin(a))
+			res, err := s.api.PathFromSnapPoints(ctx, me.Map, me.X, me.Y, me.Z, x, y, me.Z, 8)
+			if err != nil || res.Error != "" || len(res.Pts) < 2 || res.Length > 2*d+10 {
+				continue
+			}
+			path := make([][3]float32, len(res.Pts))
+			for k, p := range res.Pts {
+				path[k] = [3]float32{p.X, p.Y, p.Z}
+			}
+			consider(score(path, false))
+		}
+	}
+	if best == nil || best.score >= 4*here-0.5 {
+		slog.Info("no quieter spot to rest", "hp", pct(me.Hp, me.MaxHp), "danger", here, "best", best)
+		return
+	}
+	slog.Info("walking to a quieter spot to rest", "hp", pct(me.Hp, me.MaxHp), "danger", here,
+		"spot_danger", f.At(best.end[0], best.end[1], best.end[2]), "monsters", len(f.Src))
+	_, _ = s.api.GotoWait(ctx, best.end[0], best.end[1], best.end[2], 2, 15)
+}
 
-// safeRestDist bounds the walk to the resting spot.
+// safeRestDist bounds the walk back along our trail to a resting spot.
 const safeRestDist = 40
 
-// safeRestGain: the spot found must be this much farther from the nearest monster than where we
-// stand, or the walk is not worth it.
-const safeRestGain = 8
-
-// restSpot walks to a quieter spot before a rest when our health is below tuning SafeRestBelow and
-// a hostile monster stands within safeRestClear. Callers rest with no attacker on us (the combat flag
-// lingers a few seconds after a fight, so it is not checked).
-func (s *Service) restSpot(ctx context.Context, me *statepb.SelfInfo) {
-	below := s.tuneGet().SafeRestBelow
-	if below == 0 || me.MaxHp == 0 || pct(me.Hp, me.MaxHp) >= below {
-		return
+func polyLen2(p [][3]float32) float32 {
+	var l float32
+	for i := 1; i < len(p); i++ {
+		l += dist2(p[i-1][0], p[i-1][1], p[i][0], p[i][1])
 	}
-	vis, err := s.api.Nearby(ctx, &statepb.NearbyRequest{Kind: "unit", Radius: 60, Max: 60, AliveOnly: true, HostileOnly: true})
-	if err != nil {
-		return
-	}
-	var threats [][2]float32
-	for _, o := range vis.Objs {
-		threats = append(threats, [2]float32{o.X, o.Y})
-	}
-	here := safe.Clearance(me.X, me.Y, threats)
-	if here >= safeRestClear {
-		return
-	}
-	sp, err := s.api.SafePoint(ctx, me.X, me.Y, me.Z, safeRestDist, true)
-	if err != nil || !sp.Ok || sp.Clearance < here+safeRestGain {
-		slog.Info("no quieter spot to rest", "hp", pct(me.Hp, me.MaxHp), "nearest", int(here), "best", int(sp.GetClearance()), "err", err)
-		return
-	}
-	slog.Info("walking to a quieter spot to rest", "hp", pct(me.Hp, me.MaxHp), "nearest", int(here), "spot", int(sp.Clearance))
-	_, _ = s.api.GotoWait(ctx, sp.X, sp.Y, sp.Z, 2, 15)
+	return l
 }
 
 // restNear: a hostile monster closer than this (on our level) forbids sitting down to eat.

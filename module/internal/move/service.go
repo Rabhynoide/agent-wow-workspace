@@ -298,11 +298,12 @@ func navPlan(m *nav.Mesh, tm *terrain.Maps, vm *vmap.Tree, from, to [3]float32, 
 	// Monsters on the way: the shortest path bent just outside their aggro discs (nav.Bend), each
 	// corner-to-corner leg smoothed on its own; the weighted A* below is the fallback.
 	if len(f.Avoid) > 0 {
-		if pts, ok := bentPlan(m, src, dst, f); ok {
+		pts, why := bentPlan(m, src, dst, f)
+		if why == "" {
 			return onGround(pts, tm, vm), nil
 		}
-		// How often the old weighted A* is still needed (to remove it when it never is).
-		slog.Info("bent path failed: weighted path", "dangers", len(f.Avoid))
+		// How often the old weighted A* is still needed, and why (to remove it when it never is).
+		slog.Info("bent path failed: weighted path", "dangers", len(f.Avoid), "why", why)
 	}
 	// Points every 2 yards that slide along the walkable polygons (the server's own smoothing), heights
 	// from the polygon reached; the old funnel + interpolation is the fallback.
@@ -318,25 +319,28 @@ func navPlan(m *nav.Mesh, tm *terrain.Maps, vm *vmap.Tree, from, to [3]float32, 
 	return densify(m, tm, pts, corridor), nil
 }
 
-// bentPlan is the smooth path along the corners of nav.Bend (false when it fails: the caller plans
-// the old way).
-func bentPlan(m *nav.Mesh, src, dst nav.V3, f nav.Filter) ([]nav.V3, bool) {
+// bentPlan is the smooth path along the corners of nav.Bend; why says why it failed (the caller then
+// plans the old way).
+func bentPlan(m *nav.Mesh, src, dst nav.V3, f nav.Filter) ([]nav.V3, string) {
 	corners, bent, err := m.Bend(src, dst, f)
 	if err != nil || len(corners) < 2 {
-		return nil, false
+		return nil, fmt.Sprintf("plain path: %v", err)
 	}
 	plain := f
 	plain.Avoid = nil
 	if bent == 0 {
 		pts, err := m.SmoothPath(src, dst, plain, nav.SmoothStep, nav.SmoothSlop)
-		return pts, err == nil
+		if err != nil {
+			return nil, fmt.Sprintf("no disc crossed, smooth path: %v", err)
+		}
+		return pts, ""
 	}
 	legs := nav.Filter{Include: f.Include}
 	var out []nav.V3
 	for i := 1; i < len(corners); i++ {
 		leg, err := m.SmoothPath(corners[i-1], corners[i], legs, nav.SmoothStep, nav.SmoothSlop)
 		if err != nil || len(leg) == 0 {
-			return nil, false
+			return nil, fmt.Sprintf("leg %d of %d: %v", i, len(corners)-1, err)
 		}
 		if len(out) > 0 {
 			leg = leg[1:]
@@ -344,7 +348,7 @@ func bentPlan(m *nav.Mesh, src, dst nav.V3, f nav.Filter) ([]nav.V3, bool) {
 		out = append(out, leg...)
 	}
 	slog.Info("path bent around monsters", "discs", bent, "corners", len(corners))
-	return out, true
+	return out, ""
 }
 
 // escape looks for a point 4 to 24 yards away, towards the destination first, then in other

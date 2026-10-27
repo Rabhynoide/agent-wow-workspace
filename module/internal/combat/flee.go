@@ -11,6 +11,7 @@ import (
 
 	pb "wowagent/gen/combatv1"
 	statepb "wowagent/gen/statev1"
+	"wowagent/internal/safe"
 	"wowagent/internal/tuning"
 	"wowagent/internal/xpscore"
 )
@@ -100,7 +101,33 @@ func (s *Service) mustFlee(ctx context.Context, me *statepb.SelfInfo) (bool, flo
 		slog.Info("flight hopeless: staying", "why", why, "hp", pct(me.Hp, me.MaxHp), "loss", int(loss))
 		return false, loss, att
 	}
-	return s.decide(me, att, loss), loss, att
+	return s.decide(me, att, loss, s.joiners(ctx, me, att)), loss, att
+}
+
+// joiners counts the idle monsters that would join the fight still to come: those that the
+// attackers will call for help (or whose aggro reaches them), from where they stand now (safe.Adds of
+// each attacker). A learned stay was taken against 3 kobolds at 94 % and ended against 6, dead (series
+// 045436f, 2026-10-27): the learned cases count the attackers on us, not those on their way.
+func (s *Service) joiners(ctx context.Context, me *statepb.SelfInfo, att []*statepb.Obj) int {
+	vis, err := s.api.Nearby(ctx, &statepb.NearbyRequest{Kind: "unit", Radius: 60, Max: 60, AliveOnly: true, HostileOnly: true})
+	if err != nil {
+		return 0
+	}
+	rangeOf := s.aggroOf(ctx, me.Level)
+	seen := map[uint64]bool{}
+	for _, a := range att {
+		seen[a.Guid] = true
+	}
+	n := 0
+	for _, a := range att {
+		for _, j := range safe.Adds(a, vis.Objs, rangeOf) {
+			if !seen[j.Guid] {
+				seen[j.Guid] = true
+				n++
+			}
+		}
+	}
+	return n
 }
 
 // hopelessBelow: health (%) under which a hopeless flight is not tried (hopelessFlight).
@@ -215,7 +242,7 @@ type fleeDecision struct {
 // explored (stay) with probability Explore. An exploration holds for the rest of the encounter, a learned
 // stay as long as the fight is expected to leave us some health (slack >= 0). Where fleeing itself
 // kills often (tuning.FleeDeath), staying is explored without slack too.
-func (s *Service) decide(me *statepb.SelfInfo, att []*statepb.Obj, loss float64) bool {
+func (s *Service) decide(me *statepb.SelfInfo, att []*statepb.Obj, loss float64, joiners int) bool {
 	t := s.tuneGet()
 	s.mu.Lock()
 	d := s.decision
@@ -240,17 +267,21 @@ func (s *Service) decide(me *statepb.SelfInfo, att []*statepb.Obj, loss float64)
 	if m, ok := s.dpsMargin(me, t, fresh, att); ok && float64(pct(me.Hp, me.MaxHp)) < m {
 		unsafe = true
 	}
-	if d != nil && d.stayed && !unsafe && ((d.how == "explore" && fresh <= d.fresh) || slack >= 0) {
+	// Monsters about to join (joiners): no stay, learned or explored, holds or is taken; the learned
+	// cases and the explorations were measured on the attackers already on us.
+	if d != nil && d.stayed && !unsafe && joiners == 0 && ((d.how == "explore" && fresh <= d.fresh) || slack >= 0) {
 		return false
 	}
-	if d != nil && d.stayed && unsafe {
-		slog.Info("flee decision released", "how", d.how, "hp", pct(me.Hp, me.MaxHp), "dps_pct", s.dpsPct(me))
+	if d != nil && d.stayed && (unsafe || joiners > 0) {
+		slog.Info("flee decision released", "how", d.how, "hp", pct(me.Hp, me.MaxHp), "dps_pct", s.dpsPct(me), "joiners", joiners)
 	}
 	key := tuning.Key(fresh, slack)
 	flee, how := true, "rule"
 	p := 0.0 // exploration probability, logged: 1 exploration in 8 eligible cases in game (series ES)
 	if s.fleeTab != nil {
-		if f, learned := tuning.Decide(s.fleeTab.Get(), key, t); learned {
+		if joiners > 0 {
+			how = "joiners" // the rule: flee
+		} else if f, learned := tuning.Decide(s.fleeTab.Get(), key, t); learned {
 			flee, how = f, "learned"
 		} else if unsafe {
 			p = 0
@@ -265,7 +296,7 @@ func (s *Service) decide(me *statepb.SelfInfo, att []*statepb.Obj, loss float64)
 		s.mu.Unlock()
 		s.encounterDecision(nd) // judged when the encounter ends (encounter.go)
 		slog.Info("flee decision", "key", key, "stay", !flee, "how", how, "hp", pct(me.Hp, me.MaxHp), "loss", int(loss), "fresh", fresh, "p", p,
-			"dps_pct", s.dpsPct(me))
+			"dps_pct", s.dpsPct(me), "joiners", joiners)
 	}
 	return flee
 }
