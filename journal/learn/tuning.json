@@ -4,7 +4,7 @@
  "chase_margin": 10,
  "crowd_flee": 3,
  "crowd_loss": 30,
- "avoid": false,
+ "avoid": true,
  "postpone_after_flights": 2,
  "explore": 0.25,
  "learn": true,
@@ -32,5 +32,7 @@
  "flee_late_hold": 60,
  "flee_exposure_fresh": 3,
  "rest_adaptive": true,
- "rest_floor": 30
+ "rest_floor": 30,
+ "avoid_wander": 0.5,
+ "body_pull": false
 }
