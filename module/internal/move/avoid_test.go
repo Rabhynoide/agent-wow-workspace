@@ -48,3 +48,10 @@ func TestHomeOf(t *testing.T) {
 		t.Fatal("too far from any spawn")
 	}
 }
+
+func TestStraightPoints(t *testing.T) {
+	pts := straightPoints([]nav.V3{{0, 0, 0}, {10, 0, 0}, {10, 0, 4}}, 2)
+	if len(pts) != 1+6+3 || pts[len(pts)-1] != (nav.V3{10, 0, 4}) {
+		t.Fatalf("%d points, last %v", len(pts), pts[len(pts)-1])
+	}
+}
