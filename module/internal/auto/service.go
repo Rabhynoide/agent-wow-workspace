@@ -477,6 +477,7 @@ type run struct {
 	detour bool
 	// lastShop: last vendor visit or check on the way (shop); lastChestCheck: last chest lookup
 	lastShop, lastChestCheck, lastVendorCheck time.Time
+	lastEngageCheck                           time.Time // engage.go
 	// travelling: inside a journey (travel.go), whose walks do not plan again; lastFlightCheck and
 	// triedNodes: flight masters of unknown nodes looked for and visited on the way
 	travelling      bool
@@ -652,6 +653,7 @@ func (r *run) walk(x, y, z, radius float32) error {
 		}
 	}
 	deadline := time.Now().Add(limit)
+	engaged := 0 // monsters engaged on the way (engage.go)
 	for fights := 0; ; {
 		// No new fight below walkRestBelow: a monster met on the way would be a chained fight
 		// (4 of the 5 deaths of the 2026-10-12 bench started at 12-41 %).
@@ -659,10 +661,15 @@ func (r *run) walk(x, y, z, radius float32) error {
 		st, err := r.s.api.Goto(r.ctx, x, y, z, radius, 2)
 		attacked := false
 		var chest *questpb.Chest
-		var vendor *statepb.Obj
+		var vendor, prey *statepb.Obj
 		for err == nil && st.State == "moving" {
 			if attacked = r.inCombat(); attacked {
 				break
+			}
+			if engaged < engageMaxPerWalk {
+				if prey = r.engageOnTheWay(x, y); prey != nil {
+					break
+				}
 			}
 			if chest = r.chestInSight(); chest != nil {
 				break
@@ -685,6 +692,17 @@ func (r *run) walk(x, y, z, radius float32) error {
 		}
 		if err != nil {
 			return err
+		}
+		if prey != nil && !attacked {
+			_ = r.s.api.MoveStop(r.ctx)
+			engaged++
+			r.step("engaging monster %d (level %d) on the way, %.0f yards away", prey.Entry, prey.Level, prey.Dist)
+			if _, err := r.fightJob(&combatpb.KillRequest{Guid: prey.Guid, Radius: 60, MaxS: 60, WaitS: 20}); err != nil &&
+				!strings.Contains(err.Error(), "no live entry") {
+				r.note("engaging on the way: %v", err)
+			}
+			deadline = deadline.Add(60 * time.Second)
+			continue
 		}
 		if chest != nil || vendor != nil {
 			_ = r.s.api.MoveStop(r.ctx)

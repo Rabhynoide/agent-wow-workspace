@@ -48,6 +48,9 @@ type Tuning struct {
 	// BodyPull: a target with too many monsters around is pulled alone (step into its aggro range
 	// only, run back at once: combat/pull.go bodyPull) instead of being left.
 	BodyPull bool `json:"body_pull"`
+	// EngageOnWay: a lone, cheap, green or yellow monster close ahead of a walk is charged first
+	// instead of letting it hit us in the back (auto/engage.go).
+	EngageOnWay bool `json:"engage_on_way"`
 	// guidecheck: flights in a quest before it is postponed to the next level.
 	PostponeAfterFlights int `json:"postpone_after_flights"`
 	// Learning: in a borderline case (expected to survive, the rule says flee), stay and fight with
