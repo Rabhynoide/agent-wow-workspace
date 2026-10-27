@@ -245,6 +245,18 @@ func (s *Service) choosePull(ctx context.Context, j *job, me *statepb.SelfInfo, 
 		if err != nil || (o.Hp == 0 && o.MaxHp > 0) {
 			return nil, nil
 		}
+		// A guard of a passage with friends that would join (the Fargodeep mine): pull it alone first.
+		// auto clears a path monster by monster, and charging the first one brought its camp (the
+		// body pull series of 2026-10-27 never pulled: clearing targets skipped it).
+		if (r.BodyPull || s.tuneGet().BodyPull) && o.Target == 0 {
+			if hostile, err := s.api.Nearby(ctx, &statepb.NearbyRequest{Kind: "unit", Radius: o.Dist + 40, Max: 60, AliveOnly: true, HostileOnly: true}); err == nil {
+				rangeOf := s.aggroOf(ctx, me.Level)
+				if len(addsOf(o, hostile.Objs, rangeOf)) > 0 {
+					self := &statepb.Obj{Guid: me.Guid, X: me.X, Y: me.Y, Z: me.Z}
+					s.bodyPull(ctx, j, self, o, hostile.Objs, rangeOf)
+				}
+			}
+		}
 		return o, nil
 	}
 	cands, err := s.api.Nearby(ctx, &statepb.NearbyRequest{Kind: "unit", Entry: r.Entry, Radius: radius, Max: 8, AliveOnly: true})
