@@ -340,7 +340,14 @@ func bentPlan(m *nav.Mesh, src, dst nav.V3, f nav.Filter) ([]nav.V3, string) {
 	for i := 1; i < len(corners); i++ {
 		leg, err := m.SmoothPath(corners[i-1], corners[i], legs, nav.SmoothStep, nav.SmoothSlop)
 		if err != nil || len(leg) == 0 {
-			return nil, fmt.Sprintf("leg %d of %d: %v", i, len(corners)-1, err)
+			// The smoothing stops short on some slopes and edges (4 bent paths in 4 fell back to the
+			// weighted A* that way, series 96eb4ae): the funnel's straight lines then, a point every
+			// SmoothStep yards (onGround puts them on the floor).
+			fp, ferr := m.Path(corners[i-1], corners[i], legs)
+			if ferr != nil || len(fp) < 2 {
+				return nil, fmt.Sprintf("leg %d of %d: %v, then %v", i, len(corners)-1, err, ferr)
+			}
+			leg = straightPoints(fp, nav.SmoothStep)
 		}
 		if len(out) > 0 {
 			leg = leg[1:]
@@ -349,6 +356,21 @@ func bentPlan(m *nav.Mesh, src, dst nav.V3, f nav.Filter) ([]nav.V3, string) {
 	}
 	slog.Info("path bent around monsters", "discs", bent, "corners", len(corners))
 	return out, ""
+}
+
+// straightPoints puts a point every step yards along the corners of a funnel path (Recast space).
+func straightPoints(corners []nav.V3, step float32) []nav.V3 {
+	out := []nav.V3{corners[0]}
+	for i := 1; i < len(corners); i++ {
+		a, b := corners[i-1], corners[i]
+		d := float32(math.Sqrt(float64((b[0]-a[0])*(b[0]-a[0]) + (b[2]-a[2])*(b[2]-a[2]))))
+		n := int(d/step) + 1
+		for k := 1; k <= n; k++ {
+			t := float32(k) / float32(n)
+			out = append(out, nav.V3{a[0] + (b[0]-a[0])*t, a[1] + (b[1]-a[1])*t, a[2] + (b[2]-a[2])*t})
+		}
+	}
+	return out
 }
 
 // escape looks for a point 4 to 24 yards away, towards the destination first, then in other
