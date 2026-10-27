@@ -142,19 +142,30 @@ func (s *Service) FindNpc(ctx context.Context, r *pb.FindNpcRequest) (*pb.FindNp
 
 func (s *Service) Spawns(ctx context.Context, r *pb.SpawnsRequest) (*pb.SpawnsResponse, error) {
 	table, tpl, idcol := "creature", "creature_template", "id"
-	nameExpr, lvl := "t.name", "t.minlevel, t.maxlevel, t.npcflag, t.faction, t.`rank`, t.HealthModifier, t.DamageModifier, t.BaseAttackTime"
+	nameExpr, lvl := "t.name", "t.minlevel, t.maxlevel, t.npcflag, t.faction, t.`rank`, t.HealthModifier, t.DamageModifier, t.BaseAttackTime, c.MovementType, c.wander_distance"
 	if r.Kind == "gameobject" {
 		table, tpl = "gameobject", "gameobject_template"
-		lvl = "0, 0, 0, 0, 0, 0, 0, 0"
+		lvl = "0, 0, 0, 0, 0, 0, 0, 0, 0, 0"
 	}
 	q := fmt.Sprintf("SELECT t.entry, %s, %s, c.map, c.position_x, c.position_y, c.position_z, SQRT(POW(c.position_x-?,2)+POW(c.position_y-?,2)) AS dist "+
-		"FROM %s c JOIN %s t ON t.entry=c.%s WHERE c.%s=? AND c.map=?", nameExpr, lvl, table, tpl, idcol, idcol)
-	args := []any{r.X, r.Y, r.Entry, r.Map}
+		"FROM %s c JOIN %s t ON t.entry=c.%s WHERE c.map=?", nameExpr, lvl, table, tpl, idcol)
+	args := []any{r.X, r.Y, r.Map}
+	if !r.All {
+		q += fmt.Sprintf(" AND c.%s=?", idcol)
+		args = append(args, r.Entry)
+	} else if r.Radius > 0 { // the box first: the map has tens of thousands of spawns
+		q += " AND c.position_x BETWEEN ? AND ? AND c.position_y BETWEEN ? AND ?"
+		args = append(args, r.X-r.Radius, r.X+r.Radius, r.Y-r.Radius, r.Y+r.Radius)
+	}
 	if r.Radius > 0 {
 		q += " HAVING dist<=?"
 		args = append(args, r.Radius)
 	}
-	q += fmt.Sprintf(" ORDER BY dist LIMIT %d", limit(r.Max, 20))
+	n := limit(r.Max, 20)
+	if r.All { // up to 1000: a camp area holds hundreds of spawns
+		n = int(min(max(r.Max, 500), 1000))
+	}
+	q += fmt.Sprintf(" ORDER BY dist LIMIT %d", n)
 	rows, err := s.query(ctx, q, args...)
 	if err != nil {
 		return nil, err
@@ -163,7 +174,7 @@ func (s *Service) Spawns(ctx context.Context, r *pb.SpawnsRequest) (*pb.SpawnsRe
 	out := &pb.SpawnsResponse{}
 	for rows.Next() {
 		sp := &pb.Spawn{}
-		if err := rows.Scan(&sp.Entry, &sp.Name, &sp.MinLevel, &sp.MaxLevel, &sp.NpcFlags, &sp.Faction, &sp.Rank, &sp.HealthMod, &sp.DamageMod, &sp.AttackMs, &sp.Map, &sp.X, &sp.Y, &sp.Z, &sp.Dist); err != nil {
+		if err := rows.Scan(&sp.Entry, &sp.Name, &sp.MinLevel, &sp.MaxLevel, &sp.NpcFlags, &sp.Faction, &sp.Rank, &sp.HealthMod, &sp.DamageMod, &sp.AttackMs, &sp.MovementType, &sp.Wander, &sp.Map, &sp.X, &sp.Y, &sp.Z, &sp.Dist); err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 		out.Spawns = append(out.Spawns, sp)

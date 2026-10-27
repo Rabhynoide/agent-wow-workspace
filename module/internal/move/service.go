@@ -64,6 +64,7 @@ type Service struct {
 	roads  map[uint32]*roads.Map // nil value: no road grid for that map
 	// roadsDir: where the road grids are ("" = ROADS_DIR, else /roads; "-" = none)
 	roadsDir string
+	spawns   *spawnCache // creature spawns around us (avoid.go), under mu
 
 	rmu       sync.Mutex
 	walking   bool   // a walk loop is running and accepts new routes
@@ -294,6 +295,13 @@ const islandPolys = 300
 
 func navPlan(m *nav.Mesh, tm *terrain.Maps, vm *vmap.Tree, from, to [3]float32, f nav.Filter) ([][3]float32, error) {
 	src, dst := nav.ToRecast(from[0], from[1], from[2]), nav.ToRecast(to[0], to[1], to[2])
+	// Monsters on the way: the shortest path bent just outside their aggro discs (nav.Bend), each
+	// corner-to-corner leg smoothed on its own; the weighted A* below is the fallback.
+	if len(f.Avoid) > 0 {
+		if pts, ok := bentPlan(m, src, dst, f); ok {
+			return onGround(pts, tm, vm), nil
+		}
+	}
 	// Points every 2 yards that slide along the walkable polygons (the server's own smoothing), heights
 	// from the polygon reached; the old funnel + interpolation is the fallback.
 	if pts, err := m.SmoothPath(src, dst, f, nav.SmoothStep, nav.SmoothSlop); err == nil {
@@ -306,6 +314,35 @@ func navPlan(m *nav.Mesh, tm *terrain.Maps, vm *vmap.Tree, from, to [3]float32, 
 		return nil, err
 	}
 	return densify(m, tm, pts, corridor), nil
+}
+
+// bentPlan is the smooth path along the corners of nav.Bend (false when it fails: the caller plans
+// the old way).
+func bentPlan(m *nav.Mesh, src, dst nav.V3, f nav.Filter) ([]nav.V3, bool) {
+	corners, bent, err := m.Bend(src, dst, f)
+	if err != nil || len(corners) < 2 {
+		return nil, false
+	}
+	plain := f
+	plain.Avoid = nil
+	if bent == 0 {
+		pts, err := m.SmoothPath(src, dst, plain, nav.SmoothStep, nav.SmoothSlop)
+		return pts, err == nil
+	}
+	legs := nav.Filter{Include: f.Include}
+	var out []nav.V3
+	for i := 1; i < len(corners); i++ {
+		leg, err := m.SmoothPath(corners[i-1], corners[i], legs, nav.SmoothStep, nav.SmoothSlop)
+		if err != nil || len(leg) == 0 {
+			return nil, false
+		}
+		if len(out) > 0 {
+			leg = leg[1:]
+		}
+		out = append(out, leg...)
+	}
+	slog.Info("path bent around monsters", "discs", bent, "corners", len(corners))
+	return out, true
 }
 
 // escape looks for a point 4 to 24 yards away, towards the destination first, then in other

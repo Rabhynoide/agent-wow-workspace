@@ -3,8 +3,10 @@ package move
 import (
 	"context"
 	"math"
+	"time"
 
 	statepb "wowagent/gen/statev1"
+	worldpb "wowagent/gen/worldv1"
 	"wowagent/internal/nav"
 	"wowagent/internal/safe"
 	"wowagent/internal/tuning"
@@ -47,16 +49,26 @@ func (s *Service) dangers(ctx context.Context, me *statepb.SelfInfo, x, y, z flo
 		return nil
 	}
 	var out []danger
+	wander := tuneSrc.Get().AvoidWander
 	if near, err := s.api.Nearby(ctx, &statepb.NearbyRequest{Kind: "unit", Radius: avoidSeen, Max: 60, AliveOnly: true, HostileOnly: true}); err == nil {
+		homes := s.spawnsNear(ctx, me)
 		for _, o := range near.Objs {
 			if o.Target != 0 || math.Abs(float64(o.Z-me.Z)) > avoidFloor {
 				continue // in a fight already (with us: running away from it is the flight's job)
 			}
 			r := safe.AggroRange(me.Level, o.Level) + avoidMargin
-			if math.Hypot(float64(o.X-x), float64(o.Y-y)) < float64(r) {
+			cx, cy := o.X, o.Y
+			// A wandering monster drifts while we pass (walk speed, random points within its wander
+			// radius of its spawn point, 16 yards on average around Goldshire): a margin of a share of
+			// that radius around where it stands. The whole radius around the spawn point made camps
+			// too wide to walk around.
+			if h := homeOf(homes, o); h != nil && wander > 0 {
+				r += h.Wander * wander
+			}
+			if math.Hypot(float64(cx-x), float64(cy-y)) < float64(r) {
 				continue
 			}
-			out = append(out, danger{o.Guid, nav.Danger{P: nav.ToRecast(o.X, o.Y, o.Z), R: r}})
+			out = append(out, danger{o.Guid, nav.Danger{P: nav.ToRecast(cx, cy, o.Z), R: r}})
 		}
 	}
 	// Places we fled from (combat/zones.go): their monsters may stand out of sight, or wander.
@@ -102,4 +114,54 @@ func knownOf(ds []danger) map[uint64]bool {
 		}
 	}
 	return k
+}
+
+// Spawn points around us, cached: one query per walk area (the map has tens of thousands of spawns).
+const (
+	spawnsRadius = 200 // yards queried around us
+	spawnsReuse  = 80  // yards we may move before querying again
+)
+
+type spawnCache struct {
+	mapID uint32
+	x, y  float32
+	at    time.Time
+	list  []*worldpb.Spawn
+}
+
+// spawnsNear returns the creature spawns within spawnsRadius of us (cached while we stay within
+// spawnsReuse yards, 10 minutes at most).
+func (s *Service) spawnsNear(ctx context.Context, me *statepb.SelfInfo) []*worldpb.Spawn {
+	s.mu.Lock()
+	c := s.spawns
+	s.mu.Unlock()
+	if c != nil && c.mapID == me.Map && time.Since(c.at) < 10*time.Minute &&
+		math.Hypot(float64(c.x-me.X), float64(c.y-me.Y)) < spawnsReuse {
+		return c.list
+	}
+	list, err := s.api.SpawnsAll(ctx, me.Map, me.X, me.Y, spawnsRadius)
+	if err != nil {
+		return nil
+	}
+	s.mu.Lock()
+	s.spawns = &spawnCache{mapID: me.Map, x: me.X, y: me.Y, at: time.Now(), list: list}
+	s.mu.Unlock()
+	return list
+}
+
+// homeOf is the spawn point of a wandering monster: the closest spawn of its entry that wanders,
+// within its wander radius (+10 yards) of where it stands; nil for the others.
+func homeOf(homes []*worldpb.Spawn, o *statepb.Obj) *worldpb.Spawn {
+	var best *worldpb.Spawn
+	bestD := math.Inf(1)
+	for _, h := range homes {
+		if h.Entry != o.Entry || h.MovementType != 1 || h.Wander <= 0 {
+			continue
+		}
+		d := math.Hypot(float64(h.X-o.X), float64(h.Y-o.Y))
+		if d <= float64(h.Wander)+10 && d < bestD {
+			best, bestD = h, d
+		}
+	}
+	return best
 }

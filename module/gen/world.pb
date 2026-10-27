@@ -4,7 +4,7 @@
 EmptyB}
 com.google.protobufB
 EmptyProtoPZ.google.golang.org/protobuf/types/known/emptypbø¢GPBªGoogle.Protobuf.WellKnownTypesbproto3
-ú0
+É1
 world.protowowagent.world.v1google/protobuf/empty.proto"¨
 FindNpcRequest
 name (	Rname
@@ -19,7 +19,7 @@ map_filter (R	mapFilter
 	npc_flags	 (RnpcFlags0
 sells_spell_category
  (RsellsSpellCategory&
-sells_max_level (RsellsMaxLevel"á
+sells_max_level (RsellsMaxLevel"ž
 Spawn
 entry (Rentry
 name (	Rname
@@ -38,7 +38,9 @@ map_filter (R	mapFilter
 health_mod (R	healthMod
 
 damage_mod (R	damageMod
-	attack_ms (RattackMs"C
+	attack_ms (RattackMs#
+movement_type (RmovementType
+wander (Rwander"C
 FindNpcResponse0
 spawns (2.wowagent.world.v1.SpawnRspawns"8
 QuestInfoRequest
@@ -107,7 +109,7 @@ objectives7
 	min_level (RminLevel
 role (	Rrole"K
 QuestsForNpcResponse3
-quests (2.wowagent.world.v1.QuestRefRquests"‘
+quests (2.wowagent.world.v1.QuestRefRquests"£
 SpawnsRequest
 entry (Rentry
 map (Rmap
@@ -115,7 +117,8 @@ objectives7
 y (Ry
 radius (Rradius
 max (Rmax
-kind (	Rkind"B
+kind (	Rkind
+all (Rall"B
 SpawnsResponse0
 spawns (2.wowagent.world.v1.SpawnRspawns";
 ItemInfoRequest

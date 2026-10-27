@@ -169,9 +169,13 @@ type Spawn struct {
 	Rank uint32 `protobuf:"varint,12,opt,name=rank,proto3" json:"rank,omitempty"`
 	// creature_template.HealthModifier, DamageModifier, BaseAttackTime (ms); 0 for game objects and
 	// find_npc.
-	HealthMod     float32 `protobuf:"fixed32,13,opt,name=health_mod,json=healthMod,proto3" json:"health_mod,omitempty"`
-	DamageMod     float32 `protobuf:"fixed32,14,opt,name=damage_mod,json=damageMod,proto3" json:"damage_mod,omitempty"`
-	AttackMs      uint32  `protobuf:"varint,15,opt,name=attack_ms,json=attackMs,proto3" json:"attack_ms,omitempty"`
+	HealthMod float32 `protobuf:"fixed32,13,opt,name=health_mod,json=healthMod,proto3" json:"health_mod,omitempty"`
+	DamageMod float32 `protobuf:"fixed32,14,opt,name=damage_mod,json=damageMod,proto3" json:"damage_mod,omitempty"`
+	AttackMs  uint32  `protobuf:"varint,15,opt,name=attack_ms,json=attackMs,proto3" json:"attack_ms,omitempty"`
+	// creature.MovementType (0 idle, 1 random within wander yards of the spawn point, 2 waypoints)
+	// and creature.wander_distance; 0 for game objects.
+	MovementType  uint32  `protobuf:"varint,16,opt,name=movement_type,json=movementType,proto3" json:"movement_type,omitempty"`
+	Wander        float32 `protobuf:"fixed32,17,opt,name=wander,proto3" json:"wander,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -307,6 +311,20 @@ func (x *Spawn) GetDamageMod() float32 {
 func (x *Spawn) GetAttackMs() uint32 {
 	if x != nil {
 		return x.AttackMs
+	}
+	return 0
+}
+
+func (x *Spawn) GetMovementType() uint32 {
+	if x != nil {
+		return x.MovementType
+	}
+	return 0
+}
+
+func (x *Spawn) GetWander() float32 {
+	if x != nil {
+		return x.Wander
 	}
 	return 0
 }
@@ -1092,7 +1110,10 @@ type SpawnsRequest struct {
 	Radius float32                `protobuf:"fixed32,5,opt,name=radius,proto3" json:"radius,omitempty"`
 	Max    uint32                 `protobuf:"varint,6,opt,name=max,proto3" json:"max,omitempty"`
 	// "creature" (default) or "gameobject".
-	Kind          string `protobuf:"bytes,7,opt,name=kind,proto3" json:"kind,omitempty"`
+	Kind string `protobuf:"bytes,7,opt,name=kind,proto3" json:"kind,omitempty"`
+	// All creatures within radius whatever their entry (entry ignored): the monsters a walk passes,
+	// with their home and wander radius (move.dangers).
+	All           bool `protobuf:"varint,8,opt,name=all,proto3" json:"all,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1174,6 +1195,13 @@ func (x *SpawnsRequest) GetKind() string {
 		return x.Kind
 	}
 	return ""
+}
+
+func (x *SpawnsRequest) GetAll() bool {
+	if x != nil {
+		return x.All
+	}
+	return false
 }
 
 type SpawnsResponse struct {
@@ -2608,7 +2636,7 @@ const file_world_proto_rawDesc = "" +
 	"\tnpc_flags\x18\t \x01(\rR\bnpcFlags\x120\n" +
 	"\x14sells_spell_category\x18\n" +
 	" \x01(\rR\x12sellsSpellCategory\x12&\n" +
-	"\x0fsells_max_level\x18\v \x01(\rR\rsellsMaxLevel\"\xe1\x02\n" +
+	"\x0fsells_max_level\x18\v \x01(\rR\rsellsMaxLevel\"\x9e\x03\n" +
 	"\x05Spawn\x12\x14\n" +
 	"\x05entry\x18\x01 \x01(\rR\x05entry\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1b\n" +
@@ -2627,7 +2655,9 @@ const file_world_proto_rawDesc = "" +
 	"health_mod\x18\r \x01(\x02R\thealthMod\x12\x1d\n" +
 	"\n" +
 	"damage_mod\x18\x0e \x01(\x02R\tdamageMod\x12\x1b\n" +
-	"\tattack_ms\x18\x0f \x01(\rR\battackMs\"C\n" +
+	"\tattack_ms\x18\x0f \x01(\rR\battackMs\x12#\n" +
+	"\rmovement_type\x18\x10 \x01(\rR\fmovementType\x12\x16\n" +
+	"\x06wander\x18\x11 \x01(\x02R\x06wander\"C\n" +
 	"\x0fFindNpcResponse\x120\n" +
 	"\x06spawns\x18\x01 \x03(\v2\x18.wowagent.world.v1.SpawnR\x06spawns\"8\n" +
 	"\x10QuestInfoRequest\x12\x0e\n" +
@@ -2696,7 +2726,7 @@ const file_world_proto_rawDesc = "" +
 	"\tmin_level\x18\x04 \x01(\rR\bminLevel\x12\x12\n" +
 	"\x04role\x18\x05 \x01(\tR\x04role\"K\n" +
 	"\x14QuestsForNpcResponse\x123\n" +
-	"\x06quests\x18\x01 \x03(\v2\x1b.wowagent.world.v1.QuestRefR\x06quests\"\x91\x01\n" +
+	"\x06quests\x18\x01 \x03(\v2\x1b.wowagent.world.v1.QuestRefR\x06quests\"\xa3\x01\n" +
 	"\rSpawnsRequest\x12\x14\n" +
 	"\x05entry\x18\x01 \x01(\rR\x05entry\x12\x10\n" +
 	"\x03map\x18\x02 \x01(\rR\x03map\x12\f\n" +
@@ -2704,7 +2734,8 @@ const file_world_proto_rawDesc = "" +
 	"\x01y\x18\x04 \x01(\x02R\x01y\x12\x16\n" +
 	"\x06radius\x18\x05 \x01(\x02R\x06radius\x12\x10\n" +
 	"\x03max\x18\x06 \x01(\rR\x03max\x12\x12\n" +
-	"\x04kind\x18\a \x01(\tR\x04kind\"B\n" +
+	"\x04kind\x18\a \x01(\tR\x04kind\x12\x10\n" +
+	"\x03all\x18\b \x01(\bR\x03all\"B\n" +
 	"\x0eSpawnsResponse\x120\n" +
 	"\x06spawns\x18\x01 \x03(\v2\x18.wowagent.world.v1.SpawnR\x06spawns\";\n" +
 	"\x0fItemInfoRequest\x12\x14\n" +

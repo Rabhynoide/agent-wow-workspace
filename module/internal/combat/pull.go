@@ -299,7 +299,7 @@ func (s *Service) choosePull(ctx context.Context, j *job, me *statepb.SelfInfo, 
 		return best, nil
 	}
 	for i, c := range crowded {
-		if r.BodyPull && i < 2 && s.bodyPull(ctx, j, self, c, hostile.Objs, rangeOf) {
+		if (r.BodyPull || s.tuneGet().BodyPull) && i < 2 && s.bodyPull(ctx, j, self, c, hostile.Objs, rangeOf) {
 			return c, nil
 		}
 		s.skipCrowded(c.Guid)
@@ -313,8 +313,12 @@ func (s *Service) choosePull(ctx context.Context, j *job, me *statepb.SelfInfo, 
 	return nil, nil
 }
 
-// bodyPull brings the target alone: go where only it sees us, wait for it to come, then back off to a
-// spot away from the others. It returns whether the target is now coming at us.
+// bodyPull brings the target alone, like a player without a ranged weapon: go to a spot just outside
+// its aggro range where none of the others sees us, step in until it comes at us, then run back at
+// once. The server (AzerothCore Creature::CallAssistance) calls the monsters within 10 yards of an
+// engaged one for help 2 s after it engaged, then every 3 s: by then the target must have left them.
+// The first try (2026-10-11) stood at the spot: the bandit did not react in 8 s (aggro range of the
+// time too optimistic). It returns whether the target is now coming at us.
 func (s *Service) bodyPull(ctx context.Context, j *job, me, t *statepb.Obj, hostiles []*statepb.Obj, rangeOf aggroFn) bool {
 	if t.Reaction != "hostile" {
 		return false // a neutral monster never comes by itself
@@ -329,21 +333,58 @@ func (s *Service) bodyPull(ctx context.Context, j *job, me, t *statepb.Obj, host
 	if !ok {
 		return false
 	}
-	j.Update(func(st *pb.CombatStatus) { st.Doing = "body pulling" })
-	slog.Info("body pull", "entry", t.Entry, "others", len(others), "spot", [2]float32{x, y})
-	if st, err := s.api.GotoWait(ctx, x, y, t.Z, 1.5, 60); err != nil || st.State != "arrived" {
-		return s.onUs(ctx, t.Guid)
+	// Direction from the target to the spot: we step in along it and run back along it.
+	dx, dy := x-t.X, y-t.Y
+	l := float32(math.Hypot(float64(dx), float64(dy)))
+	if l < 1 {
+		return false
 	}
-	for i := 0; i < 8; i++ {
+	dx, dy = dx/l, dy/l
+	reach := rangeOf(t)
+	j.Update(func(st *pb.CombatStatus) { st.Doing = "body pulling" })
+	slog.Info("body pull", "entry", t.Entry, "others", len(others), "spot", [2]float32{x, y}, "aggro", reach)
+	// Outside first (2 yards beyond its range), then in by 1.5 yards at a time down to 4 yards inside.
+	out := reach + 2
+	if st, err := s.api.GotoWait(ctx, t.X+dx*out, t.Y+dy*out, t.Z, 1.5, 60); err != nil || st.State != "arrived" {
 		if s.onUs(ctx, t.Guid) {
-			s.backOff(ctx)
+			s.runBack(ctx, t, dx, dy)
 			return true
 		}
-		if !sleep(ctx, time.Second) {
-			return false
+		return false
+	}
+	for d := reach + 0.5; d >= max(reach-4, 3); d -= 1.5 {
+		if st, err := s.api.GotoWait(ctx, t.X+dx*d, t.Y+dy*d, t.Z, 0.8, 5); err != nil || (st.State != "arrived" && st.State != "moving") {
+			break
+		}
+		for i := 0; i < 3; i++ { // aggro is checked when we move; give it 1.5 s
+			if s.onUs(ctx, t.Guid) {
+				s.runBack(ctx, t, dx, dy)
+				return true
+			}
+			if !sleep(ctx, 500*time.Millisecond) {
+				return false
+			}
 		}
 	}
+	slog.Info("body pull: no reaction", "entry", t.Entry)
 	return false
+}
+
+// runBack runs straight away from the target's camp (along the pull direction) for about 2 s, so
+// that the target follows us out of its friends' 10 yards before it calls them.
+func (s *Service) runBack(ctx context.Context, t *statepb.Obj, dx, dy float32) {
+	b, err := s.api.Brief(ctx)
+	if err != nil || b.Self == nil {
+		return
+	}
+	me := b.Self
+	const back = 14 // yards: 2 s of running
+	st, err := s.api.Goto(ctx, me.X+dx*back, me.Y+dy*back, me.Z, 2, 3)
+	if err != nil || st.State == "failed" {
+		s.backOff(ctx)
+		return
+	}
+	slog.Info("body pull: target coming, ran back", "entry", t.Entry, "state", st.State)
 }
 
 // onUs tells whether the unit targets us.

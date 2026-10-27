@@ -44,6 +44,10 @@ message Spawn {
   float health_mod = 13;
   float damage_mod = 14;
   uint32 attack_ms = 15;
+  // creature.MovementType (0 idle, 1 random within wander yards of the spawn point, 2 waypoints)
+  // and creature.wander_distance; 0 for game objects.
+  uint32 movement_type = 16;
+  float wander = 17;
 }
 
 message FindNpcResponse {
@@ -147,6 +151,9 @@ message SpawnsRequest {
   uint32 max = 6;
   // "creature" (default) or "gameobject".
   string kind = 7;
+  // All creatures within radius whatever their entry (entry ignored): the monsters a walk passes,
+  // with their home and wander radius (move.dangers).
+  bool all = 8;
 }
 
 message SpawnsResponse {

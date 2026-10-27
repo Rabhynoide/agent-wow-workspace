@@ -234,6 +234,13 @@ func (c C) Spawns(ctx context.Context, entry, mapID uint32, x, y, radius float32
 	return r.Spawns, err
 }
 
+// SpawnsAll is every creature spawn within radius (entry ignored), with movement type and wander radius.
+func (c C) SpawnsAll(ctx context.Context, mapID uint32, x, y, radius float32) ([]*worldpb.Spawn, error) {
+	var r worldpb.SpawnsResponse
+	err := invoke.Call(ctx, c.S, "world", "spawns", &worldpb.SpawnsRequest{Map: mapID, X: x, Y: y, Radius: radius, Max: 1000, All: true}, &r)
+	return r.Spawns, err
+}
+
 func (c C) ItemSources(ctx context.Context, entry uint32) ([]*worldpb.ItemSource, error) {
 	var r worldpb.ItemSourcesResponse
 	err := invoke.Call(ctx, c.S, "world", "item_sources", &worldpb.ItemSourcesRequest{Entry: entry}, &r)
