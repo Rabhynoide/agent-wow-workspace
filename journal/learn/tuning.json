@@ -35,5 +35,7 @@
  "rest_floor": 30,
  "avoid_wander": 0.5,
  "body_pull": false,
- "engage_on_way": true
+ "engage_on_way": true,
+ "hold_turnins": true,
+ "quest_hub": true
 }
