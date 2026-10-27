@@ -362,10 +362,23 @@ func (s *Service) bodyPull(ctx context.Context, j *job, me, t *statepb.Obj, host
 			s.runBack(ctx, t, dx, dy)
 			return true
 		}
+		reason := "?"
+		if err != nil {
+			reason = err.Error()
+		} else if st != nil {
+			reason = st.State + " " + st.Reason
+		}
+		slog.Info("body pull: spot not reached", "entry", t.Entry, "why", reason)
 		return false
 	}
 	for d := reach + 0.5; d >= max(reach-4, 3); d -= 1.5 {
+		// From where the target stands now: kobolds wander, and stepping towards where it stood
+		// left it out of reach (3 "no reaction" of 10 tries on 2026-10-27).
+		if o, err := s.api.Obj(ctx, t.Guid); err == nil && o.Hp > 0 {
+			t = o
+		}
 		if st, err := s.api.GotoWait(ctx, t.X+dx*d, t.Y+dy*d, t.Z, 0.8, 5); err != nil || (st.State != "arrived" && st.State != "moving") {
+			slog.Info("body pull: step not walked", "entry", t.Entry, "dist", d)
 			break
 		}
 		for i := 0; i < 3; i++ { // aggro is checked when we move; give it 1.5 s
