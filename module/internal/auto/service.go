@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -513,7 +514,7 @@ func (r *run) quests(req *pb.RunRequest) error {
 		}
 		r.progress()
 	}
-	if r.s.tune.Get().QuestHub || len(req.Hold) > 0 {
+	if r.s.tune.Get().QuestHub {
 		return r.hubQuests(req)
 	}
 	for _, id := range req.Quests {
@@ -524,7 +525,7 @@ func (r *run) quests(req *pb.RunRequest) error {
 				return fmt.Errorf("recover: %w", err)
 			}
 			reward, chosen := req.Rewards[id]
-			if err = r.doQuest(id, reward, chosen); err == nil || r.ctx.Err() != nil {
+			if err = r.doQuest(id, reward, chosen, slices.Contains(req.Hold, id)); err == nil || r.ctx.Err() != nil {
 				break
 			}
 			if b, e := r.s.api.Brief(r.ctx); e != nil || b.Self == nil || !b.Self.Dead {
@@ -534,7 +535,9 @@ func (r *run) quests(req *pb.RunRequest) error {
 		if err != nil {
 			return fmt.Errorf("quest %d: %w", id, err)
 		}
-		r.j.Update(func(st *pb.AutoStatus) { st.Done = append(st.Done, id) })
+		if !slices.Contains(req.Hold, id) {
+			r.j.Update(func(st *pb.AutoStatus) { st.Done = append(st.Done, id) })
+		}
 		if !req.NoProgress {
 			r.progress()
 		}
@@ -794,7 +797,9 @@ func (r *run) approachNpc(entry uint32, x, y, z float32) error {
 	return nil
 }
 
-func (r *run) doQuest(id uint32, reward uint32, chosen bool) error {
+// doQuest accepts the quest, does its objectives and turns it in; hold: not turned in (the guide
+// does it later, RunRequest.hold).
+func (r *run) doQuest(id uint32, reward uint32, chosen, hold bool) error {
 	info, err := r.s.api.QuestInfo(r.ctx, id)
 	if err != nil {
 		return err
@@ -804,6 +809,10 @@ func (r *run) doQuest(id uint32, reward uint32, chosen bool) error {
 	}
 	if err := r.completeQuest(id, info); err != nil {
 		return err
+	}
+	if hold {
+		r.note("quest %d done, kept for the guide's turn-in later", id)
+		return nil
 	}
 	return r.turnInQuest(id, info, reward, chosen)
 }

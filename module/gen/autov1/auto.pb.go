@@ -34,8 +34,8 @@ type RunRequest struct {
 	// Seconds to block before returning the status (default 20, max 25).
 	WaitS uint32 `protobuf:"varint,3,opt,name=wait_s,json=waitS,proto3" json:"wait_s,omitempty"`
 	// Quests of the batch to accept and complete but keep in the log: the guide turns them in later
-	// (a delivery to Stormwind taken at Goldshire and handed in when the route passes there). Done by
-	// quests (the hub way, auto/hub.go) whatever tuning quest_hub says.
+	// (a delivery to Stormwind taken at Goldshire and handed in when the route passes there), one by
+	// one or by hub (tuning quest_hub).
 	Hold          []uint32 `protobuf:"varint,5,rep,packed,name=hold,proto3" json:"hold,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
