@@ -3,6 +3,7 @@ package auto
 import (
 	"fmt"
 	"log/slog"
+	"math"
 	"time"
 
 	statepb "wowagent/gen/statev1"
@@ -32,7 +33,55 @@ type gearBuy struct {
 	weapon bool
 }
 
-// gearOnTheWay returns the best upgrade sold by a vendor in sight, or nil.
+// Zone weapons: the vendors of the zone (gearZone yards around us, from the database) are looked at
+// once per level for a weapon upgrade, whose price is kept aside before any armor: armor bought before
+// the weaponsmith came in sight took exactly the Wooden Mallet's 701 copper (series 757f044). When we
+// can pay it and its vendor is within gearDetour yards, we go and buy it.
+const (
+	gearZone   = 1500
+	gearDetour = 400
+)
+
+// zoneWeapon looks (once per level and map) for the best weapon upgrade sold in the zone, and keeps
+// its price aside.
+func (r *run) zoneWeapon(me *statepb.SelfInfo) {
+	key := [2]uint32{me.Level, me.Map}
+	if r.zoneSeen == key {
+		return
+	}
+	r.zoneSeen = key
+	vendors, err := r.s.api.Vendors(r.ctx, me.Map, me.X, me.Y, gearZone)
+	if err != nil {
+		return
+	}
+	var best *gearBuy
+	var at *worldpb.Spawn
+	done := map[uint32]bool{}
+	for _, v := range vendors {
+		if done[v.Entry] {
+			continue
+		}
+		done[v.Entry] = true
+		items, err := r.s.api.VendorItems(r.ctx, v.Entry)
+		if err != nil || len(items) == 0 {
+			continue
+		}
+		// A weapon we may pay soon: about what a level brings in (250 copper per level of ours; a
+		// Stormwind weapon of 20 silver at level 6 would keep the money from armor for the whole run).
+		if w := r.bestOf(items, me.Level, true, 250*me.Level); w != nil && (best == nil || w.gain > best.gain) {
+			best, at = w, v
+		}
+	}
+	if best == nil {
+		return
+	}
+	r.weaponWant, r.weaponVendor = best.price, at.Entry
+	r.weaponAt = at
+	slog.Info("zone weapon", "item", best.item, "price", best.price, "gain", best.gain, "vendor", at.Entry, "dist", int(at.Dist))
+}
+
+// gearOnTheWay returns the best upgrade sold by a vendor in sight (or the zone's weapon when we can
+// pay it and its vendor is near), or nil.
 func (r *run) gearOnTheWay() *gearBuy {
 	if !r.s.tune.Get().BuyGear || r.detour || time.Since(r.lastGearCheck) < gearEvery {
 		return nil
@@ -43,6 +92,17 @@ func (r *run) gearOnTheWay() *gearBuy {
 		return nil
 	}
 	me := b.Self
+	r.zoneWeapon(me)
+	if at := r.weaponAt; at != nil && r.weaponWant > 0 && me.Money >= r.weaponWant && at.Map == me.Map &&
+		math.Hypot(float64(at.X-me.X), float64(at.Y-me.Y)) < gearDetour {
+		if items, err := r.s.api.VendorItems(r.ctx, at.Entry); err == nil {
+			if w := r.bestOf(items, me.Level, true, me.Money); w != nil {
+				w.vendor = &statepb.Obj{Entry: at.Entry, X: at.X, Y: at.Y, Z: at.Z,
+					Dist: float32(math.Hypot(float64(at.X-me.X), float64(at.Y-me.Y)))}
+				return w
+			}
+		}
+	}
 	vis, err := r.s.api.Nearby(r.ctx, &statepb.NearbyRequest{Kind: "unit", Radius: gearRadius, Max: 8, AliveOnly: true, NpcFlags: vendorFlag})
 	if err != nil || len(vis.Objs) == 0 {
 		return nil
@@ -93,6 +153,7 @@ func (r *run) gearOnTheWay() *gearBuy {
 				r.weaponWant, r.weaponVendor = w.price, v.Entry
 			}
 		case hasWeapons && v.Entry == r.weaponVendor:
+			r.weaponAt = nil
 			// The reserved weapon is no upgrade any more (a better one looted). Another vendor's
 			// weapons count for nothing here: a tool seller's mining pick lifted the reserve and a pair
 			// of leggings took the Wooden Mallet's money (series c497454).
@@ -172,7 +233,7 @@ func (r *run) buyGear(g *gearBuy) {
 	r.note("bought %s for %d copper", res.Bought[0].Name, res.Copper)
 	slog.Info("gear bought", "item", g.item, "name", res.Bought[0].Name, "copper", res.Copper, "weapon", g.weapon, "gain", g.gain)
 	if g.weapon {
-		r.weaponWant, r.weaponVendor = 0, 0 // the weapon kept aside is bought (or a better one): armor may follow
+		r.weaponWant, r.weaponVendor, r.weaponAt = 0, 0, nil // the weapon kept aside is bought: armor may follow
 	}
 	r.gearUp()
 }

@@ -404,6 +404,13 @@ func (c C) BestPurchase(ctx context.Context, items, prices []uint32, maxCopper u
 	return &r, err
 }
 
+// Vendors lists the vendors spawned within radius of (x, y) on a map, nearest first.
+func (c C) Vendors(ctx context.Context, mapID uint32, x, y, radius float32) ([]*worldpb.Spawn, error) {
+	var r worldpb.FindNpcResponse
+	err := invoke.Call(ctx, c.S, "world", "find_npc", &worldpb.FindNpcRequest{MapFilter: true, Map: mapID, X: x, Y: y, Radius: radius, Max: 40, NpcFlags: 128}, &r)
+	return r.Spawns, err
+}
+
 // VendorItems lists the weapons and armor a vendor (creature entry) sells.
 func (c C) VendorItems(ctx context.Context, entry uint32) ([]*worldpb.VendorItem, error) {
 	var r worldpb.VendorItemsResponse

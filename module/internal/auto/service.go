@@ -483,6 +483,8 @@ type run struct {
 	gearSeen                                  map[[3]uint32]bool
 	weaponWant, weaponVendor                  uint32          // copper kept aside for a weapon upgrade seen, and its vendor (gearshop.go)
 	owned                                     map[uint32]bool // item entries we carry or wear, at the last gear look
+	weaponAt                                  *worldpb.Spawn  // the vendor of the weapon kept aside (gearshop.go)
+	zoneSeen                                  [2]uint32       // level and map of the last zone weapon look
 	// travelling: inside a journey (travel.go), whose walks do not plan again; lastFlightCheck and
 	// triedNodes: flight masters of unknown nodes looked for and visited on the way
 	travelling      bool
