@@ -37,20 +37,29 @@ func (r *run) engageOnTheWay(x, y float32) *statepb.Obj {
 		return nil
 	}
 	me := b.Self
-	vis, err := r.s.api.Nearby(r.ctx, &statepb.NearbyRequest{Kind: "unit", Radius: 60, Max: 40, AliveOnly: true, HostileOnly: true})
+	// Neutral monsters too: they do not attack us, but answer the call for help of their friends (a
+	// Defias Bandit engaged at (-9974,-151) brought a Dockmaster, a Bodyguard and a Dockworker, dead;
+	// series 793817f).
+	vis, err := r.s.api.Nearby(r.ctx, &statepb.NearbyRequest{Kind: "unit", Radius: 60, Max: 60, AliveOnly: true})
 	if err != nil {
 		return nil
 	}
+	var others []*statepb.Obj
+	for _, o := range vis.Objs {
+		if o.Reaction != "friendly" && o.Guid != me.Guid && o.Level+5 >= me.Level { // not critters
+			others = append(others, o)
+		}
+	}
 	rangeOf := r.s.aggroOf(r.ctx, me.Level)
 	var best *statepb.Obj
-	for _, o := range vis.Objs {
-		if o.Target != 0 || o.Dist > engageReach || o.Level+engageLevelLow < me.Level || o.Level > me.Level+1 {
+	for _, o := range others {
+		if o.Reaction != "hostile" || o.Target != 0 || o.Dist > engageReach || o.Level+engageLevelLow < me.Level || o.Level > me.Level+1 {
 			continue
 		}
 		if !ahead(me, o, x, y) || offLine(me, o, x, y) > engageOffLine {
 			continue
 		}
-		if len(safe.Adds(o, vis.Objs, rangeOf)) > 0 { // not alone
+		if len(safe.Adds(o, others, rangeOf)) > 0 { // not alone
 			continue
 		}
 		sp := &worldpb.Spawn{Entry: o.Entry, MinLevel: o.Level, MaxLevel: o.Level}
