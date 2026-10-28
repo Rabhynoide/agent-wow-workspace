@@ -201,6 +201,7 @@ func (r *run) trade(npc *statepb.Obj) {
 	if npc.NpcFlags&vendorFlag != 0 {
 		if res, err := r.s.api.SellJunk(r.ctx); err == nil && res.Ok && res.Sold > 0 {
 			r.note("sold %d stacks for %d copper (%d free slots)", res.Sold, res.Copper, res.FreeSlots)
+			r.lastGearCheck = time.Time{} // richer, next to the vendors: look at their gear now (gearshop.go)
 		}
 	}
 	wantDrink, needFood, needPotion := r.supplyNeeds(me)
