@@ -44,8 +44,20 @@ func (r *run) gearOnTheWay() *gearBuy {
 	}
 	me := b.Self
 	vis, err := r.s.api.Nearby(r.ctx, &statepb.NearbyRequest{Kind: "unit", Radius: gearRadius, Max: 8, AliveOnly: true, NpcFlags: vendorFlag})
+	if err != nil || len(vis.Objs) == 0 {
+		return nil
+	}
+	// What we carry first: an upgrade bought but not put on (refused in combat) was compared again to
+	// what we wear and bought again at the next look (money ended 1 100 copper lower with buy_gear,
+	// series c497454). Put on what waits in the bags, and never buy an item we already have.
+	r.gearUp()
+	snap, err := r.s.api.Snapshot(r.ctx)
 	if err != nil {
 		return nil
+	}
+	r.owned = map[uint32]bool{}
+	for _, it := range snap.Items {
+		r.owned[it.Entry] = true
 	}
 	budget := uint32(float64(me.Money) * gearShare)
 	var best *gearBuy
@@ -78,10 +90,13 @@ func (r *run) gearOnTheWay() *gearBuy {
 			continue
 		case w != nil:
 			if r.weaponWant == 0 || w.price < r.weaponWant {
-				r.weaponWant = w.price
+				r.weaponWant, r.weaponVendor = w.price, v.Entry
 			}
-		case hasWeapons:
-			r.weaponWant = 0
+		case hasWeapons && v.Entry == r.weaponVendor:
+			// The reserved weapon is no upgrade any more (a better one looted). Another vendor's
+			// weapons count for nothing here: a tool seller's mining pick lifted the reserve and a pair
+			// of leggings took the Wooden Mallet's money (series c497454).
+			r.weaponWant, r.weaponVendor = 0, 0
 		}
 		if best != nil && best.weapon {
 			continue
@@ -121,6 +136,9 @@ func (r *run) sellsWeapons(items []*worldpb.VendorItem) bool {
 func (r *run) bestOf(items []*worldpb.VendorItem, level uint32, weapon bool, budget uint32) *gearBuy {
 	var ids, prices []uint32
 	for _, it := range items {
+		if r.owned[it.Entry] {
+			continue
+		}
 		info, err := r.s.api.ItemInfo(r.ctx, it.Entry)
 		if err != nil || (info.Class == 2) != weapon {
 			continue
@@ -152,8 +170,9 @@ func (r *run) buyGear(g *gearBuy) {
 		return
 	}
 	r.note("bought %s for %d copper", res.Bought[0].Name, res.Copper)
+	slog.Info("gear bought", "item", g.item, "name", res.Bought[0].Name, "copper", res.Copper, "weapon", g.weapon, "gain", g.gain)
 	if g.weapon {
-		r.weaponWant = 0 // the weapon kept aside is bought (or a better one): armor may follow
+		r.weaponWant, r.weaponVendor = 0, 0 // the weapon kept aside is bought (or a better one): armor may follow
 	}
 	r.gearUp()
 }

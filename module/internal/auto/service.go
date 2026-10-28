@@ -481,7 +481,8 @@ type run struct {
 	lastEngageCheck                           time.Time // engage.go
 	lastGearCheck                             time.Time // gearshop.go
 	gearSeen                                  map[[3]uint32]bool
-	weaponWant                                uint32 // copper kept aside for a weapon upgrade seen (gearshop.go)
+	weaponWant, weaponVendor                  uint32          // copper kept aside for a weapon upgrade seen, and its vendor (gearshop.go)
+	owned                                     map[uint32]bool // item entries we carry or wear, at the last gear look
 	// travelling: inside a journey (travel.go), whose walks do not plan again; lastFlightCheck and
 	// triedNodes: flight masters of unknown nodes looked for and visited on the way
 	travelling      bool
