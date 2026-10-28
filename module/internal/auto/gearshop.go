@@ -4,6 +4,7 @@ import (
 	"time"
 
 	statepb "wowagent/gen/statev1"
+	worldpb "wowagent/gen/worldv1"
 )
 
 // Gear bought on the way (tuning buy_gear): a vendor in sight that sells a weapon or armor worth
@@ -26,6 +27,7 @@ type gearBuy struct {
 	item   uint32
 	price  uint32
 	gain   float32
+	weapon bool
 }
 
 // gearOnTheWay returns the best upgrade sold by a vendor in sight, or nil.
@@ -44,6 +46,9 @@ func (r *run) gearOnTheWay() *gearBuy {
 		return nil
 	}
 	budget := uint32(float64(me.Money) * gearShare)
+	if r.weaponWantLevel != me.Level { // a level later the loot may have changed our weapon: seen again
+		r.weaponWant, r.weaponWantLevel = 0, me.Level
+	}
 	var best *gearBuy
 	for _, v := range vis.Objs {
 		// Nothing new to buy there while we stay at the same level with the same money.
@@ -56,24 +61,57 @@ func (r *run) gearOnTheWay() *gearBuy {
 		if err != nil || len(items) == 0 {
 			continue
 		}
-		var ids, prices []uint32
-		for _, it := range items {
-			if it.RequiredLevel <= me.Level && it.Price <= budget {
-				ids, prices = append(ids, it.Entry), append(prices, it.Price)
+		// The weapon first (the user's priority, 2026-10-28): the best weapon upgrade whatever its
+		// price; affordable, it is the purchase; too dear, its price is kept aside (weaponWant) and
+		// armor is bought only with the money beyond it.
+		if w := r.bestOf(items, me.Level, true, ^uint32(0)); w != nil {
+			if w.price <= budget {
+				w.vendor = v
+				if best == nil || !best.weapon || w.gain > best.gain {
+					best = w
+				}
+				continue
+			}
+			if r.weaponWant == 0 || w.price < r.weaponWant {
+				r.weaponWant = w.price
 			}
 		}
-		if len(ids) == 0 {
+		if best != nil && best.weapon {
 			continue
 		}
-		res, err := r.s.api.BestPurchase(r.ctx, ids, prices, budget)
-		if err != nil || res.Reason != "upgrade" || res.Gain < gearMinGain || res.Gain < gearMinRatio*max(res.Replaced, 4) {
-			continue
+		armorBudget := uint32(0)
+		if budget > r.weaponWant {
+			armorBudget = budget - r.weaponWant
 		}
-		if best == nil || res.Gain > best.gain {
-			best = &gearBuy{vendor: v, item: ids[res.Index], price: prices[res.Index], gain: res.Gain}
+		if a := r.bestOf(items, me.Level, false, armorBudget); a != nil && (best == nil || a.gain > best.gain) {
+			a.vendor = v
+			best = a
 		}
 	}
 	return best
+}
+
+// bestOf is the best upgrade among a vendor's items within budget: weapons (item class 2) or armor
+// (the others), worth gearMinGain and gearMinRatio of what it replaces.
+func (r *run) bestOf(items []*worldpb.VendorItem, level uint32, weapon bool, budget uint32) *gearBuy {
+	var ids, prices []uint32
+	for _, it := range items {
+		info, err := r.s.api.ItemInfo(r.ctx, it.Entry)
+		if err != nil || (info.Class == 2) != weapon {
+			continue
+		}
+		if it.RequiredLevel <= level && it.Price <= budget {
+			ids, prices = append(ids, it.Entry), append(prices, it.Price)
+		}
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	res, err := r.s.api.BestPurchase(r.ctx, ids, prices, budget)
+	if err != nil || res.Reason != "upgrade" || res.Gain < gearMinGain || res.Gain < gearMinRatio*max(res.Replaced, 4) {
+		return nil
+	}
+	return &gearBuy{item: ids[res.Index], price: prices[res.Index], gain: res.Gain, weapon: weapon}
 }
 
 // buyGear walks to the vendor, buys the item and puts it on.
@@ -89,5 +127,8 @@ func (r *run) buyGear(g *gearBuy) {
 		return
 	}
 	r.note("bought %s for %d copper", res.Bought[0].Name, res.Copper)
+	if g.weapon {
+		r.weaponWant = 0 // the weapon kept aside is bought (or a better one): armor may follow
+	}
 	r.gearUp()
 }
