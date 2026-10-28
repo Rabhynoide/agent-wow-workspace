@@ -1,6 +1,8 @@
 package auto
 
 import (
+	"fmt"
+	"log/slog"
 	"time"
 
 	statepb "wowagent/gen/statev1"
@@ -16,7 +18,7 @@ import (
 const (
 	gearRadius   = 60               // yards: vendors in sight
 	gearEvery    = 20 * time.Second // between two looks
-	gearShare    = 0.8              // of our money at most (runs reach level 8 with 10-19 silver)
+	gearShare    = 0.8              // of our money at most for armor (a weapon may take it all)
 	gearMinGain  = 3                // gear score points
 	gearMinRatio = 0.25             // of the score of what it replaces
 )
@@ -46,9 +48,6 @@ func (r *run) gearOnTheWay() *gearBuy {
 		return nil
 	}
 	budget := uint32(float64(me.Money) * gearShare)
-	if r.weaponWantLevel != me.Level { // a level later the loot may have changed our weapon: seen again
-		r.weaponWant, r.weaponWantLevel = 0, me.Level
-	}
 	var best *gearBuy
 	for _, v := range vis.Objs {
 		// Nothing new to buy there while we stay at the same level with the same money.
@@ -64,17 +63,25 @@ func (r *run) gearOnTheWay() *gearBuy {
 		// The weapon first (the user's priority, 2026-10-28): the best weapon upgrade whatever its
 		// price; affordable, it is the purchase; too dear, its price is kept aside (weaponWant) and
 		// armor is bought only with the money beyond it.
-		if w := r.bestOf(items, me.Level, true, ^uint32(0)); w != nil {
-			if w.price <= budget {
-				w.vendor = v
-				if best == nil || !best.weapon || w.gain > best.gain {
-					best = w
-				}
-				continue
+		// The reserve holds until a weapon is bought or this vendor's weapons are no upgrade any more
+		// (a better one looted): cleared at each new level, it let a pair of leggings take the money
+		// of the Wooden Mallet (series 7f891bc, 2026-10-28).
+		w := r.bestOf(items, me.Level, true, ^uint32(0))
+		hasWeapons := r.sellsWeapons(items)
+		slog.Info("gear vendor", "entry", v.Entry, "dist", int(v.Dist), "money", me.Money, "weapon", w.String(), "reserve", r.weaponWant)
+		switch {
+		case w != nil && w.price <= me.Money: // the weapon may take all our money
+			w.vendor = v
+			if best == nil || !best.weapon || w.gain > best.gain {
+				best = w
 			}
+			continue
+		case w != nil:
 			if r.weaponWant == 0 || w.price < r.weaponWant {
 				r.weaponWant = w.price
 			}
+		case hasWeapons:
+			r.weaponWant = 0
 		}
 		if best != nil && best.weapon {
 			continue
@@ -89,6 +96,24 @@ func (r *run) gearOnTheWay() *gearBuy {
 		}
 	}
 	return best
+}
+
+// String sums a purchase up for the log.
+func (g *gearBuy) String() string {
+	if g == nil {
+		return "none"
+	}
+	return fmt.Sprintf("%d (%d copper, +%.1f)", g.item, g.price, g.gain)
+}
+
+// sellsWeapons tells whether a vendor's items include a weapon.
+func (r *run) sellsWeapons(items []*worldpb.VendorItem) bool {
+	for _, it := range items {
+		if info, err := r.s.api.ItemInfo(r.ctx, it.Entry); err == nil && info.Class == 2 {
+			return true
+		}
+	}
+	return false
 }
 
 // bestOf is the best upgrade among a vendor's items within budget: weapons (item class 2) or armor
