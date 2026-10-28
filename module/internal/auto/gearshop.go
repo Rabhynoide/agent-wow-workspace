@@ -78,10 +78,13 @@ func (r *run) gearOnTheWay() *gearBuy {
 			continue
 		case w != nil:
 			if r.weaponWant == 0 || w.price < r.weaponWant {
-				r.weaponWant = w.price
+				r.weaponWant, r.weaponVendor = w.price, v.Entry
 			}
-		case hasWeapons:
-			r.weaponWant = 0
+		case hasWeapons && v.Entry == r.weaponVendor:
+			// The reserved weapon is no upgrade any more (a better one looted). Another vendor's
+			// weapons count for nothing here: a tool seller's mining pick lifted the reserve and a pair
+			// of leggings took the Wooden Mallet's money (series c497454).
+			r.weaponWant, r.weaponVendor = 0, 0
 		}
 		if best != nil && best.weapon {
 			continue
@@ -153,7 +156,7 @@ func (r *run) buyGear(g *gearBuy) {
 	}
 	r.note("bought %s for %d copper", res.Bought[0].Name, res.Copper)
 	if g.weapon {
-		r.weaponWant = 0 // the weapon kept aside is bought (or a better one): armor may follow
+		r.weaponWant, r.weaponVendor = 0, 0 // the weapon kept aside is bought (or a better one): armor may follow
 	}
 	r.gearUp()
 }
