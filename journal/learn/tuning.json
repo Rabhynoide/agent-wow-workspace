@@ -37,5 +37,5 @@
  "body_pull": false,
  "engage_on_way": true,
  "hold_turnins": true,
- "quest_hub": true
+ "quest_hub": false
 }
