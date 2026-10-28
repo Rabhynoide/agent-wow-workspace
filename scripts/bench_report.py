@@ -134,6 +134,19 @@ loot_left = sum(1 for l in combat if 'msg="loot left: bags full"' in l)
 samples = collections.Counter(l.split()[1] for l in read(f"logs/bench_{name}.samples") if len(l.split()) == 2)
 n_samples = sum(samples.values())
 split = ", ".join(f"{k} {100 * v / n_samples:.0f} % ({v * 5 / 60:.1f} min)" for k, v in samples.most_common()) if n_samples else "pas d'échantillons"
+# Money: gains and losses by activity (bench_sample.py, logs/bench_<name>.money).
+money_moves = collections.Counter()
+prev = None
+for l in read(f"logs/bench_{name}.money"):
+    parts = l.split(None, 3)
+    if len(parts) < 3 or not parts[1].isdigit():
+        continue
+    cur = int(parts[1])
+    if prev is not None:
+        key = ("+" if cur > prev else "-") + parts[2]
+        money_moves[key] += abs(cur - prev)
+    prev = cur
+money_split = ", ".join(f"{k} {v}" for k, v in money_moves.most_common()) or "pas de relevé"
 final_level = me.get("level", levels[-1][0] if levels else 1)
 reached = final_level >= int(target)
 
@@ -144,6 +157,7 @@ lines = [f"# Bench {name} — {race} {cls} {first_level} → {target} ({date})",
          f"- Résultat : {'OBJECTIF ATTEINT' if reached else 'non atteint'} (niveau {final_level}, code level.sh {code}) en {minutes:.1f} min",
          f"- Temps par niveau (minutes depuis le début) : " + ", ".join(f"{lv}: {m:.1f}" for lv, m in levels),
          f"- Répartition du temps : {split}",
+         f"- Argent (cuivres gagnés + / dépensés − par activité) : {money_split}",
          f"- Réglages : {json.dumps(tuning, separators=(',', ':')) if isinstance(tuning, dict) else tuning}",
          f"- Décisions de fuite limites (comment/resté) : {dict(decisions)} ; combats restés : {len(stays)}, morts : {stay_deaths}",
          f"- Morts : {deaths} ; combats en marchant : {walk_fights} ; cibles abandonnées : {gave_up}",
