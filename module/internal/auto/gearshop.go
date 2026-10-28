@@ -38,8 +38,10 @@ type gearBuy struct {
 // the weaponsmith came in sight took exactly the Wooden Mallet's 701 copper (series 757f044). When we
 // can pay it and its vendor is within gearDetour yards, we go and buy it.
 const (
-	gearZone   = 1500
-	gearDetour = 400
+	gearZone = 1500
+	// gearDetour: with 400 yards, the Wooden Mallet was bought in 1 run of 4 (Corina Steele was never
+	// that near when the money was there, series 6708bdf); Goldshire is the middle of the 6 → 8 route.
+	gearDetour = 1200
 )
 
 // zoneWeapon looks (once per level and map) for the best weapon upgrade sold in the zone, and keeps
