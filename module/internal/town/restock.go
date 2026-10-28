@@ -143,6 +143,39 @@ func (s *Service) Restock(ctx context.Context, r *pb.RestockRequest) (*pb.Restoc
 	}
 	res := &pb.RestockResult{Ok: true, Vendor: fmt.Sprint(vendor.Entry)}
 	free := snap.FreeSlots
+	if r.Item != 0 { // one gear upgrade (auto/town.go gearShop)
+		limit := uint64(r.MaxCopper)
+		if limit == 0 {
+			limit = uint64(me.Money)
+		}
+		for _, v := range list {
+			if v.entry != r.Item || uint64(v.price) > limit || free == 0 {
+				continue
+			}
+			bw := &wire.Writer{}
+			bw.U64(vendor.Guid)
+			bw.U32(v.entry)
+			bw.U32(v.slot)
+			bw.U32(1)
+			bw.U8(0)
+			if err := moveio.Packet(ctx, s.s, uint32(opcode.CMSGBuyItem), bw.B); err == nil {
+				name := ""
+				if in := info(v.entry); in != nil {
+					name = in.Name
+				}
+				res.Bought = append(res.Bought, &pb.BuyLine{Entry: v.entry, Name: name, Count: 1, Copper: v.price})
+			}
+			break
+		}
+		time.Sleep(500 * time.Millisecond)
+		if after, err := s.api.Brief(ctx); err == nil && after.Self != nil && after.Self.Money <= me.Money {
+			res.Copper = me.Money - after.Self.Money
+		}
+		if len(res.Bought) == 0 || res.Copper == 0 {
+			res.Ok, res.Reason = false, fmt.Sprintf("item %d not bought (not sold here, too dear or bags full)", r.Item)
+		}
+		return res, nil
+	}
 	for _, want := range []struct{ category, count uint32 }{{categoryFood, r.Food}, {categoryDrink, r.Drink}, {categoryPotion, r.Potions}} {
 		if want.count == 0 {
 			continue

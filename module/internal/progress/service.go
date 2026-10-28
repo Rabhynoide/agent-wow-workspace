@@ -690,11 +690,15 @@ func (s *Service) PickReward(ctx context.Context, r *pb.PickRewardRequest) (*pb.
 	if err != nil {
 		return &pb.PickRewardResult{Reason: err.Error()}, nil
 	}
-	best, bestGain, bestPrice := -1, float32(0), uint32(0)
+	best, bestGain, bestPrice, replaced := -1, float32(0), uint32(0), float32(0)
 	cheap := 0
+	buying := len(r.Prices) == len(r.Items)
 	for i, entry := range r.Items {
 		info := s.itemInfo(ctx, entry)
 		if info == nil {
+			continue
+		}
+		if buying && r.Prices[i] > r.MaxCopper {
 			continue
 		}
 		if info.SellPrice > bestPrice {
@@ -703,12 +707,20 @@ func (s *Service) PickReward(ctx context.Context, r *pb.PickRewardRequest) (*pb.
 		if !gear.Usable(info, inv.me.ClassId, inv.me.Race, inv.me.Level, inv.known) {
 			continue
 		}
-		if _, g := gear.Gain(info, inv.equipped, gear.ProfileFor(inv.me.ClassId)); g > bestGain {
+		p := gear.ProfileFor(inv.me.ClassId)
+		if slot, g := gear.Gain(info, inv.equipped, p); g > bestGain {
 			best, bestGain = i, g
+			replaced = gear.Score(inv.equipped[slot], p)
+			if info.InventoryType == 17 { // a two-hander replaces the off hand too
+				replaced += gear.Score(inv.equipped[gear.SlotOffHand], p)
+			}
 		}
 	}
 	if best >= 0 {
-		return &pb.PickRewardResult{Index: uint32(best), Gain: bestGain, Reason: "upgrade"}, nil
+		return &pb.PickRewardResult{Index: uint32(best), Gain: bestGain, Replaced: replaced, Reason: "upgrade"}, nil
+	}
+	if buying {
+		return &pb.PickRewardResult{Reason: "no upgrade"}, nil
 	}
 	return &pb.PickRewardResult{Index: uint32(cheap), Reason: "highest sell price"}, nil
 }

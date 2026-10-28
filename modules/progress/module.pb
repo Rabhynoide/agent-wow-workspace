@@ -31,7 +31,7 @@ EmptyProtoPZ.google.golang.org/protobuf/types/known/emptypbø¢GPBªGoogle.P
 SendPacket%.agentwow.module.v1.SendPacketRequest.google.protobuf.EmptyE
 GetClock.google.protobuf.Empty!.agentwow.module.v1.ClockResponsea
 InvokeModule'.agentwow.module.v1.InvokeModuleRequest(.agentwow.module.v1.InvokeModuleResponseB5Z3github.com/agent-wow/agent-wow/pkg/modules/v1;modv1bproto3
-í
+À
 progress.protowowagent.progress.v1api/module/v1/session.protogoogle/protobuf/empty.proto"‹
 TrainCheckResult
 count (Rcount
@@ -71,12 +71,16 @@ pointsLeft"&
 GearResult
 ok (Rok
 reason (	Rreason
-equipped (	Requipped")
+equipped (	Requipped"`
 PickRewardRequest
-items (Ritems"T
+items (Ritems
+prices (Rprices
+
+max_copper (R	maxCopper"p
 PickRewardResult
 index (Rindex
-gain (Rgain
+gain (Rgain
+replaced (Rreplaced
 reason (	Rreason2Ä
 ProgressL
 

@@ -15,6 +15,7 @@ rpc:
   creature: /wowagent.world.v1.World/Creature
   class_trainers: /wowagent.world.v1.World/ClassTrainers
   item_sources: /wowagent.world.v1.World/ItemSources
+  vendor_items: /wowagent.world.v1.World/VendorItems
   game_object: /wowagent.world.v1.World/GameObject
   teleports: /wowagent.world.v1.World/Teleports
   transports: /wowagent.world.v1.World/Transports

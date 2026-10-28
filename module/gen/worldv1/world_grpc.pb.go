@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	World_ItemSources_FullMethodName   = "/wowagent.world.v1.World/ItemSources"
+	World_VendorItems_FullMethodName   = "/wowagent.world.v1.World/VendorItems"
 	World_FindNpc_FullMethodName       = "/wowagent.world.v1.World/FindNpc"
 	World_QuestInfo_FullMethodName     = "/wowagent.world.v1.World/QuestInfo"
 	World_QuestsForNpc_FullMethodName  = "/wowagent.world.v1.World/QuestsForNpc"
@@ -39,6 +40,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type WorldClient interface {
 	ItemSources(ctx context.Context, in *ItemSourcesRequest, opts ...grpc.CallOption) (*ItemSourcesResponse, error)
+	VendorItems(ctx context.Context, in *VendorItemsRequest, opts ...grpc.CallOption) (*VendorItemsResponse, error)
 	FindNpc(ctx context.Context, in *FindNpcRequest, opts ...grpc.CallOption) (*FindNpcResponse, error)
 	QuestInfo(ctx context.Context, in *QuestInfoRequest, opts ...grpc.CallOption) (*QuestInfoResponse, error)
 	QuestsForNpc(ctx context.Context, in *QuestsForNpcRequest, opts ...grpc.CallOption) (*QuestsForNpcResponse, error)
@@ -64,6 +66,16 @@ func (c *worldClient) ItemSources(ctx context.Context, in *ItemSourcesRequest, o
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ItemSourcesResponse)
 	err := c.cc.Invoke(ctx, World_ItemSources_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *worldClient) VendorItems(ctx context.Context, in *VendorItemsRequest, opts ...grpc.CallOption) (*VendorItemsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(VendorItemsResponse)
+	err := c.cc.Invoke(ctx, World_VendorItems_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -185,6 +197,7 @@ func (c *worldClient) BeforeLogout(ctx context.Context, in *emptypb.Empty, opts 
 // for forward compatibility.
 type WorldServer interface {
 	ItemSources(context.Context, *ItemSourcesRequest) (*ItemSourcesResponse, error)
+	VendorItems(context.Context, *VendorItemsRequest) (*VendorItemsResponse, error)
 	FindNpc(context.Context, *FindNpcRequest) (*FindNpcResponse, error)
 	QuestInfo(context.Context, *QuestInfoRequest) (*QuestInfoResponse, error)
 	QuestsForNpc(context.Context, *QuestsForNpcRequest) (*QuestsForNpcResponse, error)
@@ -208,6 +221,9 @@ type UnimplementedWorldServer struct{}
 
 func (UnimplementedWorldServer) ItemSources(context.Context, *ItemSourcesRequest) (*ItemSourcesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ItemSources not implemented")
+}
+func (UnimplementedWorldServer) VendorItems(context.Context, *VendorItemsRequest) (*VendorItemsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method VendorItems not implemented")
 }
 func (UnimplementedWorldServer) FindNpc(context.Context, *FindNpcRequest) (*FindNpcResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FindNpc not implemented")
@@ -277,6 +293,24 @@ func _World_ItemSources_Handler(srv interface{}, ctx context.Context, dec func(i
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(WorldServer).ItemSources(ctx, req.(*ItemSourcesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _World_VendorItems_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VendorItemsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorldServer).VendorItems(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: World_VendorItems_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorldServer).VendorItems(ctx, req.(*VendorItemsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -489,6 +523,10 @@ var World_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ItemSources",
 			Handler:    _World_ItemSources_Handler,
+		},
+		{
+			MethodName: "VendorItems",
+			Handler:    _World_VendorItems_Handler,
 		},
 		{
 			MethodName: "FindNpc",

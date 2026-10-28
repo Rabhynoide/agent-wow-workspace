@@ -145,7 +145,7 @@ func (s *Service) Recover(ctx context.Context, r *pb.StatusRequest) (*pb.AutoSta
 func (s *Service) start(ctx context.Context, waitS uint32, initial *pb.AutoStatus, body func(r *run) error) *pb.AutoStatus {
 	s.guard.Store(false)
 	s.jobs.Start(initial, func(j *job) {
-		err := body(&run{s: s, j: j, ctx: j.Ctx})
+		err := body(&run{s: s, j: j, ctx: j.Ctx, gearSeen: map[[3]uint32]bool{}})
 		if j.Ctx.Err() == nil {
 			s.guard.Store(true) // ended on its own: watch over the character until the next job
 		}
@@ -479,6 +479,8 @@ type run struct {
 	// lastShop: last vendor visit or check on the way (shop); lastChestCheck: last chest lookup
 	lastShop, lastChestCheck, lastVendorCheck time.Time
 	lastEngageCheck                           time.Time // engage.go
+	lastGearCheck                             time.Time // gearshop.go
+	gearSeen                                  map[[3]uint32]bool
 	// travelling: inside a journey (travel.go), whose walks do not plan again; lastFlightCheck and
 	// triedNodes: flight masters of unknown nodes looked for and visited on the way
 	travelling      bool
@@ -665,6 +667,7 @@ func (r *run) walk(x, y, z, radius float32) error {
 		attacked := false
 		var chest *questpb.Chest
 		var vendor, prey *statepb.Obj
+		var gear *gearBuy
 		for err == nil && st.State == "moving" {
 			if attacked = r.inCombat(); attacked {
 				break
@@ -678,6 +681,9 @@ func (r *run) walk(x, y, z, radius float32) error {
 				break
 			}
 			if vendor = r.vendorOnTheWay(); vendor != nil {
+				break
+			}
+			if gear = r.gearOnTheWay(); gear != nil {
 				break
 			}
 			if node, fm := r.flightOnTheWay(); fm != nil {
@@ -704,6 +710,12 @@ func (r *run) walk(x, y, z, radius float32) error {
 				!strings.Contains(err.Error(), "no live entry") {
 				r.note("engaging on the way: %v", err)
 			}
+			deadline = deadline.Add(60 * time.Second)
+			continue
+		}
+		if gear != nil && !attacked {
+			_ = r.s.api.MoveStop(r.ctx)
+			r.buyGear(gear)
 			deadline = deadline.Add(60 * time.Second)
 			continue
 		}

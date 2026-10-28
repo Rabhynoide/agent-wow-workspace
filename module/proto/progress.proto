@@ -66,11 +66,17 @@ message GearResult {
 
 message PickRewardRequest {
   repeated uint32 items = 1;
+  // Buying (a vendor's weapons and armor): the price of each item (same order); items above
+  // max_copper are left out and there is no fallback to the best sell price.
+  repeated uint32 prices = 2;
+  uint32 max_copper = 3;
 }
 
 message PickRewardResult {
   uint32 index = 1;
   float gain = 2;
+  // Score of what the chosen item would replace (gear.Score; the off hand counts for a two-hander).
+  float replaced = 4;
   string reason = 3;
 }
 

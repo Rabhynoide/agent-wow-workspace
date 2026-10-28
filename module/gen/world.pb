@@ -4,7 +4,7 @@
 EmptyB}
 com.google.protobufB
 EmptyProtoPZ.google.golang.org/protobuf/types/known/emptypbø¢GPBªGoogle.Protobuf.WellKnownTypesbproto3
-É1
+€4
 world.protowowagent.world.v1google/protobuf/empty.proto"¨
 FindNpcRequest
 name (	Rname
@@ -170,6 +170,15 @@ display_id (R	displayId
 loot_id
  (RlootId'
 detection_range (RdetectionRange"*
+VendorItemsRequest
+entry (Rentry"_
+
+VendorItem
+entry (Rentry
+price (Rprice%
+required_level (RrequiredLevel"J
+VendorItemsResponse3
+items (2.wowagent.world.v1.VendorItemRitems"*
 ItemSourcesRequest
 entry (Rentry"œ
 
@@ -237,9 +246,10 @@ loot_items (R	lootItems"x
 TransportsResponse<
 
 transports (2.wowagent.world.v1.TransportR
-transports2ü
+transports2Ú
 World\
-ItemSources%.wowagent.world.v1.ItemSourcesRequest&.wowagent.world.v1.ItemSourcesResponseP
+ItemSources%.wowagent.world.v1.ItemSourcesRequest&.wowagent.world.v1.ItemSourcesResponse\
+VendorItems%.wowagent.world.v1.VendorItemsRequest&.wowagent.world.v1.VendorItemsResponseP
 FindNpc!.wowagent.world.v1.FindNpcRequest".wowagent.world.v1.FindNpcResponseV
 	QuestInfo#.wowagent.world.v1.QuestInfoRequest$.wowagent.world.v1.QuestInfoResponse_
 QuestsForNpc&.wowagent.world.v1.QuestsForNpcRequest'.wowagent.world.v1.QuestsForNpcResponseM

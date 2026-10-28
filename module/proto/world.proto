@@ -223,6 +223,23 @@ message CreatureInfo {
   float detection_range = 11;
 }
 
+message VendorItemsRequest {
+  // Creature entry of the vendor.
+  uint32 entry = 1;
+}
+
+message VendorItem {
+  uint32 entry = 1;
+  // Buy price in copper (item_template.BuyPrice, no reputation discount).
+  uint32 price = 2;
+  uint32 required_level = 3;
+}
+
+message VendorItemsResponse {
+  // The weapons and armor it sells (npc_vendor, item classes 2 and 4).
+  repeated VendorItem items = 1;
+}
+
 message ItemSourcesRequest {
   uint32 entry = 1;
 }
@@ -322,6 +339,7 @@ message TransportsResponse {
 
 service World {
   rpc ItemSources(ItemSourcesRequest) returns (ItemSourcesResponse);
+  rpc VendorItems(VendorItemsRequest) returns (VendorItemsResponse);
   rpc FindNpc(FindNpcRequest) returns (FindNpcResponse);
   rpc QuestInfo(QuestInfoRequest) returns (QuestInfoResponse);
   rpc QuestsForNpc(QuestsForNpcRequest) returns (QuestsForNpcResponse);

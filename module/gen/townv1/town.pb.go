@@ -351,7 +351,10 @@ type RestockRequest struct {
 	// Spending limit in copper (0 = a third of our money).
 	MaxCopper uint32 `protobuf:"varint,3,opt,name=max_copper,json=maxCopper,proto3" json:"max_copper,omitempty"`
 	// Wanted number of healing potions (spell category 4 with a heal effect).
-	Potions       uint32 `protobuf:"varint,4,opt,name=potions,proto3" json:"potions,omitempty"`
+	Potions uint32 `protobuf:"varint,4,opt,name=potions,proto3" json:"potions,omitempty"`
+	// One of this item (a weapon or armor upgrade), when the vendor sells it within max_copper (0 = all
+	// our money).
+	Item          uint32 `protobuf:"varint,5,opt,name=item,proto3" json:"item,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -410,6 +413,13 @@ func (x *RestockRequest) GetMaxCopper() uint32 {
 func (x *RestockRequest) GetPotions() uint32 {
 	if x != nil {
 		return x.Potions
+	}
+	return 0
+}
+
+func (x *RestockRequest) GetItem() uint32 {
+	if x != nil {
+		return x.Item
 	}
 	return 0
 }
@@ -723,13 +733,14 @@ const file_town_proto_rawDesc = "" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x16\n" +
 	"\x06copper\x18\x03 \x01(\rR\x06copper\x12%\n" +
 	"\x0edurability_pct\x18\x04 \x01(\rR\rdurabilityPct\x12\x16\n" +
-	"\x06vendor\x18\x05 \x01(\tR\x06vendor\"s\n" +
+	"\x06vendor\x18\x05 \x01(\tR\x06vendor\"\x87\x01\n" +
 	"\x0eRestockRequest\x12\x12\n" +
 	"\x04food\x18\x01 \x01(\rR\x04food\x12\x14\n" +
 	"\x05drink\x18\x02 \x01(\rR\x05drink\x12\x1d\n" +
 	"\n" +
 	"max_copper\x18\x03 \x01(\rR\tmaxCopper\x12\x18\n" +
-	"\apotions\x18\x04 \x01(\rR\apotions\"a\n" +
+	"\apotions\x18\x04 \x01(\rR\apotions\x12\x12\n" +
+	"\x04item\x18\x05 \x01(\rR\x04item\"a\n" +
 	"\aBuyLine\x12\x14\n" +
 	"\x05entry\x18\x01 \x01(\rR\x05entry\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +

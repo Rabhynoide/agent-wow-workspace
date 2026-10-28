@@ -542,8 +542,12 @@ func (x *GearResult) GetEquipped() []string {
 }
 
 type PickRewardRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Items         []uint32               `protobuf:"varint,1,rep,packed,name=items,proto3" json:"items,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Items []uint32               `protobuf:"varint,1,rep,packed,name=items,proto3" json:"items,omitempty"`
+	// Buying (a vendor's weapons and armor): the price of each item (same order); items above
+	// max_copper are left out and there is no fallback to the best sell price.
+	Prices        []uint32 `protobuf:"varint,2,rep,packed,name=prices,proto3" json:"prices,omitempty"`
+	MaxCopper     uint32   `protobuf:"varint,3,opt,name=max_copper,json=maxCopper,proto3" json:"max_copper,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -585,11 +589,27 @@ func (x *PickRewardRequest) GetItems() []uint32 {
 	return nil
 }
 
+func (x *PickRewardRequest) GetPrices() []uint32 {
+	if x != nil {
+		return x.Prices
+	}
+	return nil
+}
+
+func (x *PickRewardRequest) GetMaxCopper() uint32 {
+	if x != nil {
+		return x.MaxCopper
+	}
+	return 0
+}
+
 type PickRewardResult struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Index         uint32                 `protobuf:"varint,1,opt,name=index,proto3" json:"index,omitempty"`
-	Gain          float32                `protobuf:"fixed32,2,opt,name=gain,proto3" json:"gain,omitempty"`
-	Reason        string                 `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Index uint32                 `protobuf:"varint,1,opt,name=index,proto3" json:"index,omitempty"`
+	Gain  float32                `protobuf:"fixed32,2,opt,name=gain,proto3" json:"gain,omitempty"`
+	// Score of what the chosen item would replace (gear.Score; the off hand counts for a two-hander).
+	Replaced      float32 `protobuf:"fixed32,4,opt,name=replaced,proto3" json:"replaced,omitempty"`
+	Reason        string  `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -634,6 +654,13 @@ func (x *PickRewardResult) GetIndex() uint32 {
 func (x *PickRewardResult) GetGain() float32 {
 	if x != nil {
 		return x.Gain
+	}
+	return 0
+}
+
+func (x *PickRewardResult) GetReplaced() float32 {
+	if x != nil {
+		return x.Replaced
 	}
 	return 0
 }
@@ -688,12 +715,16 @@ const file_progress_proto_rawDesc = "" +
 	"GearResult\x12\x0e\n" +
 	"\x02ok\x18\x01 \x01(\bR\x02ok\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x1a\n" +
-	"\bequipped\x18\x03 \x03(\tR\bequipped\")\n" +
+	"\bequipped\x18\x03 \x03(\tR\bequipped\"`\n" +
 	"\x11PickRewardRequest\x12\x14\n" +
-	"\x05items\x18\x01 \x03(\rR\x05items\"T\n" +
+	"\x05items\x18\x01 \x03(\rR\x05items\x12\x16\n" +
+	"\x06prices\x18\x02 \x03(\rR\x06prices\x12\x1d\n" +
+	"\n" +
+	"max_copper\x18\x03 \x01(\rR\tmaxCopper\"p\n" +
 	"\x10PickRewardResult\x12\x14\n" +
 	"\x05index\x18\x01 \x01(\rR\x05index\x12\x12\n" +
-	"\x04gain\x18\x02 \x01(\x02R\x04gain\x12\x16\n" +
+	"\x04gain\x18\x02 \x01(\x02R\x04gain\x12\x1a\n" +
+	"\breplaced\x18\x04 \x01(\x02R\breplaced\x12\x16\n" +
 	"\x06reason\x18\x03 \x01(\tR\x06reason2\xc4\x05\n" +
 	"\bProgress\x12L\n" +
 	"\n" +

@@ -1749,6 +1749,157 @@ func (x *CreatureInfo) GetDetectionRange() float32 {
 	return 0
 }
 
+type VendorItemsRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Creature entry of the vendor.
+	Entry         uint32 `protobuf:"varint,1,opt,name=entry,proto3" json:"entry,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VendorItemsRequest) Reset() {
+	*x = VendorItemsRequest{}
+	mi := &file_world_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VendorItemsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VendorItemsRequest) ProtoMessage() {}
+
+func (x *VendorItemsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_world_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VendorItemsRequest.ProtoReflect.Descriptor instead.
+func (*VendorItemsRequest) Descriptor() ([]byte, []int) {
+	return file_world_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *VendorItemsRequest) GetEntry() uint32 {
+	if x != nil {
+		return x.Entry
+	}
+	return 0
+}
+
+type VendorItem struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Entry uint32                 `protobuf:"varint,1,opt,name=entry,proto3" json:"entry,omitempty"`
+	// Buy price in copper (item_template.BuyPrice, no reputation discount).
+	Price         uint32 `protobuf:"varint,2,opt,name=price,proto3" json:"price,omitempty"`
+	RequiredLevel uint32 `protobuf:"varint,3,opt,name=required_level,json=requiredLevel,proto3" json:"required_level,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VendorItem) Reset() {
+	*x = VendorItem{}
+	mi := &file_world_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VendorItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VendorItem) ProtoMessage() {}
+
+func (x *VendorItem) ProtoReflect() protoreflect.Message {
+	mi := &file_world_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VendorItem.ProtoReflect.Descriptor instead.
+func (*VendorItem) Descriptor() ([]byte, []int) {
+	return file_world_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *VendorItem) GetEntry() uint32 {
+	if x != nil {
+		return x.Entry
+	}
+	return 0
+}
+
+func (x *VendorItem) GetPrice() uint32 {
+	if x != nil {
+		return x.Price
+	}
+	return 0
+}
+
+func (x *VendorItem) GetRequiredLevel() uint32 {
+	if x != nil {
+		return x.RequiredLevel
+	}
+	return 0
+}
+
+type VendorItemsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The weapons and armor it sells (npc_vendor, item classes 2 and 4).
+	Items         []*VendorItem `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VendorItemsResponse) Reset() {
+	*x = VendorItemsResponse{}
+	mi := &file_world_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VendorItemsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VendorItemsResponse) ProtoMessage() {}
+
+func (x *VendorItemsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_world_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VendorItemsResponse.ProtoReflect.Descriptor instead.
+func (*VendorItemsResponse) Descriptor() ([]byte, []int) {
+	return file_world_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *VendorItemsResponse) GetItems() []*VendorItem {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
 type ItemSourcesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Entry         uint32                 `protobuf:"varint,1,opt,name=entry,proto3" json:"entry,omitempty"`
@@ -1758,7 +1909,7 @@ type ItemSourcesRequest struct {
 
 func (x *ItemSourcesRequest) Reset() {
 	*x = ItemSourcesRequest{}
-	mi := &file_world_proto_msgTypes[19]
+	mi := &file_world_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1770,7 +1921,7 @@ func (x *ItemSourcesRequest) String() string {
 func (*ItemSourcesRequest) ProtoMessage() {}
 
 func (x *ItemSourcesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_world_proto_msgTypes[19]
+	mi := &file_world_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1783,7 +1934,7 @@ func (x *ItemSourcesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ItemSourcesRequest.ProtoReflect.Descriptor instead.
 func (*ItemSourcesRequest) Descriptor() ([]byte, []int) {
-	return file_world_proto_rawDescGZIP(), []int{19}
+	return file_world_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *ItemSourcesRequest) GetEntry() uint32 {
@@ -1808,7 +1959,7 @@ type ItemSource struct {
 
 func (x *ItemSource) Reset() {
 	*x = ItemSource{}
-	mi := &file_world_proto_msgTypes[20]
+	mi := &file_world_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1820,7 +1971,7 @@ func (x *ItemSource) String() string {
 func (*ItemSource) ProtoMessage() {}
 
 func (x *ItemSource) ProtoReflect() protoreflect.Message {
-	mi := &file_world_proto_msgTypes[20]
+	mi := &file_world_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1833,7 +1984,7 @@ func (x *ItemSource) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ItemSource.ProtoReflect.Descriptor instead.
 func (*ItemSource) Descriptor() ([]byte, []int) {
-	return file_world_proto_rawDescGZIP(), []int{20}
+	return file_world_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *ItemSource) GetKind() string {
@@ -1887,7 +2038,7 @@ type ItemSourcesResponse struct {
 
 func (x *ItemSourcesResponse) Reset() {
 	*x = ItemSourcesResponse{}
-	mi := &file_world_proto_msgTypes[21]
+	mi := &file_world_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1899,7 +2050,7 @@ func (x *ItemSourcesResponse) String() string {
 func (*ItemSourcesResponse) ProtoMessage() {}
 
 func (x *ItemSourcesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_world_proto_msgTypes[21]
+	mi := &file_world_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1912,7 +2063,7 @@ func (x *ItemSourcesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ItemSourcesResponse.ProtoReflect.Descriptor instead.
 func (*ItemSourcesResponse) Descriptor() ([]byte, []int) {
-	return file_world_proto_rawDescGZIP(), []int{21}
+	return file_world_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *ItemSourcesResponse) GetSources() []*ItemSource {
@@ -1936,7 +2087,7 @@ type ClassTrainersRequest struct {
 
 func (x *ClassTrainersRequest) Reset() {
 	*x = ClassTrainersRequest{}
-	mi := &file_world_proto_msgTypes[22]
+	mi := &file_world_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1948,7 +2099,7 @@ func (x *ClassTrainersRequest) String() string {
 func (*ClassTrainersRequest) ProtoMessage() {}
 
 func (x *ClassTrainersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_world_proto_msgTypes[22]
+	mi := &file_world_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1961,7 +2112,7 @@ func (x *ClassTrainersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClassTrainersRequest.ProtoReflect.Descriptor instead.
 func (*ClassTrainersRequest) Descriptor() ([]byte, []int) {
-	return file_world_proto_rawDescGZIP(), []int{22}
+	return file_world_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *ClassTrainersRequest) GetClassId() uint32 {
@@ -2011,7 +2162,7 @@ type TrainerSpell struct {
 
 func (x *TrainerSpell) Reset() {
 	*x = TrainerSpell{}
-	mi := &file_world_proto_msgTypes[23]
+	mi := &file_world_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2023,7 +2174,7 @@ func (x *TrainerSpell) String() string {
 func (*TrainerSpell) ProtoMessage() {}
 
 func (x *TrainerSpell) ProtoReflect() protoreflect.Message {
-	mi := &file_world_proto_msgTypes[23]
+	mi := &file_world_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2036,7 +2187,7 @@ func (x *TrainerSpell) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrainerSpell.ProtoReflect.Descriptor instead.
 func (*TrainerSpell) Descriptor() ([]byte, []int) {
-	return file_world_proto_rawDescGZIP(), []int{23}
+	return file_world_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *TrainerSpell) GetSpell() uint32 {
@@ -2084,7 +2235,7 @@ type ClassTrainer struct {
 
 func (x *ClassTrainer) Reset() {
 	*x = ClassTrainer{}
-	mi := &file_world_proto_msgTypes[24]
+	mi := &file_world_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2096,7 +2247,7 @@ func (x *ClassTrainer) String() string {
 func (*ClassTrainer) ProtoMessage() {}
 
 func (x *ClassTrainer) ProtoReflect() protoreflect.Message {
-	mi := &file_world_proto_msgTypes[24]
+	mi := &file_world_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2109,7 +2260,7 @@ func (x *ClassTrainer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClassTrainer.ProtoReflect.Descriptor instead.
 func (*ClassTrainer) Descriptor() ([]byte, []int) {
-	return file_world_proto_rawDescGZIP(), []int{24}
+	return file_world_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *ClassTrainer) GetEntry() uint32 {
@@ -2184,7 +2335,7 @@ type ClassTrainersResponse struct {
 
 func (x *ClassTrainersResponse) Reset() {
 	*x = ClassTrainersResponse{}
-	mi := &file_world_proto_msgTypes[25]
+	mi := &file_world_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2196,7 +2347,7 @@ func (x *ClassTrainersResponse) String() string {
 func (*ClassTrainersResponse) ProtoMessage() {}
 
 func (x *ClassTrainersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_world_proto_msgTypes[25]
+	mi := &file_world_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2209,7 +2360,7 @@ func (x *ClassTrainersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClassTrainersResponse.ProtoReflect.Descriptor instead.
 func (*ClassTrainersResponse) Descriptor() ([]byte, []int) {
-	return file_world_proto_rawDescGZIP(), []int{25}
+	return file_world_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *ClassTrainersResponse) GetTrainers() []*ClassTrainer {
@@ -2228,7 +2379,7 @@ type GameObjectRequest struct {
 
 func (x *GameObjectRequest) Reset() {
 	*x = GameObjectRequest{}
-	mi := &file_world_proto_msgTypes[26]
+	mi := &file_world_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2240,7 +2391,7 @@ func (x *GameObjectRequest) String() string {
 func (*GameObjectRequest) ProtoMessage() {}
 
 func (x *GameObjectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_world_proto_msgTypes[26]
+	mi := &file_world_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2253,7 +2404,7 @@ func (x *GameObjectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GameObjectRequest.ProtoReflect.Descriptor instead.
 func (*GameObjectRequest) Descriptor() ([]byte, []int) {
-	return file_world_proto_rawDescGZIP(), []int{26}
+	return file_world_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *GameObjectRequest) GetEntry() uint32 {
@@ -2282,7 +2433,7 @@ type GameObjectInfo struct {
 
 func (x *GameObjectInfo) Reset() {
 	*x = GameObjectInfo{}
-	mi := &file_world_proto_msgTypes[27]
+	mi := &file_world_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2294,7 +2445,7 @@ func (x *GameObjectInfo) String() string {
 func (*GameObjectInfo) ProtoMessage() {}
 
 func (x *GameObjectInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_world_proto_msgTypes[27]
+	mi := &file_world_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2307,7 +2458,7 @@ func (x *GameObjectInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GameObjectInfo.ProtoReflect.Descriptor instead.
 func (*GameObjectInfo) Descriptor() ([]byte, []int) {
-	return file_world_proto_rawDescGZIP(), []int{27}
+	return file_world_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *GameObjectInfo) GetEntry() uint32 {
@@ -2376,7 +2527,7 @@ type Teleport struct {
 
 func (x *Teleport) Reset() {
 	*x = Teleport{}
-	mi := &file_world_proto_msgTypes[28]
+	mi := &file_world_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2388,7 +2539,7 @@ func (x *Teleport) String() string {
 func (*Teleport) ProtoMessage() {}
 
 func (x *Teleport) ProtoReflect() protoreflect.Message {
-	mi := &file_world_proto_msgTypes[28]
+	mi := &file_world_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2401,7 +2552,7 @@ func (x *Teleport) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Teleport.ProtoReflect.Descriptor instead.
 func (*Teleport) Descriptor() ([]byte, []int) {
-	return file_world_proto_rawDescGZIP(), []int{28}
+	return file_world_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *Teleport) GetId() uint32 {
@@ -2462,7 +2613,7 @@ type TeleportsResponse struct {
 
 func (x *TeleportsResponse) Reset() {
 	*x = TeleportsResponse{}
-	mi := &file_world_proto_msgTypes[29]
+	mi := &file_world_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2474,7 +2625,7 @@ func (x *TeleportsResponse) String() string {
 func (*TeleportsResponse) ProtoMessage() {}
 
 func (x *TeleportsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_world_proto_msgTypes[29]
+	mi := &file_world_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2487,7 +2638,7 @@ func (x *TeleportsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeleportsResponse.ProtoReflect.Descriptor instead.
 func (*TeleportsResponse) Descriptor() ([]byte, []int) {
-	return file_world_proto_rawDescGZIP(), []int{29}
+	return file_world_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *TeleportsResponse) GetTeleports() []*Teleport {
@@ -2511,7 +2662,7 @@ type Transport struct {
 
 func (x *Transport) Reset() {
 	*x = Transport{}
-	mi := &file_world_proto_msgTypes[30]
+	mi := &file_world_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2523,7 +2674,7 @@ func (x *Transport) String() string {
 func (*Transport) ProtoMessage() {}
 
 func (x *Transport) ProtoReflect() protoreflect.Message {
-	mi := &file_world_proto_msgTypes[30]
+	mi := &file_world_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2536,7 +2687,7 @@ func (x *Transport) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Transport.ProtoReflect.Descriptor instead.
 func (*Transport) Descriptor() ([]byte, []int) {
-	return file_world_proto_rawDescGZIP(), []int{30}
+	return file_world_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *Transport) GetEntry() uint32 {
@@ -2583,7 +2734,7 @@ type TransportsResponse struct {
 
 func (x *TransportsResponse) Reset() {
 	*x = TransportsResponse{}
-	mi := &file_world_proto_msgTypes[31]
+	mi := &file_world_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2595,7 +2746,7 @@ func (x *TransportsResponse) String() string {
 func (*TransportsResponse) ProtoMessage() {}
 
 func (x *TransportsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_world_proto_msgTypes[31]
+	mi := &file_world_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2608,7 +2759,7 @@ func (x *TransportsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TransportsResponse.ProtoReflect.Descriptor instead.
 func (*TransportsResponse) Descriptor() ([]byte, []int) {
-	return file_world_proto_rawDescGZIP(), []int{31}
+	return file_world_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *TransportsResponse) GetTransports() []*Transport {
@@ -2787,6 +2938,15 @@ const file_world_proto_rawDesc = "" +
 	"\aloot_id\x18\n" +
 	" \x01(\rR\x06lootId\x12'\n" +
 	"\x0fdetection_range\x18\v \x01(\x02R\x0edetectionRange\"*\n" +
+	"\x12VendorItemsRequest\x12\x14\n" +
+	"\x05entry\x18\x01 \x01(\rR\x05entry\"_\n" +
+	"\n" +
+	"VendorItem\x12\x14\n" +
+	"\x05entry\x18\x01 \x01(\rR\x05entry\x12\x14\n" +
+	"\x05price\x18\x02 \x01(\rR\x05price\x12%\n" +
+	"\x0erequired_level\x18\x03 \x01(\rR\rrequiredLevel\"J\n" +
+	"\x13VendorItemsResponse\x123\n" +
+	"\x05items\x18\x01 \x03(\v2\x1d.wowagent.world.v1.VendorItemR\x05items\"*\n" +
 	"\x12ItemSourcesRequest\x12\x14\n" +
 	"\x05entry\x18\x01 \x01(\rR\x05entry\"\x9c\x01\n" +
 	"\n" +
@@ -2854,9 +3014,10 @@ const file_world_proto_rawDesc = "" +
 	"\x12TransportsResponse\x12<\n" +
 	"\n" +
 	"transports\x18\x01 \x03(\v2\x1c.wowagent.world.v1.TransportR\n" +
-	"transports2\xfc\a\n" +
+	"transports2\xda\b\n" +
 	"\x05World\x12\\\n" +
-	"\vItemSources\x12%.wowagent.world.v1.ItemSourcesRequest\x1a&.wowagent.world.v1.ItemSourcesResponse\x12P\n" +
+	"\vItemSources\x12%.wowagent.world.v1.ItemSourcesRequest\x1a&.wowagent.world.v1.ItemSourcesResponse\x12\\\n" +
+	"\vVendorItems\x12%.wowagent.world.v1.VendorItemsRequest\x1a&.wowagent.world.v1.VendorItemsResponse\x12P\n" +
 	"\aFindNpc\x12!.wowagent.world.v1.FindNpcRequest\x1a\".wowagent.world.v1.FindNpcResponse\x12V\n" +
 	"\tQuestInfo\x12#.wowagent.world.v1.QuestInfoRequest\x1a$.wowagent.world.v1.QuestInfoResponse\x12_\n" +
 	"\fQuestsForNpc\x12&.wowagent.world.v1.QuestsForNpcRequest\x1a'.wowagent.world.v1.QuestsForNpcResponse\x12M\n" +
@@ -2883,7 +3044,7 @@ func file_world_proto_rawDescGZIP() []byte {
 	return file_world_proto_rawDescData
 }
 
-var file_world_proto_msgTypes = make([]protoimpl.MessageInfo, 32)
+var file_world_proto_msgTypes = make([]protoimpl.MessageInfo, 35)
 var file_world_proto_goTypes = []any{
 	(*FindNpcRequest)(nil),        // 0: wowagent.world.v1.FindNpcRequest
 	(*Spawn)(nil),                 // 1: wowagent.world.v1.Spawn
@@ -2904,20 +3065,23 @@ var file_world_proto_goTypes = []any{
 	(*ItemInfoResponse)(nil),      // 16: wowagent.world.v1.ItemInfoResponse
 	(*CreatureInfoRequest)(nil),   // 17: wowagent.world.v1.CreatureInfoRequest
 	(*CreatureInfo)(nil),          // 18: wowagent.world.v1.CreatureInfo
-	(*ItemSourcesRequest)(nil),    // 19: wowagent.world.v1.ItemSourcesRequest
-	(*ItemSource)(nil),            // 20: wowagent.world.v1.ItemSource
-	(*ItemSourcesResponse)(nil),   // 21: wowagent.world.v1.ItemSourcesResponse
-	(*ClassTrainersRequest)(nil),  // 22: wowagent.world.v1.ClassTrainersRequest
-	(*TrainerSpell)(nil),          // 23: wowagent.world.v1.TrainerSpell
-	(*ClassTrainer)(nil),          // 24: wowagent.world.v1.ClassTrainer
-	(*ClassTrainersResponse)(nil), // 25: wowagent.world.v1.ClassTrainersResponse
-	(*GameObjectRequest)(nil),     // 26: wowagent.world.v1.GameObjectRequest
-	(*GameObjectInfo)(nil),        // 27: wowagent.world.v1.GameObjectInfo
-	(*Teleport)(nil),              // 28: wowagent.world.v1.Teleport
-	(*TeleportsResponse)(nil),     // 29: wowagent.world.v1.TeleportsResponse
-	(*Transport)(nil),             // 30: wowagent.world.v1.Transport
-	(*TransportsResponse)(nil),    // 31: wowagent.world.v1.TransportsResponse
-	(*emptypb.Empty)(nil),         // 32: google.protobuf.Empty
+	(*VendorItemsRequest)(nil),    // 19: wowagent.world.v1.VendorItemsRequest
+	(*VendorItem)(nil),            // 20: wowagent.world.v1.VendorItem
+	(*VendorItemsResponse)(nil),   // 21: wowagent.world.v1.VendorItemsResponse
+	(*ItemSourcesRequest)(nil),    // 22: wowagent.world.v1.ItemSourcesRequest
+	(*ItemSource)(nil),            // 23: wowagent.world.v1.ItemSource
+	(*ItemSourcesResponse)(nil),   // 24: wowagent.world.v1.ItemSourcesResponse
+	(*ClassTrainersRequest)(nil),  // 25: wowagent.world.v1.ClassTrainersRequest
+	(*TrainerSpell)(nil),          // 26: wowagent.world.v1.TrainerSpell
+	(*ClassTrainer)(nil),          // 27: wowagent.world.v1.ClassTrainer
+	(*ClassTrainersResponse)(nil), // 28: wowagent.world.v1.ClassTrainersResponse
+	(*GameObjectRequest)(nil),     // 29: wowagent.world.v1.GameObjectRequest
+	(*GameObjectInfo)(nil),        // 30: wowagent.world.v1.GameObjectInfo
+	(*Teleport)(nil),              // 31: wowagent.world.v1.Teleport
+	(*TeleportsResponse)(nil),     // 32: wowagent.world.v1.TeleportsResponse
+	(*Transport)(nil),             // 33: wowagent.world.v1.Transport
+	(*TransportsResponse)(nil),    // 34: wowagent.world.v1.TransportsResponse
+	(*emptypb.Empty)(nil),         // 35: google.protobuf.Empty
 }
 var file_world_proto_depIdxs = []int32{
 	1,  // 0: wowagent.world.v1.FindNpcResponse.spawns:type_name -> wowagent.world.v1.Spawn
@@ -2929,40 +3093,43 @@ var file_world_proto_depIdxs = []int32{
 	1,  // 6: wowagent.world.v1.SpawnsResponse.spawns:type_name -> wowagent.world.v1.Spawn
 	6,  // 7: wowagent.world.v1.ItemInfo.stats:type_name -> wowagent.world.v1.ItemStat
 	15, // 8: wowagent.world.v1.ItemInfoResponse.items:type_name -> wowagent.world.v1.ItemInfo
-	20, // 9: wowagent.world.v1.ItemSourcesResponse.sources:type_name -> wowagent.world.v1.ItemSource
-	23, // 10: wowagent.world.v1.ClassTrainer.spells:type_name -> wowagent.world.v1.TrainerSpell
-	24, // 11: wowagent.world.v1.ClassTrainersResponse.trainers:type_name -> wowagent.world.v1.ClassTrainer
-	28, // 12: wowagent.world.v1.TeleportsResponse.teleports:type_name -> wowagent.world.v1.Teleport
-	30, // 13: wowagent.world.v1.TransportsResponse.transports:type_name -> wowagent.world.v1.Transport
-	19, // 14: wowagent.world.v1.World.ItemSources:input_type -> wowagent.world.v1.ItemSourcesRequest
-	0,  // 15: wowagent.world.v1.World.FindNpc:input_type -> wowagent.world.v1.FindNpcRequest
-	3,  // 16: wowagent.world.v1.World.QuestInfo:input_type -> wowagent.world.v1.QuestInfoRequest
-	9,  // 17: wowagent.world.v1.World.QuestsForNpc:input_type -> wowagent.world.v1.QuestsForNpcRequest
-	12, // 18: wowagent.world.v1.World.Spawns:input_type -> wowagent.world.v1.SpawnsRequest
-	14, // 19: wowagent.world.v1.World.ItemInfo:input_type -> wowagent.world.v1.ItemInfoRequest
-	17, // 20: wowagent.world.v1.World.Creature:input_type -> wowagent.world.v1.CreatureInfoRequest
-	22, // 21: wowagent.world.v1.World.ClassTrainers:input_type -> wowagent.world.v1.ClassTrainersRequest
-	26, // 22: wowagent.world.v1.World.GameObject:input_type -> wowagent.world.v1.GameObjectRequest
-	32, // 23: wowagent.world.v1.World.Teleports:input_type -> google.protobuf.Empty
-	32, // 24: wowagent.world.v1.World.Transports:input_type -> google.protobuf.Empty
-	32, // 25: wowagent.world.v1.World.BeforeLogout:input_type -> google.protobuf.Empty
-	21, // 26: wowagent.world.v1.World.ItemSources:output_type -> wowagent.world.v1.ItemSourcesResponse
-	2,  // 27: wowagent.world.v1.World.FindNpc:output_type -> wowagent.world.v1.FindNpcResponse
-	8,  // 28: wowagent.world.v1.World.QuestInfo:output_type -> wowagent.world.v1.QuestInfoResponse
-	11, // 29: wowagent.world.v1.World.QuestsForNpc:output_type -> wowagent.world.v1.QuestsForNpcResponse
-	13, // 30: wowagent.world.v1.World.Spawns:output_type -> wowagent.world.v1.SpawnsResponse
-	16, // 31: wowagent.world.v1.World.ItemInfo:output_type -> wowagent.world.v1.ItemInfoResponse
-	18, // 32: wowagent.world.v1.World.Creature:output_type -> wowagent.world.v1.CreatureInfo
-	25, // 33: wowagent.world.v1.World.ClassTrainers:output_type -> wowagent.world.v1.ClassTrainersResponse
-	27, // 34: wowagent.world.v1.World.GameObject:output_type -> wowagent.world.v1.GameObjectInfo
-	29, // 35: wowagent.world.v1.World.Teleports:output_type -> wowagent.world.v1.TeleportsResponse
-	31, // 36: wowagent.world.v1.World.Transports:output_type -> wowagent.world.v1.TransportsResponse
-	32, // 37: wowagent.world.v1.World.BeforeLogout:output_type -> google.protobuf.Empty
-	26, // [26:38] is the sub-list for method output_type
-	14, // [14:26] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	20, // 9: wowagent.world.v1.VendorItemsResponse.items:type_name -> wowagent.world.v1.VendorItem
+	23, // 10: wowagent.world.v1.ItemSourcesResponse.sources:type_name -> wowagent.world.v1.ItemSource
+	26, // 11: wowagent.world.v1.ClassTrainer.spells:type_name -> wowagent.world.v1.TrainerSpell
+	27, // 12: wowagent.world.v1.ClassTrainersResponse.trainers:type_name -> wowagent.world.v1.ClassTrainer
+	31, // 13: wowagent.world.v1.TeleportsResponse.teleports:type_name -> wowagent.world.v1.Teleport
+	33, // 14: wowagent.world.v1.TransportsResponse.transports:type_name -> wowagent.world.v1.Transport
+	22, // 15: wowagent.world.v1.World.ItemSources:input_type -> wowagent.world.v1.ItemSourcesRequest
+	19, // 16: wowagent.world.v1.World.VendorItems:input_type -> wowagent.world.v1.VendorItemsRequest
+	0,  // 17: wowagent.world.v1.World.FindNpc:input_type -> wowagent.world.v1.FindNpcRequest
+	3,  // 18: wowagent.world.v1.World.QuestInfo:input_type -> wowagent.world.v1.QuestInfoRequest
+	9,  // 19: wowagent.world.v1.World.QuestsForNpc:input_type -> wowagent.world.v1.QuestsForNpcRequest
+	12, // 20: wowagent.world.v1.World.Spawns:input_type -> wowagent.world.v1.SpawnsRequest
+	14, // 21: wowagent.world.v1.World.ItemInfo:input_type -> wowagent.world.v1.ItemInfoRequest
+	17, // 22: wowagent.world.v1.World.Creature:input_type -> wowagent.world.v1.CreatureInfoRequest
+	25, // 23: wowagent.world.v1.World.ClassTrainers:input_type -> wowagent.world.v1.ClassTrainersRequest
+	29, // 24: wowagent.world.v1.World.GameObject:input_type -> wowagent.world.v1.GameObjectRequest
+	35, // 25: wowagent.world.v1.World.Teleports:input_type -> google.protobuf.Empty
+	35, // 26: wowagent.world.v1.World.Transports:input_type -> google.protobuf.Empty
+	35, // 27: wowagent.world.v1.World.BeforeLogout:input_type -> google.protobuf.Empty
+	24, // 28: wowagent.world.v1.World.ItemSources:output_type -> wowagent.world.v1.ItemSourcesResponse
+	21, // 29: wowagent.world.v1.World.VendorItems:output_type -> wowagent.world.v1.VendorItemsResponse
+	2,  // 30: wowagent.world.v1.World.FindNpc:output_type -> wowagent.world.v1.FindNpcResponse
+	8,  // 31: wowagent.world.v1.World.QuestInfo:output_type -> wowagent.world.v1.QuestInfoResponse
+	11, // 32: wowagent.world.v1.World.QuestsForNpc:output_type -> wowagent.world.v1.QuestsForNpcResponse
+	13, // 33: wowagent.world.v1.World.Spawns:output_type -> wowagent.world.v1.SpawnsResponse
+	16, // 34: wowagent.world.v1.World.ItemInfo:output_type -> wowagent.world.v1.ItemInfoResponse
+	18, // 35: wowagent.world.v1.World.Creature:output_type -> wowagent.world.v1.CreatureInfo
+	28, // 36: wowagent.world.v1.World.ClassTrainers:output_type -> wowagent.world.v1.ClassTrainersResponse
+	30, // 37: wowagent.world.v1.World.GameObject:output_type -> wowagent.world.v1.GameObjectInfo
+	32, // 38: wowagent.world.v1.World.Teleports:output_type -> wowagent.world.v1.TeleportsResponse
+	34, // 39: wowagent.world.v1.World.Transports:output_type -> wowagent.world.v1.TransportsResponse
+	35, // 40: wowagent.world.v1.World.BeforeLogout:output_type -> google.protobuf.Empty
+	28, // [28:41] is the sub-list for method output_type
+	15, // [15:28] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_world_proto_init() }
@@ -2976,7 +3143,7 @@ func file_world_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_world_proto_rawDesc), len(file_world_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   32,
+			NumMessages:   35,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

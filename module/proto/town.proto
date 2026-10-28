@@ -55,6 +55,9 @@ message RestockRequest {
   uint32 max_copper = 3;
   // Wanted number of healing potions (spell category 4 with a heal effect).
   uint32 potions = 4;
+  // One of this item (a weapon or armor upgrade), when the vendor sells it within max_copper (0 = all
+  // our money).
+  uint32 item = 5;
 }
 
 message BuyLine {

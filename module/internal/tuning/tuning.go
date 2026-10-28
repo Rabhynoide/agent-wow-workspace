@@ -54,6 +54,9 @@ type Tuning struct {
 	// HoldTurnins: a quest the guide turns in far later is kept in the log after its objectives and
 	// turned in when the route reaches that step (cmd/guidecheck/holds.go).
 	HoldTurnins bool `json:"hold_turnins"`
+	// BuyGear: a vendor in sight selling a clear gear upgrade (gear score, within 60 % of our money)
+	// is visited on the way (auto/gearshop.go).
+	BuyGear bool `json:"buy_gear"`
 	// guidecheck: flights in a quest before it is postponed to the next level.
 	PostponeAfterFlights int `json:"postpone_after_flights"`
 	// Learning: in a borderline case (expected to survive, the rule says flee), stay and fight with

@@ -525,6 +525,24 @@ func (s *Service) Creature(ctx context.Context, r *pb.CreatureInfoRequest) (*pb.
 	return c, nil
 }
 
+// VendorItems lists the weapons and armor a vendor sells (gear bought on the way, auto/town.go).
+func (s *Service) VendorItems(ctx context.Context, r *pb.VendorItemsRequest) (*pb.VendorItemsResponse, error) {
+	rows, err := s.query(ctx, `SELECT it.entry, it.BuyPrice, it.RequiredLevel FROM npc_vendor v JOIN item_template it ON it.entry=v.item
+		WHERE v.entry=? AND it.class IN (2,4) AND it.BuyPrice>0`, r.Entry)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := &pb.VendorItemsResponse{}
+	for rows.Next() {
+		it := &pb.VendorItem{}
+		if rows.Scan(&it.Entry, &it.Price, &it.RequiredLevel) == nil {
+			out.Items = append(out.Items, it)
+		}
+	}
+	return out, rows.Err()
+}
+
 func (s *Service) ItemSources(ctx context.Context, r *pb.ItemSourcesRequest) (*pb.ItemSourcesResponse, error) {
 	// LIMIT 50: common items (Chunk of Boar Meat) drop from many monsters of every zone; with 8 the
 	// best chances elsewhere hid the Crag Boars of Dun Morogh (quest 317 skipped, bench of 2026-10-26).

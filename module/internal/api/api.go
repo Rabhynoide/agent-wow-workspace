@@ -397,6 +397,27 @@ func (c C) Gear(ctx context.Context) (*progresspb.GearResult, error) {
 	return &r, err
 }
 
+// BestPurchase picks the best gear upgrade among items for sale (prices in copper, at most maxCopper).
+func (c C) BestPurchase(ctx context.Context, items, prices []uint32, maxCopper uint32) (*progresspb.PickRewardResult, error) {
+	var r progresspb.PickRewardResult
+	err := invoke.Call(ctx, c.S, "progress", "pick_reward", &progresspb.PickRewardRequest{Items: items, Prices: prices, MaxCopper: maxCopper}, &r)
+	return &r, err
+}
+
+// VendorItems lists the weapons and armor a vendor (creature entry) sells.
+func (c C) VendorItems(ctx context.Context, entry uint32) ([]*worldpb.VendorItem, error) {
+	var r worldpb.VendorItemsResponse
+	err := invoke.Call(ctx, c.S, "world", "vendor_items", &worldpb.VendorItemsRequest{Entry: entry}, &r)
+	return r.Items, err
+}
+
+// BuyItem buys one of an item at the vendor within 5 yards (at most maxCopper; 0: all our money).
+func (c C) BuyItem(ctx context.Context, item, maxCopper uint32) (*townpb.RestockResult, error) {
+	var r townpb.RestockResult
+	err := invoke.Call(ctx, c.S, "town", "restock", &townpb.RestockRequest{Item: item, MaxCopper: maxCopper}, &r)
+	return &r, err
+}
+
 func (c C) PickReward(ctx context.Context, items []uint32) (*progresspb.PickRewardResult, error) {
 	var r progresspb.PickRewardResult
 	err := invoke.Call(ctx, c.S, "progress", "pick_reward", &progresspb.PickRewardRequest{Items: items}, &r)
