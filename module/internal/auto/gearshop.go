@@ -39,9 +39,9 @@ type gearBuy struct {
 // can pay it and its vendor is within gearDetour yards, we go and buy it.
 const (
 	gearZone = 1500
-	// gearDetour: with 400 yards, the Wooden Mallet was bought in 1 run of 4 (Corina Steele was never
-	// that near when the money was there, series 6708bdf); Goldshire is the middle of the 6 → 8 route.
-	gearDetour = 1200
+	// gearDetour: 1200 yards bought the Wooden Mallet in 2 runs of 4 instead of 1, late (25-34 min)
+	// and with no gain (37.1 min against 34.2, series a52ee8e): 400.
+	gearDetour = 400
 )
 
 // zoneWeapon looks (once per level and map) for the best weapon upgrade sold in the zone, and keeps
