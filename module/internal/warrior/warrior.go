@@ -32,13 +32,14 @@ var (
 	Retaliation    = []uint32{20230}
 	EnragedRegen   = []uint32{55694}
 	BerserkerRage  = []uint32{18499}
+	DemoShout      = []uint32{47437, 25203, 25202, 11556, 11555, 11554, 6190, 1160}
 
 	SpellGroups = map[string][]uint32{
 		"Battle Shout": BattleShout, "Charge": Charge, "Rend": Rend, "Heroic Strike": HeroicStrike, "Thunder Clap": ThunderClap,
 		"Victory Rush": VictoryRush, "Overpower": Overpower, "Bloodrage": Bloodrage, "Execute": Execute, "Mortal Strike": MortalStrike,
 		"Slam": Slam, "Sweeping Strikes": SweepingStrike, "Bladestorm": Bladestorm, "Intimidating Shout": IntimShout,
 		"Retaliation": Retaliation, "Enraged Regeneration": EnragedRegen, "Berserker Rage": BerserkerRage,
-		"Cleave": Cleave,
+		"Cleave": Cleave, "Demoralizing Shout": DemoShout,
 	}
 
 	// Auras by name for the priority table (journal/classes/warrior.yaml), when the aura is not the

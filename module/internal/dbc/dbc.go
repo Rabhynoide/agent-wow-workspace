@@ -20,6 +20,11 @@ func Open(path string) (*File, error) {
 	if err != nil {
 		return nil, err
 	}
+	return Parse(path, b)
+}
+
+// Parse reads a WDBC table from its bytes (a file read from the client MPQ archives).
+func Parse(path string, b []byte) (*File, error) {
 	if len(b) < 20 || string(b[:4]) != "WDBC" {
 		return nil, fmt.Errorf("%s: not a WDBC file", path)
 	}

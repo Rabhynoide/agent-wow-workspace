@@ -100,7 +100,7 @@ training:
   max_rank: ["Battle Shout", "Rend", "Thunder Clap", "Execute", "Slam", "Mortal Strike"]
   train_asap_single_rank: ["Victory Rush", "Hamstring", "Bloodrage", "Overpower", "Disarm", "Retaliation", "Intimidating Shout", "Berserker Rage", "Pummel", "Recklessness", "Shattering Throw", "Enraged Regeneration"]
   low_priority: ["Heroic Strike", "Cleave", "Charge"]   # gains de rang faibles, si or en trop
-  skip: ["Shield Bash", "Demoralizing Shout", "Revenge", "Mocking Blow", "Shield Block", "Challenging Shout", "Shield Wall", "Whirlwind", "Shield Slam", "Spell Reflection", "Commanding Shout", "Intervene"]
+  skip: ["Shield Bash", "Revenge", "Mocking Blow", "Shield Block", "Challenging Shout", "Shield Wall", "Whirlwind", "Shield Slam", "Spell Reflection", "Commanding Shout", "Intervene"]
 
 pitfalls:
   - "Oublier le respec au 25 (Improved Thunder Clap bloque Taste for Blood)"
@@ -127,18 +127,25 @@ priorities:
   - { spell: "Victory Rush", every: 1, reactive: true }
   - { spell: "Execute", if: 'target_aura_state(2) or target_hp < 20 or aura("Sudden Death")' }
   - { spell: "Overpower", if: 'dodged(4) or aura("Taste for Blood")', every: 1, reactive: true }
-  # Plusieurs attaquants à 8 yards (near_attackers) : sorts de zone avant les coups sur la seule cible (Singular).
+  # Plusieurs attaquants (simulation cmd/rotsim du 2026-10-29, niveaux 6-24, packs de 2 et 3) :
+  # Demoralizing Shout dès le 14 (morts à 3 monstres 54 % -> 18 % dans le modèle), Rend sur chaque
+  # attaquant (-10 à -30 % de temps par pull), puis Thunder Clap ; Cleave et Heroic Strike seulement
+  # avec beaucoup de rage.
   - { spell: "Sweeping Strikes", target: self, if: 'near_attackers >= 2' }
-  - { spell: "Thunder Clap", if: 'near_attackers >= 2', every: 1 }
+  - { spell: "Demoralizing Shout", if: 'near_attackers >= 2 and not target_aura("Demoralizing Shout")', every: 2 }
   - { spell: "Rend", if: 'target_aura_left("Rend") < 2 and target_hp > 25 and target_dies_in > 8', every: 2 }
+  - { spell: "Rend", target: other, if: 'target_aura_left("Rend") < 2 and target_hp > 25', every: 1 }
+  - { spell: "Thunder Clap", if: 'near_attackers >= 2', every: 1 }
   - { spell: "Mortal Strike", if: 'rage >= 30' }
   - { spell: "Slam", if: 'level >= 41' }
+  # Seul : Thunder Clap reste meilleur que garder la rage (Heroic Strike ne rend pas la rage du coup).
   - { spell: "Thunder Clap", if: 'level < 20', every: 1 }
   # Remplace le prochain coup (sans recharge globale) : rage en trop seulement.
-  - { spell: "Cleave", off_gcd: true, every: 3.5, if: 'near_attackers >= 2 and rage >= 20' }
-  - { spell: "Heroic Strike", off_gcd: true, every: 3.5, if: '(level < 41 and rage >= 30) or rage >= 60' }
+  - { spell: "Cleave", off_gcd: true, every: 3.5, if: 'near_attackers >= 2 and rage >= 30' }
+  - { spell: "Heroic Strike", off_gcd: true, every: 3.5, if: '(level < 41 and rage >= 50) or rage >= 60' }
 
 # Hors combat, avant un pull.
 buffs:
   - { spell: "Bloodrage", target: self, if: 'my_aura_left("Battle Shout") < 30 and rage < 10' }
-  - { spell: "Battle Shout", target: self, if: 'my_aura_left("Battle Shout") < 30' }
+  # Renouvelé dès la fin du combat avec la rage qui reste (elle fond de 1 par seconde) : < 60 s.
+  - { spell: "Battle Shout", target: self, if: 'my_aura_left("Battle Shout") < 60' }

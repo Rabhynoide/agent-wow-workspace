@@ -77,7 +77,7 @@ func (e *env) nearAttackers() int {
 func (e *env) onMe() []*statepb.Obj {
 	if e.attacked == nil {
 		var out []*statepb.Obj
-		r, err := e.s.api.Nearby(e.ctx, &statepb.NearbyRequest{Kind: "unit", Radius: 30, Max: 12, AliveOnly: true})
+		r, err := e.s.api.Nearby(e.ctx, &statepb.NearbyRequest{Kind: "unit", Radius: 30, Max: 12, AliveOnly: true, WithAuras: true})
 		if err == nil {
 			for _, o := range r.Objs {
 				if o.Target == e.me.Guid && o.UnitFlags&unitInCombat != 0 {
@@ -418,6 +418,7 @@ type line struct {
 	cond  expr
 	ranks []uint32
 	self  bool
+	other bool   // target: another attacker in reach and in front (Rend on each, rotsim 2026-10-29)
 	spell uint32 // best known rank, set at each fight
 	mark  time.Time
 }
@@ -440,14 +441,14 @@ func compileTable(ps []classdata.Priority, n names) (*rotation, error) {
 		if len(ranks) == 0 {
 			return nil, fmt.Errorf("line %d: unknown spell %q", i+1, p.Spell)
 		}
-		if p.Target != "" && p.Target != "self" {
-			return nil, fmt.Errorf("line %d: target %q (self or empty)", i+1, p.Target)
+		if p.Target != "" && p.Target != "self" && p.Target != "other" {
+			return nil, fmt.Errorf("line %d: target %q (self, other or empty)", i+1, p.Target)
 		}
 		c, err := compile(p.If, n)
 		if err != nil {
 			return nil, fmt.Errorf("line %d (%s): %w", i+1, p.Spell, err)
 		}
-		r.lines = append(r.lines, &line{p: p, cond: c, ranks: ranks, self: p.Target == "self"})
+		r.lines = append(r.lines, &line{p: p, cond: c, ranks: ranks, self: p.Target == "self", other: p.Target == "other"})
 	}
 	return r, nil
 }
@@ -519,17 +520,43 @@ func (s *Service) step(ctx context.Context, r *rotation, e *env, guid uint64) (c
 		}
 		var t *statepb.Obj
 		target := e.me.Guid
-		if !l.self {
+		switch {
+		case l.other:
+			// The first other attacker the condition and the spell accept, read with the target's
+			// variables (target_aura_left, target_hp...); its death time is not measured (99).
+			if e.t == nil || e.noEnemy {
+				continue
+			}
+			for _, o := range e.onMe() {
+				if o.Guid == guid || !inFront(e.me, o) {
+					continue
+				}
+				oe := *e
+				oe.t, oe.dist, oe.diesIn, oe.visible = o, o.Dist, 99, nil
+				if l.cond != nil && l.cond(&oe) == 0 {
+					continue
+				}
+				if ok, _ := s.book.canCast(l.spell, e.me, o, o.Dist); ok {
+					t, target = o, o.Guid
+					break
+				}
+			}
+			if t == nil {
+				continue
+			}
+		case !l.self:
 			if e.t == nil || e.noEnemy {
 				continue
 			}
 			t, target = e.t, guid
-		}
-		if l.cond != nil && l.cond(e) == 0 {
-			continue
-		}
-		if ok, _ := s.book.canCast(l.spell, e.me, t, e.dist); !ok {
-			continue
+			fallthrough
+		default:
+			if l.cond != nil && l.cond(e) == 0 {
+				continue
+			}
+			if ok, _ := s.book.canCast(l.spell, e.me, t, e.dist); !ok {
+				continue
+			}
 		}
 		l.mark = now
 		if l.p.OffGCD {
@@ -549,7 +576,7 @@ func (s *Service) step(ctx context.Context, r *rotation, e *env, guid uint64) (c
 		if !l.p.Reactive {
 			l.mark = time.Time{}
 		}
-		return false, !l.self && !l.p.Reactive
+		return false, !l.self && !l.other && !l.p.Reactive
 	}
 	return false, false
 }

@@ -15,7 +15,7 @@ Un fichier YAML par classe (`warrior.yaml`, …), extrait des guides Icy Veins W
 ## Tables de priorités (`priorities`, `buffs`)
 Lues par le module combat (modèle Ovale). `priorities` en combat, `buffs` hors combat avant un pull : la première ligne
 dont la condition `if` passe et dont le sort est lançable (recharge, coût, aura state, portée, arme, d'après Spell.dbc)
-est lancée. Champs : `spell` (nom anglais, rangs dans `module/internal/<classe>`), `target: self` (sinon la cible),
+est lancée. Champs : `spell` (nom anglais, rangs dans `module/internal/<classe>`), `target: self` (sinon la cible ; `target: other` : le premier autre attaquant devant nous que la condition, lue avec ses variables `target_*`, et le sort acceptent, `target_dies_in` 99),
 `every` (secondes entre deux essais), `cast` (secondes d'incantation, défaut : recharge globale), `after` (attente après
 le sort : la course de Charge), `reactive` (sort sur événement, les refus sont normaux), `off_gcd` (Heroic Strike :
 envoyé sans attendre).
