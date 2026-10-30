@@ -9,6 +9,10 @@ import "time"
 
 // Held quests are turned in anyway this many levels over their quest level, or after holdMax.
 const (
+	// holdFar: only turn-ins farther than this from us are held (yards, or another map): holding every
+	// later turn-in made the route walk more (hold_turnins, 2026-10-28); the one that costs is
+	// Shipment to Stormwind, a 4.5 min round trip per run for 790 XP (walking analysis, 2026-10-31).
+	holdFar    = 800
 	holdLevels = 3
 	holdMax    = 45 * time.Minute
 	holdAtMost = 8 // quests kept at once (the log holds 25)
@@ -38,10 +42,10 @@ func horizon(entries []routeQuest, batch []uint32) int {
 	return int(^uint(0) >> 1) // end of the route
 }
 
-// holdsFor returns the quests of the batch to keep for a later turn-in, and the held quests due
+// holdsFor returns the quests of the batch to keep for a later turn-in (their turn-in far: far), and the held quests due
 // now (their turn-in step reached, too low for us now, or held too long), to add to the batch.
 func holdsFor(entries []routeQuest, turnAt map[uint32]int, batch []uint32, held map[uint32]time.Time,
-	levelOf func(uint32) int, level uint32, now time.Time) (hold, due []uint32) {
+	levelOf func(uint32) int, level uint32, now time.Time, far func(uint32) bool) (hold, due []uint32) {
 	h := horizon(entries, batch)
 	for id, since := range held {
 		at, ok := turnAt[id]
@@ -54,7 +58,7 @@ func holdsFor(entries []routeQuest, turnAt map[uint32]int, batch []uint32, held 
 	}
 	kept := len(held) - len(due)
 	for _, id := range batch {
-		if at, ok := turnAt[id]; ok && at > h && kept < holdAtMost {
+		if at, ok := turnAt[id]; ok && at > h && kept < holdAtMost && far(id) {
 			hold = append(hold, id)
 			kept++
 		}

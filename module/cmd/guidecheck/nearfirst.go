@@ -68,3 +68,20 @@ func (c *checker) farFunc(m uint32, x, y float64, taken map[uint32]bool) func(ui
 		return true
 	}
 }
+
+// farTurnIn tells whether all the places a quest is turned in are farther than holdFar yards from
+// (m, x, y) (or on another map); unknown: not far.
+func (c *checker) farTurnIn(m uint32, x, y float64) func(uint32) bool {
+	return func(id uint32) bool {
+		ps := c.questPlaces(id, true)
+		if len(ps) == 0 {
+			return false
+		}
+		for _, p := range ps {
+			if p.m == m && math.Hypot(p.x-x, p.y-y) <= holdFar {
+				return false
+			}
+		}
+		return true
+	}
+}

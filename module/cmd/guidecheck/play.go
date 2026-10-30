@@ -676,7 +676,8 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 			}
 			var hold, due []uint32
 			if tune.Get().HoldTurnins || len(ps.held) > 0 {
-				hold, due = holdsFor(c.entries, c.turnAt, batch, ps.held, func(id uint32) int { return c.cache[id].Level }, me.Level, time.Now())
+				hold, due = holdsFor(c.entries, c.turnAt, batch, ps.held, func(id uint32) int { return c.cache[id].Level }, me.Level, time.Now(),
+					c.farTurnIn(me.Map, float64(me.X), float64(me.Y)))
 				if !tune.Get().HoldTurnins {
 					hold = nil
 				}
