@@ -36,7 +36,7 @@
  "avoid_wander": 0.5,
  "body_pull": false,
  "engage_on_way": true,
- "hold_turnins": false,
+ "hold_turnins": true,
  "quest_hub": false,
  "buy_gear": true
 }
