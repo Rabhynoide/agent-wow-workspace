@@ -68,15 +68,16 @@ func (s *Service) lossLeft(me *statepb.SelfInfo, att []*statepb.Obj) float64 {
 			left[i] = float64(a.Hp) / float64(a.MaxHp)
 		}
 	}
-	loss := xpscore.LossLeft(levels, left, me.Level, me.ClassId, s.fights.Get(), s.tuneGet().AddCost)
-	return max(loss, s.lossNow(me, att))
+	return xpscore.LossLeft(levels, left, me.Level, me.ClassId, s.fights.Get(), s.tuneGet().AddCost)
 }
 
 // lossNow is the loss still to come at the damage we take now, the attackers killed one after the
 // other (lowest health first) at our damage rate: each one keeps hitting until it dies. The learned
 // table knows fights, not this one: 3 Defias were expected to cost 35 % then 24 % of health while
 // they took 7 % a second, from 72 % to death in 10 s (run of 2026-10-29). After "flight hopeless:
-// staying", 23 encounters in 45 ended in death.
+// staying", 23 encounters in 45 ended in death. Only the hopeless flight uses it: as the loss of the
+// flee rule, it made the bot flee twice as often, from 1 or 2 monsters too, with more deaths (series
+// df704a2: 40.9 min, 4 deaths, against 37.9 and 3).
 func (s *Service) lossNow(me *statepb.SelfInfo, att []*statepb.Obj) float64 {
 	in, how := s.incoming(me, att)
 	ours, ok := s.ours(me)
@@ -188,6 +189,7 @@ func (s *Service) hopelessFlight(me *statepb.SelfInfo, att []*statepb.Obj, loss 
 	cost := m - t.FleeReserve
 	// Staying only pays when the fight costs less than the flight: both over our health, the flight
 	// may still escape (monsters stop, leash), the fight kills us.
+	loss = max(loss, s.lossNow(me, att))
 	return cost >= hp && loss <= cost, fmt.Sprintf("flight costs %.0f %%, the fight %.0f %%", cost, loss)
 }
 
