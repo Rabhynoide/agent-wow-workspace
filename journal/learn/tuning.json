@@ -2,7 +2,7 @@
  "flee_margin": 15,
  "high_margin": 10,
  "chase_margin": 10,
- "crowd_flee": 3,
+ "crowd_flee": 4,
  "crowd_loss": 30,
  "avoid": true,
  "postpone_after_flights": 2,
