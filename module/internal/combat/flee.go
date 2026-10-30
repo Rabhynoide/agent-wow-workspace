@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"math"
 	"math/rand"
+	"sort"
 	"time"
 
 	pb "wowagent/gen/combatv1"
@@ -67,7 +68,33 @@ func (s *Service) lossLeft(me *statepb.SelfInfo, att []*statepb.Obj) float64 {
 			left[i] = float64(a.Hp) / float64(a.MaxHp)
 		}
 	}
-	return xpscore.LossLeft(levels, left, me.Level, me.ClassId, s.fights.Get(), s.tuneGet().AddCost)
+	loss := xpscore.LossLeft(levels, left, me.Level, me.ClassId, s.fights.Get(), s.tuneGet().AddCost)
+	return max(loss, s.lossNow(me, att))
+}
+
+// lossNow is the loss still to come at the damage we take now, the attackers killed one after the
+// other (lowest health first) at our damage rate: each one keeps hitting until it dies. The learned
+// table knows fights, not this one: 3 Defias were expected to cost 35 % then 24 % of health while
+// they took 7 % a second, from 72 % to death in 10 s (run of 2026-10-29). After "flight hopeless:
+// staying", 23 encounters in 45 ended in death.
+func (s *Service) lossNow(me *statepb.SelfInfo, att []*statepb.Obj) float64 {
+	in, how := s.incoming(me, att)
+	ours, ok := s.ours(me)
+	if how == "" || in <= 0 || !ok || ours <= 0 || me.MaxHp == 0 {
+		return 0
+	}
+	hps := make([]float64, len(att))
+	for i, a := range att {
+		hps[i] = float64(a.Hp)
+	}
+	sort.Float64s(hps)
+	per := in / float64(len(att))
+	var t, loss float64
+	for _, h := range hps {
+		t += h / ours
+		loss += per * t
+	}
+	return 100 * loss / float64(me.MaxHp)
 }
 
 // mustFlee tells whether the fight is expected to cost more health than we have (with fleeMargin),
@@ -159,7 +186,9 @@ func (s *Service) hopelessFlight(me *statepb.SelfInfo, att []*statepb.Obj, loss 
 		return false, ""
 	}
 	cost := m - t.FleeReserve
-	return cost >= hp, fmt.Sprintf("flight costs %.0f %%, the fight %.0f %%", cost, loss)
+	// Staying only pays when the fight costs less than the flight: both over our health, the flight
+	// may still escape (monsters stop, leash), the fight kills us.
+	return cost >= hp && loss <= cost, fmt.Sprintf("flight costs %.0f %%, the fight %.0f %%", cost, loss)
 }
 
 // lateHold: the fight is lost, but we stay while the weakest attacker in reach can still die before
