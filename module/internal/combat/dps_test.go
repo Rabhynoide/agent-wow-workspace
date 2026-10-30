@@ -151,22 +151,6 @@ func TestOrderedDamage(t *testing.T) {
 	}
 }
 
-// An exploration (stay) is released below the last safe moment to flee: 2 Defias at 10 damage/s on
-// 203 health say flee below ~59 %; at 37 % we run (bench of 2026-10-26).
-func TestExplorationReleasedWhenUnsafe(t *testing.T) {
-	me := &statepb.SelfInfo{Hp: 75, MaxHp: 203}
-	att := []*statepb.Obj{{Guid: 7, Entry: 116, Hp: 150, MaxHp: 160}, {Guid: 8, Entry: 116, Hp: 150, MaxHp: 160}}
-	s := &Service{guid: 1}
-	s.decision = &fleeDecision{key: "3:-20", stayed: true, how: "explore", fresh: 3}
-	if s.decide(me, att, 60, 0) {
-		t.Fatal("nothing measured: the exploration holds")
-	}
-	fill(&s.dmg, 7, 10)
-	if !s.decide(me, att, 60, 0) {
-		t.Fatal("below the safe flight threshold: the exploration is released")
-	}
-}
-
 // 4 kobolds at ~4 damage/s each on 232 health: a flight costs far more than the 57 % the fight is
 // expected to cost, at 60 %: stay. At 90 % the flight is still tried.
 func TestHopelessFlight(t *testing.T) {
@@ -184,16 +168,17 @@ func TestHopelessFlight(t *testing.T) {
 	}
 }
 
-// A stay is released when monsters are about to join (3 kobolds at 94 % ended against 6, 2026-10-27).
-func TestStayReleasedByJoiners(t *testing.T) {
+// Staying or fleeing by cost, nothing learned: 2 kobolds at 94 % with 40 % to lose: stay; with 4
+// more coming (joiners), the fight to come costs 136 %: flee.
+func TestDecideByCost(t *testing.T) {
 	me := &statepb.SelfInfo{Hp: 190, MaxHp: 203}
 	att := []*statepb.Obj{{Guid: 7, Entry: 475, Hp: 150, MaxHp: 160}, {Guid: 8, Entry: 475, Hp: 150, MaxHp: 160}}
-	s := &Service{guid: 1}
-	s.decision = &fleeDecision{key: "2:40", stayed: true, how: "learned", fresh: 2}
+	s := &Service{guid: 1, fleeTab: tuning.NewFleeTable(t.TempDir())}
 	if s.decide(me, att, 40, 0) {
-		t.Fatal("no joiners: the learned stay holds")
+		t.Fatal("slack 54: stay")
 	}
-	if !s.decide(me, att, 40, 2) {
-		t.Fatal("two kobolds coming: the stay is released")
+	s.decision = nil
+	if !s.decide(me, att, 40, 4) {
+		t.Fatal("four kobolds coming: flee")
 	}
 }

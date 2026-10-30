@@ -6,7 +6,6 @@ import (
 	"google.golang.org/protobuf/proto"
 	"log/slog"
 	"math"
-	"math/rand"
 	"sort"
 	"time"
 
@@ -268,66 +267,49 @@ type fleeDecision struct {
 	fresh  int // fresh attackers when it was taken
 }
 
-// decide: the rule says flee. The learned table may say stay (its death rate is low enough for the
-// speedrun's costs); without enough fights, a borderline case where we are expected to survive is
-// explored (stay) with probability Explore. An exploration holds for the rest of the encounter, a learned
-// stay as long as the fight is expected to leave us some health (slack >= 0). Where fleeing itself
-// kills often (tuning.FleeDeath), staying is explored without slack too.
+// decide: the rule says flee (the fight is expected to leave us under the margin). Staying and
+// fleeing are compared by their expected cost in seconds (tuning.Decide: death rates of staying,
+// computed from the slack and corrected by the stays learned in the case, and of fleeing, learned),
+// every second of the fight; the monsters about to join (joiners) count as attackers of the fight to
+// come. No fixed threshold any more (the user, 2026-10-30): the crowd rule fled 3 fresh attackers at
+// 75 %+ of health 126 times (16 deaths) where staying won 58 times in 88 (6 deaths), and 54 of the 79
+// deaths since 2026-10-26 came in a flight, the pack growing on the way in 46.
+// The first decision of an encounter is logged with its outcome (encounter.go) for the learning.
 func (s *Service) decide(me *statepb.SelfInfo, att []*statepb.Obj, loss float64, joiners int) bool {
 	t := s.tuneGet()
-	s.mu.Lock()
-	d := s.decision
-	s.mu.Unlock()
-	fresh := 0
+	fresh := joiners
 	for _, a := range att {
 		if a.MaxHp > 0 && 2*a.Hp > a.MaxHp {
 			fresh++
 		}
 	}
-	slack := float64(pct(me.Hp, me.MaxHp)) - loss
-	// A learned stay holds too while we are still expected to survive: decided again each second, it
-	// fell into a cell with few fights (a fourth kobold, health 75-85 %) and the rule fled. Of the
-	// learned stays at 3 fresh attackers, all benches, 9 in 16 fled that way, while the explored stays
-	// of those cells, held to the end, won 33 times in 37.
-	// Held for the whole encounter now (encounter.go), an exploration stops holding when more fresh
-	// monsters join than when it was taken (an encounter of series QR had 11 monsters).
-	// Neither holds below the last safe moment to flee (dpsMargin, measured or learned): 3 Defias
-	// Bandits, explored at 66 % with a loss of 80 %, killed us at 37 % with 2 left whose damage said
-	// flee below 59 % (bench of 2026-10-26).
-	unsafe := false
-	if m, ok := s.dpsMargin(me, t, fresh, att); ok && float64(pct(me.Hp, me.MaxHp)) < m {
-		unsafe = true
+	if joiners > 0 && len(att) > 0 {
+		// xpscore.LossLeft: the mean loss of an attacker times 1 + add_cost per attacker beyond the first.
+		n := float64(len(att))
+		loss *= (1 + t.AddCost*(n+float64(joiners)-1)) / (1 + t.AddCost*(n-1))
 	}
-	// Monsters about to join (joiners): no stay, learned or explored, holds or is taken; the learned
-	// cases and the explorations were measured on the attackers already on us.
-	if d != nil && d.stayed && !unsafe && joiners == 0 && ((d.how == "explore" && fresh <= d.fresh) || slack >= 0) {
-		return false
-	}
-	if d != nil && d.stayed && (unsafe || joiners > 0) {
-		slog.Info("flee decision released", "how", d.how, "hp", pct(me.Hp, me.MaxHp), "dps_pct", s.dpsPct(me), "joiners", joiners)
-	}
+	hp := float64(pct(me.Hp, me.MaxHp))
+	slack := hp - loss
 	key := tuning.Key(fresh, slack)
 	flee, how := true, "rule"
-	p := 0.0 // exploration probability, logged: 1 exploration in 8 eligible cases in game (series ES)
+	var pStay, pFlee float64
 	if s.fleeTab != nil {
-		if joiners > 0 {
-			how = "joiners" // the rule: flee
-		} else if f, learned := tuning.Decide(s.fleeTab.Get(), key, t); learned {
-			flee, how = f, "learned"
-		} else if unsafe {
-			p = 0
-		} else if p = exploreProb(t, slack, t.ExploreFleeDeath > 0 && tuning.FleeDeath(s.fleeTab.Get(), key, t) >= t.ExploreFleeDeath); rand.Float64() < p {
-			flee, how = false, "explore"
-		}
+		flee, pStay, pFlee = tuning.Decide(s.fleeTab.Get(), key, slack, loss, t)
+		how = "cost"
 	}
-	if d == nil {
-		s.mu.Lock()
+	s.mu.Lock()
+	first := s.decision == nil
+	if first {
 		s.decision = &fleeDecision{key: key, stayed: !flee, how: how, hp: pct(me.Hp, me.MaxHp), slack: slack, fresh: fresh}
-		nd := s.decision
-		s.mu.Unlock()
+	}
+	nd := s.decision
+	s.mu.Unlock()
+	if first {
 		s.encounterDecision(nd) // judged when the encounter ends (encounter.go)
-		slog.Info("flee decision", "key", key, "stay", !flee, "how", how, "hp", pct(me.Hp, me.MaxHp), "loss", int(loss), "fresh", fresh, "p", p,
-			"dps_pct", s.dpsPct(me), "joiners", joiners)
+	}
+	if first || flee {
+		slog.Info("flee decision", "key", key, "stay", !flee, "how", how, "hp", pct(me.Hp, me.MaxHp), "loss", int(loss), "fresh", fresh,
+			"p_stay", fmt.Sprintf("%.2f", pStay), "p_flee", fmt.Sprintf("%.2f", pFlee), "dps_pct", s.dpsPct(me), "joiners", joiners)
 	}
 	return flee
 }

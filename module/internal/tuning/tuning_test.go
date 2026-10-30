@@ -27,24 +27,28 @@ time=2026-10-14T10:03:00Z level=INFO msg="flee outcome" key=2:10 stayed=true how
 		t.Fatalf("learned twice: %d", n)
 	}
 	d := Defaults()
-	if flee, learned := Decide(f, "2:10", d); !flee || learned {
-		t.Errorf("2 fights: rule (flee), not learned")
+	// Nothing learned: computed from the slack. 20 % of health left over a loss of 40 % (spread 20):
+	// P(death) 16 %, 29 s, against a flight of 90 s: stay. 20 % short: P 84 %, 151 s against 90 + 18: flee.
+	f = &Flee{Cells: map[string]*Cell{}}
+	if flee, p, _ := Decide(f, "2:20", 20, 40, d); flee || p < 0.15 || p > 0.17 {
+		t.Errorf("slack 20: stay, p %v", p)
 	}
-	f.Cells["2:10"] = &Cell{N: 20, Deaths: 1} // p = 2/22: 16 s expected vs 90 s flight: stay
-	if flee, learned := Decide(f, "2:10", d); flee || !learned {
-		t.Errorf("low death rate: stay")
+	if flee, _, _ := Decide(f, "2:-20", -20, 40, d); !flee {
+		t.Errorf("slack -20: flee")
 	}
-	f.Cells["1:-10"] = &Cell{N: 10, Deaths: 8} // p = 9/12: 135 s vs 90 s + 0.1 × 180 s: flee
-	if flee, _ := Decide(f, "1:-10", d); !flee {
-		t.Errorf("high death rate: flee")
+	// Stays learned in the case correct it: 8 deaths in 10 at slack 20, (8 + 4 × 0.16) / 14 = 62 %: flee.
+	f.Cells["2:20"] = &Cell{N: 10, Deaths: 8}
+	if flee, _, _ := Decide(f, "2:20", 20, 40, d); !flee {
+		t.Errorf("deadly stays: flee")
 	}
-	// Flights that die: p flight = (4 + 0.4) / 10, 90 + 79 s against 9/12 × 180 = 135 s: stay.
-	f.Cells["1:-10"] = &Cell{N: 10, Deaths: 8, FleeN: 6, FleeDeaths: 4}
-	if flee, _ := Decide(f, "1:-10", d); flee {
+	// Flights that die (from the same number of attackers too): stay at slack -20.
+	f.Cells["2:-20"] = &Cell{FleeN: 10, FleeDeaths: 8}
+	f.Cells["2:0"] = &Cell{FleeN: 10, FleeDeaths: 7}
+	if flee, _, _ := Decide(f, "2:-20", -20, 40, d); flee {
 		t.Errorf("deadly flights: stay")
 	}
 	if p := FleeDeath(f, "9:9", d); p != d.FleeDeathPrior {
-		t.Errorf("unknown cell: prior, got %v", p)
+		t.Errorf("unknown attackers: prior, got %v", p)
 	}
 	if k := Key(5, -45); k != "4:-30" {
 		t.Errorf("key %s", k)

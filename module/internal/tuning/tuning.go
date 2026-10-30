@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -126,7 +127,7 @@ type Tuning struct {
 // Defaults. Why these margins (benches of 2026-10-13):
 //   - flee_margin 15: health we want left when the fight is expected to end; a fight can cost twice its
 //     average, and a death (150 s, durability) costs far more than a flight (a kill lost).
-//   - crowd_flee 3: with 5-6 kobolds of a pack (Fargodeep mine) the ones still on us at the start of
+//   - crowd_flee 0 since 2026-10-30 (the flee decision compares costs, tuning.Decide); 3 before: with 5-6 kobolds of a pack (Fargodeep mine) the ones still on us at the start of
 //     the run killed us twice; crowd_loss 30: three kobolds two levels below (19 %) made us flee at
 //     92 % health and postponed the mine quest level after level (0 quests in 100 minutes).
 //   - high_margin 10 per attacker 2+ levels above: two deaths to a level-10 Riverpaw Outrunner at
@@ -134,7 +135,7 @@ type Tuning struct {
 //   - chase_margin 10 per fresh attacker beyond the first: Prowler + Young Forest Bear at level 9,
 //     flight started at 34 %, dead 8 s later.
 func Defaults() Tuning {
-	return Tuning{FleeMargin: 15, HighMargin: 10, ChaseMargin: 10, FleeDPS: true, FleeExposure: 8, FleeExposureFresh: 3, FleeReserve: 5, FleeLate: true, FleeLateHold: 60, CrowdFlee: 3, CrowdLoss: 30, Avoid: false, AvoidWander: 0.5,
+	return Tuning{FleeMargin: 15, HighMargin: 10, ChaseMargin: 10, FleeDPS: true, FleeExposure: 8, FleeExposureFresh: 3, FleeReserve: 5, FleeLate: true, FleeLateHold: 60, CrowdFlee: 0, CrowdLoss: 30, Avoid: false, AvoidWander: 0.5,
 		PostponeAfterFlights: 1, Explore: 0.25, Learn: true, MinFights: 6, DeathCostS: 180, FleeCostS: 90,
 		FleeDeathPrior: 0.1, ExploreFleeDeath: 0.2,
 		AddCost: 1.5, PullAdapt: false, PullSize: 2, PullSizeMax: 4, PullUpAfter: 2,
@@ -204,13 +205,42 @@ type Cell struct {
 // fleePriorN: weight of FleeDeathPrior, in flights.
 const fleePriorN = 4.0
 
-// FleeDeath is the death rate of the flights of a case (prior FleeDeathPrior).
+// FleeDeath is the death rate of the flights of a case: its flights, with the flights of all the
+// cases of the same number of attackers as prior (worth fleePriorN; FleeDeathPrior before any).
 func FleeDeath(f *Flee, key string, t Tuning) float64 {
-	c := f.Cells[key]
-	if !t.Learn || c == nil {
+	if !t.Learn {
 		return t.FleeDeathPrior
 	}
-	return (c.FleeDeaths + fleePriorN*t.FleeDeathPrior) / (c.FleeN + fleePriorN)
+	var n, d float64
+	fresh, _, _ := strings.Cut(key, ":")
+	for k, c := range f.Cells {
+		if kf, _, _ := strings.Cut(k, ":"); kf == fresh {
+			n, d = n+c.FleeN, d+c.FleeDeaths
+		}
+	}
+	prior := (d + fleePriorN*t.FleeDeathPrior) / (n + fleePriorN)
+	c := f.Cells[key]
+	if c == nil {
+		return prior
+	}
+	return (c.FleeDeaths + fleePriorN*prior) / (c.FleeN + fleePriorN)
+}
+
+// stayPriorN: weight, in fights, of the computed death rate of staying against the stays learned in
+// the case.
+const stayPriorN = 4.0
+
+// StayDeath is the death rate of staying: the chance that the fight costs more than our health
+// (slack = health - expected loss; a spread of half the expected loss, at least 15 %: a fight can
+// cost twice its average), corrected by the stays learned in the case.
+func StayDeath(f *Flee, key string, slack, loss float64, t Tuning) float64 {
+	sigma := max(15, loss/2)
+	prior := 0.5 * math.Erfc(slack/(sigma*math.Sqrt2))
+	c := f.Cells[key]
+	if !t.Learn || c == nil {
+		return prior
+	}
+	return (c.Deaths + stayPriorN*prior) / (c.N + stayPriorN)
 }
 
 // Flee is journal/learn/flee.json.
@@ -249,16 +279,14 @@ func NewFleeTable(dir string) *FleeTable {
 
 func (t *FleeTable) Get() *Flee { return t.c.get() }
 
-// Decide returns whether to flee in a case the rule would flee from, from the learned death rates
-// of staying (with one death in two fights as prior) and of fleeing, and whether the table decided
-// (enough fights).
-func Decide(f *Flee, key string, t Tuning) (flee, learned bool) {
-	c := f.Cells[key]
-	if !t.Learn || c == nil || c.N < t.MinFights {
-		return true, false
-	}
-	p := (c.Deaths + 1) / (c.N + 2)
-	return p*t.DeathCostS > t.FleeCostS+FleeDeath(f, key, t)*t.DeathCostS, true
+// Decide returns whether to flee in a case the rule would flee from, comparing the expected costs:
+// staying, P(death | stay) × DeathCostS; fleeing, FleeCostS + P(death | flee) × DeathCostS; with both
+// rates. No fixed threshold (the user, 2026-10-30): with 3 fresh attackers and 75 %+ of health, the
+// crowd rule fled 126 times (16 deaths) where staying won 58 times in 88 (6 deaths), and the cases it
+// fled from had no stay learned to decide from (MinFights).
+func Decide(f *Flee, key string, slack, loss float64, t Tuning) (flee bool, stay, fleeP float64) {
+	stay, fleeP = StayDeath(f, key, slack, loss, t), FleeDeath(f, key, t)
+	return stay*t.DeathCostS > t.FleeCostS+fleeP*t.DeathCostS, stay, fleeP
 }
 
 // outcome reads the "flee outcome" lines of logs/combat.log (combat/flee.go).
