@@ -704,8 +704,22 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 			for _, f := range st.Failed {
 				failed[f.Quest] = true
 			}
+			// Held only when in the log after the job: a batch stopped by a failure never reached the
+			// quests after it, and Shipment to Stormwind, never taken, was "held" then walked back to its
+			// giver an hour later (series ef134e9).
+			var after struct {
+				Quests []struct {
+					ID uint32 `json:"id"`
+				} `json:"quests"`
+			}
+			inLog := map[uint32]bool{}
+			if r.call("state.brief", map[string]any{}, &after) == nil {
+				for _, q := range after.Quests {
+					inLog[q.ID] = true
+				}
+			}
 			for _, id := range hold {
-				if !ps.finished[id] && !failed[id] {
+				if !ps.finished[id] && !failed[id] && inLog[id] {
 					ps.held[id] = time.Now()
 				}
 			}

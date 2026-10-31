@@ -14,7 +14,7 @@ const (
 	// Shipment to Stormwind, a 4.5 min round trip per run for 790 XP (walking analysis, 2026-10-31).
 	holdFar    = 800
 	holdLevels = 3
-	holdMax    = 45 * time.Minute
+	holdMax    = 150 * time.Minute // Shipment to Stormwind waits from level 6 to the level-10 visit (45 min released it at level 8)
 	holdAtMost = 8 // quests kept at once (the log holds 25)
 )
 
