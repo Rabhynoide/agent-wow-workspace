@@ -148,6 +148,21 @@ for l in read(f"logs/bench_{name}.money"):
     prev = cur
 money_split = ", ".join(f"{k} {v}" for k, v in money_moves.most_common()) or "pas de relevé"
 final_level = me.get("level", levels[-1][0] if levels else 1)
+# Experience gained and its rate (comparable when runs stop before the target level): XP to reach each
+# level from the previous one (player_xp_for_level, levels 1-79).
+XP_FOR = [400, 900, 1400, 2100, 2800, 3600, 4500, 5400, 6500, 7600, 8700, 9800, 11000, 12300, 13600, 15000, 16400, 17800, 19300,
+          20800, 22400, 24000, 25500, 27200, 28900, 30500, 32200, 33900, 36300, 38800, 41600, 44600, 48000, 51400, 55000, 58700,
+          62400, 66200, 70200, 74300, 78500, 82800, 87100, 91600, 96300, 101000, 105800, 110700, 115700, 120900, 126100, 131500,
+          137000, 142500, 148200, 154000, 159900, 165800, 172000, 290000, 317000, 349000, 386000, 428000, 475000, 527000, 585000,
+          648000, 717000, 1523800, 1539600, 1555700, 1571800, 1587900, 1604200, 1620700, 1637400, 1653900, 1670800]
+total_xp = lambda lv, xp: sum(XP_FOR[:max(lv - 1, 0)]) + xp
+xp_start = None
+for l in level_log[:3]:
+    m = re.search(r"level (\d+) \(xp (\d+)\)", l)
+    if m:
+        xp_start = (int(m.group(1)), int(m.group(2)))
+        break
+xp_gain = total_xp(final_level, me.get("xp", 0)) - total_xp(*xp_start) if xp_start and "xp" in me else None
 reached = final_level >= int(target)
 
 date = datetime.datetime.fromtimestamp(start).strftime("%Y-%m-%d %H:%M")
@@ -156,6 +171,7 @@ lines = [f"# Bench {name} — {race} {cls} {first_level} → {target} ({date})",
          f"- Commit : {commit}",
          f"- Résultat : {'OBJECTIF ATTEINT' if reached else 'non atteint'} (niveau {final_level}, code level.sh {code}) en {minutes:.1f} min",
          f"- Temps par niveau (minutes depuis le début) : " + ", ".join(f"{lv}: {m:.1f}" for lv, m in levels),
+         f"- Expérience : " + (f"{xp_gain} XP en {minutes:.1f} min, {xp_gain / max(minutes, 1e-9):.0f} XP/min ; niveau final {final_level} + {100 * me.get('xp', 0) / XP_FOR[final_level - 1]:.0f} %" if xp_gain is not None else "inconnue (pas d'XP de départ dans le log)"),
          f"- Répartition du temps : {split}",
          f"- Argent (cuivres gagnés + / dépensés − par activité) : {money_split}",
          f"- Réglages : {json.dumps(tuning, separators=(',', ':')) if isinstance(tuning, dict) else tuning}",

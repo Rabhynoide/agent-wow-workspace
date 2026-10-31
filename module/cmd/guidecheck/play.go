@@ -4,7 +4,7 @@ package main
 // it runs the next quests the character can do (auto.run); when the next quest needs a higher level
 // (minimum level, quest far above, or found too dangerous), it grinds one level on attackable monsters
 // around the character (auto.grind) and comes back to the route. Quests auto cannot do, already done
-// or not for this race/class are skipped. It stops at the target level, after repeated deaths, or when
+// or not for this race/class are skipped. It stops at the target level, after 20 min without experience, or when
 // nothing progresses; details go to logs/level_<name>.log, short lines to stdout.
 
 import (
@@ -574,7 +574,7 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 	raceName, className := nameOf(raceIDs, race), nameOf(classIDs, class)
 	ps := &playState{finished: c.rewardedOf(char), skipped: map[uint32]string{}, retryAt: map[uint32]uint32{}, held: map[uint32]time.Time{},
 		waitUntil: map[uint32]time.Time{}, tries: map[uint32]int{}, skippedAt: map[uint32]time.Time{}, flights: map[uint32]int{}, failLevel: map[uint32]uint32{}}
-	say("%s (%s %s) level %d -> %d, %d quests already rewarded", char, raceName, className, b.Self.Level, until, len(ps.finished))
+	say("%s (%s %s) level %d (xp %d) -> %d, %d quests already rewarded", char, raceName, className, b.Self.Level, b.Self.XP, until, len(ps.finished))
 	if ids := c.addClassQuests(className, raceName, class); len(ids) > 0 {
 		var why []string
 		for _, id := range ids {
@@ -592,6 +592,9 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 	defer savePlan(planPath(char), ps)
 	deaths, idle := 0, 0
 	lastXP := time.Now()
+	// noXPStop: a run that gains no experience this long is stuck (death loop, blocked path, nothing
+	// to do); long enough for a slow trip between continents.
+	const noXPStop = 20 * time.Minute
 	tune := tuning.NewSource(learnPath)
 	var quests *questTable
 	// learnAll adds the new log lines to the learned tables (fights, borderline flee decisions, quest
@@ -637,8 +640,11 @@ func (c *checker) play(r rpc, char string, until uint32, dbcDir string, maxMin i
 			say("level %d reached", me.Level)
 			return 0
 		}
-		if deaths >= 3 {
-			say("STOP: 3 deaths in this run (see %s)", "logs/level_"+char+".log")
+		// No death count stop any more (the user, 2026-11-01): a death already costs its time (96 s on
+		// average to get up), and stopping after 3 cut the 6 -> 10 runs before their level, so they could
+		// not be compared. A run that dies again and again stops making experience: noXPStop below.
+		if time.Since(lastXP) > noXPStop {
+			say("STOP: no experience for %d min (%d deaths in this run, see logs/level_%s.log)", int(time.Since(lastXP).Minutes()), deaths, char)
 			return 1
 		}
 		// Rounds that only postpone quests (retried in 3 min) end in a second: four of them stopped the
