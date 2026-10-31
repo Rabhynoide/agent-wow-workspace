@@ -54,6 +54,7 @@ type Service struct {
 	jobs      *jobs.Runner[*pb.AutoStatus]
 	guard     atomic.Bool // defend when attacked between jobs
 	items     sync.Map    // item entry -> *worldpb.ItemInfo (food checks)
+	vendors   sync.Map    // vendor entry -> []*worldpb.VendorItem (static: the gear checks asked again every 20 s)
 	detection sync.Map    // creature entry -> detection range (clear.go aggroOf)
 	// money when a repair failed (not enough): no new repair trip before we earn a silver more
 	repairFailedAt atomic.Uint32
