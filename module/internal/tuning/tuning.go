@@ -231,11 +231,19 @@ func FleeDeath(f *Flee, key string, t Tuning) float64 {
 const stayPriorN = 4.0
 
 // StayDeath is the death rate of staying: the chance that the fight costs more than our health
-// (slack = health - expected loss; a spread of half the expected loss, at least 15 %: a fight can
-// cost twice its average), corrected by the stays learned in the case.
+// (slack = health - expected loss), corrected by the stays learned in the case. The curve is fitted
+// per number of attackers on the learned stays (stayFit): a floor (monsters joining, packs growing:
+// 3 attackers left 45 % of health and still died 8 times in 53) and a spread of the loss. Before 20
+// stays, a spread of half the expected loss (at least 15 %) and no floor: with it, 4 attackers and a
+// slack of 30 % or more were given 3 % where 31 % died (2026-10-31).
 func StayDeath(f *Flee, key string, slack, loss float64, t Tuning) float64 {
-	sigma := max(15, loss/2)
-	prior := 0.5 * math.Erfc(slack/(sigma*math.Sqrt2))
+	floor, sigma := 0.0, max(15, loss/2)
+	if fresh, _, ok := strings.Cut(key, ":"); ok && t.Learn {
+		if fl, sg, ok := f.stayFit(fresh); ok {
+			floor, sigma = fl, sg
+		}
+	}
+	prior := floor + (1-floor)*0.5*math.Erfc(slack/(sigma*math.Sqrt2))
 	c := f.Cells[key]
 	if !t.Learn || c == nil {
 		return prior
@@ -243,11 +251,63 @@ func StayDeath(f *Flee, key string, slack, loss float64, t Tuning) float64 {
 	return (c.Deaths + stayPriorN*prior) / (c.N + stayPriorN)
 }
 
+// stayFitMin: stays of a number of attackers needed to fit its curve.
+const stayFitMin = 20
+
+// stayFit fits P(death | slack) = floor + (1 - floor) P(Z > slack / sigma) to the stays learned with
+// this number of fresh attackers (cell slack buckets at their middle), by maximum likelihood on a grid.
+// Fitted on 2026-10-31: 1 attacker floor 0.05 sigma 8, 2: 0.07 and 13, 3: 0 and 36, 4+: 0.16 and 45.
+func (f *Flee) stayFit(fresh string) (floor, sigma float64, ok bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if v, done := f.fits[fresh]; done {
+		return v[0], v[1], v[2] > 0
+	}
+	type obs struct{ s, n, d float64 }
+	var cells []obs
+	total := 0.0
+	for k, c := range f.Cells {
+		kf, kb, _ := strings.Cut(k, ":")
+		b, err := strconv.Atoi(kb)
+		if kf != fresh || err != nil || c.N == 0 {
+			continue
+		}
+		cells = append(cells, obs{float64(b) + 5, c.N, c.Deaths})
+		total += c.N
+	}
+	if f.fits == nil {
+		f.fits = map[string][3]float64{}
+	}
+	if total < stayFitMin {
+		f.fits[fresh] = [3]float64{}
+		return 0, 0, false
+	}
+	best := math.Inf(-1)
+	for i := 0; i <= 60; i++ {
+		fl := float64(i) / 100
+		for sg := 5.0; sg <= 150; sg++ {
+			ll := 0.0
+			for _, o := range cells {
+				p := fl + (1-fl)*0.5*math.Erfc(o.s/(sg*math.Sqrt2))
+				p = min(max(p, 1e-4), 1-1e-4)
+				ll += o.d*math.Log(p) + (o.n-o.d)*math.Log(1-p)
+			}
+			if ll > best {
+				best, floor, sigma = ll, fl, sg
+			}
+		}
+	}
+	f.fits[fresh] = [3]float64{floor, sigma, 1}
+	return floor, sigma, true
+}
+
 // Flee is journal/learn/flee.json.
 type Flee struct {
-	Until     string           `json:"until"`      // time of the last stay learned
-	FleeUntil string           `json:"flee_until"` // time of the last flight learned (empty: the whole log)
-	Cells     map[string]*Cell `json:"cells"`
+	mu        sync.Mutex
+	fits      map[string][3]float64 // stayFit by fresh attackers: floor, sigma, fitted (1)
+	Until     string                `json:"until"`      // time of the last stay learned
+	FleeUntil string                `json:"flee_until"` // time of the last flight learned (empty: the whole log)
+	Cells     map[string]*Cell      `json:"cells"`
 }
 
 // Key of a decision: fresh attackers (1, 2, 3, 4+) and health slack (effective health minus expected

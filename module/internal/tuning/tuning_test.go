@@ -54,3 +54,21 @@ time=2026-10-14T10:03:00Z level=INFO msg="flee outcome" key=2:10 stayed=true how
 		t.Errorf("key %s", k)
 	}
 }
+
+// The stay curve is fitted on the learned stays of a number of attackers: 3 attackers dying 5 times
+// in 50 with 40-50 % of slack give a floor or a spread that keeps ~10 % there, not the 1 % of a spread
+// of half the loss.
+func TestStayFit(t *testing.T) {
+	f := &Flee{Cells: map[string]*Cell{"3:40": {N: 50, Deaths: 5}, "3:-20": {N: 10, Deaths: 9}, "3:60": {N: 20, Deaths: 0}}}
+	d := Defaults()
+	if _, _, ok := f.stayFit("2"); ok {
+		t.Fatal("no stays of 2: no fit")
+	}
+	p := StayDeath(&Flee{Cells: map[string]*Cell{"3:40": {N: 50, Deaths: 5}, "3:-20": {N: 10, Deaths: 9}, "3:60": {N: 20, Deaths: 0}}}, "3:30", 35, 40, d)
+	if p < 0.05 || p > 0.25 {
+		t.Fatalf("fitted P(death) at slack 35: %v", p)
+	}
+	if q := StayDeath(f, "2:30", 35, 40, d); q > 0.05 {
+		t.Fatalf("unfitted P(death) at slack 35: %v", q)
+	}
+}
