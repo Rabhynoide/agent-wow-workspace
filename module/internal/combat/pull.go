@@ -20,16 +20,9 @@ import (
 // is chosen so that it and its adds fit in our capacity; failing that we body pull it: stand where
 // only it sees us, wait until it comes, back off to a safe spot, then fight.
 
-func aggroRange(player, creature uint32) float32 { return safe.AggroRange(player, creature) }
-
 // aggroFn gives a monster's aggro radius against us (its detection range from the creature
 // template, our levels: safe.AggroRangeOf).
 type aggroFn func(o *statepb.Obj) float32
-
-// levelAggro uses the default detection range (tests, and when the template is unknown).
-func levelAggro(level uint32) aggroFn {
-	return func(o *statepb.Obj) float32 { return safe.AggroRangeOf(safe.DefaultDetection, level, o.Level) }
-}
 
 // aggroOf reads each monster's detection range (18 for every monster of Elwynn, not the default 20:
 // the pull choice saw adds 2 yards too far) once per entry.
@@ -49,10 +42,6 @@ func (s *Service) aggroOf(ctx context.Context, level uint32) aggroFn {
 		}
 		return safe.AggroRangeOf(det, level, o.Level)
 	}
-}
-
-func dist3D(a, b *statepb.Obj) float32 {
-	return float32(math.Sqrt(float64((a.X-b.X)*(a.X-b.X) + (a.Y-b.Y)*(a.Y-b.Y) + (a.Z-b.Z)*(a.Z-b.Z))))
 }
 
 // groupYards: with the adaptive pull size, one more monster in a pull is worth this many yards of

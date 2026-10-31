@@ -40,9 +40,7 @@ type Tuning struct {
 	// damage is measured, we hold above FleeLateHold % of health.
 	FleeLate     bool    `json:"flee_late"`
 	FleeLateHold float64 `json:"flee_late_hold"`
-	CrowdFlee    int     `json:"crowd_flee"` // fresh attackers that make a crowd (0 = no crowd rule)
-	CrowdLoss    float64 `json:"crowd_loss"` // expected loss over which a crowd makes us flee
-	Avoid        bool    `json:"avoid"`      // paths walk around monsters (move/avoid.go)
+	Avoid        bool    `json:"avoid"` // paths walk around monsters (move/avoid.go)
 	// AvoidWander: share of a wandering monster's wander radius (creature.wander_distance) added to
 	// the disc a path keeps out of around it (move/avoid.go); 0 = its aggro range only.
 	AvoidWander float32 `json:"avoid_wander"`
@@ -60,19 +58,15 @@ type Tuning struct {
 	BuyGear bool `json:"buy_gear"`
 	// guidecheck: flights in a quest before it is postponed to the next level.
 	PostponeAfterFlights int `json:"postpone_after_flights"`
-	// Learning: in a borderline case (expected to survive, the rule says flee), stay and fight with
-	// this probability, to measure the death rate; once a case has MinFights, decide from it.
-	Explore    float64 `json:"explore"`
+	// Learning: the outcomes of the stays and flights of the borderline cases (flee.json) feed the
+	// flee decision by cost (Decide). No crowd rule or exploration since 2026-10-30.
 	Learn      bool    `json:"learn"`
-	MinFights  float64 `json:"min_fights"`
 	DeathCostS float64 `json:"death_cost_s"` // run to the corpse, rest, durability
 	FleeCostS  float64 `json:"flee_cost_s"`  // run, rest, the quest or spot left
 	// A flight can kill too: since 2026-10-21, 8 of the 19 flights the rule ordered died, nearly all
 	// with no health slack left. The learned death rate of the flights of a case (prior FleeDeathPrior,
-	// worth fleePriorN flights) adds P(death) × DeathCostS to FleeCostS. Where it reaches
-	// ExploreFleeDeath, staying is explored even without slack (the rule never stays there).
-	FleeDeathPrior   float64 `json:"flee_death_prior"`
-	ExploreFleeDeath float64 `json:"explore_flee_death"` // 0: no exploration without slack
+	// worth fleePriorN flights) adds P(death) × DeathCostS to FleeCostS.
+	FleeDeathPrior float64 `json:"flee_death_prior"`
 	// Extra health loss per add, times the single fight (xpscore.AddCost): the pull choice and the
 	// flight rule. Engagements of 2026-10-13/14 (levels 6-9, won, started at 90 %+): 2 monsters lost
 	// 1.5 times a single fight, 3 monsters 1.7 times (about 0.5 per add, but the lost ones are missing).
@@ -108,15 +102,6 @@ type Tuning struct {
 	// EatFromLevel: a rest eats food only from this character level; below, it waits standing (health
 	// came back from 52 to 100 % in 4 s at levels 6-7, series M of 2026-10-24). 1 = always eat.
 	EatFromLevel uint32 `json:"eat_from_level"`
-	// ExploreSafe: exploration probability (instead of Explore) for a borderline case expected to leave
-	// at least ExploreSafeSlack % of health: such stays are cheap to try, and the cells of 3 fresh
-	// attackers filled too slowly at 25 % (13 stays in 8 runs, 2026-10-24).
-	ExploreSafe      float64 `json:"explore_safe"`
-	ExploreSafeSlack float64 `json:"explore_safe_slack"`
-	// ExploreMinSlack: a borderline case is explored only when the fight is expected to leave us more
-	// than this % of health (an exploration at a 3 % margin against 4 fresh kobolds killed us, series
-	// ES run 3). Where fleeing kills often (ExploreFleeDeath) it is explored anyway.
-	ExploreMinSlack float64 `json:"explore_min_slack"`
 	// QuestDefer: guidecheck passes over a quest whose learned failure rate at our level
 	// (journal/learn/quests.json) reaches this, after QuestDeferMin tries; it is tried when nothing
 	// else is left. 0 = off.
@@ -135,11 +120,11 @@ type Tuning struct {
 //   - chase_margin 10 per fresh attacker beyond the first: Prowler + Young Forest Bear at level 9,
 //     flight started at 34 %, dead 8 s later.
 func Defaults() Tuning {
-	return Tuning{FleeMargin: 15, HighMargin: 10, ChaseMargin: 10, FleeDPS: true, FleeExposure: 8, FleeExposureFresh: 3, FleeReserve: 5, FleeLate: true, FleeLateHold: 60, CrowdFlee: 0, CrowdLoss: 30, Avoid: false, AvoidWander: 0.5,
-		PostponeAfterFlights: 1, Explore: 0.25, Learn: true, MinFights: 6, DeathCostS: 180, FleeCostS: 90,
-		FleeDeathPrior: 0.1, ExploreFleeDeath: 0.2,
-		AddCost: 1.5, PullAdapt: false, PullSize: 2, PullSizeMax: 4, PullUpAfter: 2,
-		WarriorRestBelow: 55, SafeRestBelow: 40, RestAdaptive: true, RestFloor: 30, VerticalGiveUp: true, EatFromLevel: 10, ExploreSafe: 0.5, ExploreSafeSlack: 40, ExploreMinSlack: 15, QuestDefer: 0, QuestDeferMin: 4}
+	return Tuning{FleeMargin: 15, HighMargin: 10, ChaseMargin: 10, FleeDPS: true, FleeExposure: 8, FleeExposureFresh: 3, FleeReserve: 5, FleeLate: true, FleeLateHold: 60, Avoid: false, AvoidWander: 0.5,
+		PostponeAfterFlights: 1, Learn: true, DeathCostS: 170, FleeCostS: 50,
+		FleeDeathPrior: 0.1,
+		AddCost:        1.5, PullAdapt: false, PullSize: 2, PullSizeMax: 4, PullUpAfter: 2,
+		WarriorRestBelow: 55, SafeRestBelow: 40, RestAdaptive: true, RestFloor: 30, VerticalGiveUp: true, EatFromLevel: 10, QuestDefer: 0, QuestDeferMin: 4}
 }
 
 // cached reads a JSON file again when it changes (looked at every 10 s at most).
