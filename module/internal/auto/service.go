@@ -48,14 +48,16 @@ type job = jobs.Job[*pb.AutoStatus]
 
 type Service struct {
 	pb.UnimplementedAutoServer
-	sess      modv1.SessionClient
-	corpse    chan [4]float32
-	api       api.C
-	jobs      *jobs.Runner[*pb.AutoStatus]
-	guard     atomic.Bool // defend when attacked between jobs
-	items     sync.Map    // item entry -> *worldpb.ItemInfo (food checks)
-	vendors   sync.Map    // vendor entry -> []*worldpb.VendorItem (static: the gear checks asked again every 20 s)
-	detection sync.Map    // creature entry -> detection range (clear.go aggroOf)
+	sess       modv1.SessionClient
+	corpse     chan [4]float32
+	api        api.C
+	jobs       *jobs.Runner[*pb.AutoStatus]
+	guard      atomic.Bool // defend when attacked between jobs
+	items      sync.Map    // item entry -> *worldpb.ItemInfo (food checks)
+	vendors    sync.Map    // vendor entry -> []*worldpb.VendorItem (static: the gear checks asked again every 20 s)
+	questInfos sync.Map    // quest id -> *worldpb.QuestInfo
+	itemSrcs   sync.Map    // item entry -> []*worldpb.ItemSource
+	detection  sync.Map    // creature entry -> detection range (clear.go aggroOf)
 	// money when a repair failed (not enough): no new repair trip before we earn a silver more
 	repairFailedAt atomic.Uint32
 	repairNoneAt   atomic.Int64 // unix time of the last search that found no reachable repair vendor
@@ -483,6 +485,8 @@ type run struct {
 	lastEngageCheck                           time.Time // engage.go
 	lastGearCheck                             time.Time // gearshop.go
 	gearSeen                                  map[[3]uint32]bool
+	questWanted                               map[uint32]bool // questTargets, worked out at questWantedAt
+	questWantedAt                             time.Time
 	weaponWant, weaponVendor                  uint32          // copper kept aside for a weapon upgrade seen, and its vendor (gearshop.go)
 	owned                                     map[uint32]bool // item entries we carry or wear, at the last gear look
 	weaponAt                                  *worldpb.Spawn  // the vendor of the weapon kept aside (gearshop.go)
@@ -711,7 +715,11 @@ func (r *run) walk(x, y, z, radius float32) error {
 		if prey != nil && !attacked {
 			_ = r.s.api.MoveStop(r.ctx)
 			engaged++
-			r.step("engaging monster %d (level %d) on the way, %.0f yards away", prey.Entry, prey.Level, prey.Dist)
+			why := "on the way"
+			if r.questWanted[prey.Entry] {
+				why = "for a quest, on the way"
+			}
+			r.step("engaging monster %d (level %d) %s, %.0f yards away", prey.Entry, prey.Level, why, prey.Dist)
 			if _, err := r.fightJob(&combatpb.KillRequest{Guid: prey.Guid, Radius: 60, MaxS: 60, WaitS: 20}); err != nil &&
 				!strings.Contains(err.Error(), "no live entry") {
 				r.note("engaging on the way: %v", err)
