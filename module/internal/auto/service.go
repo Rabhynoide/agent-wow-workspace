@@ -58,6 +58,7 @@ type Service struct {
 	detection sync.Map    // creature entry -> detection range (clear.go aggroOf)
 	// money when a repair failed (not enough): no new repair trip before we earn a silver more
 	repairFailedAt atomic.Uint32
+	repairNoneAt   atomic.Int64 // unix time of the last search that found no reachable repair vendor
 	// money when a food trip bought nothing (too poor): no new trip before we earn a silver more
 	foodFailedAt atomic.Uint32
 	// lastVendor: where the last vendor we reached stands (map, x, y), searched around when none is
@@ -1311,7 +1312,9 @@ func (r *run) fightJob(req *combatpb.KillRequest) (uint32, error) {
 	var total uint32
 	for chests := 0; ; {
 		if err := r.ensureRepair(); err != nil {
-			return total, err
+			// Fight on with worn gear: a grind east of Elwynn with no repair vendor within 500 yards
+			// failed at once 58 times in a row, 36 min until the time limit (run Benchzbnlkj).
+			r.step("could not repair: %v", err)
 		}
 		st, err := r.s.api.CombatKill(r.ctx, req)
 		var chest *questpb.Chest
