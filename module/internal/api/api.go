@@ -315,8 +315,13 @@ func (c C) CombatStop(ctx context.Context) error {
 
 // FindVendor lists the nearest NPCs with any of the npc flags (128 vendor, 4096 repair).
 func (c C) FindVendor(ctx context.Context, mapID uint32, x, y float32, flags uint32) ([]*worldpb.Spawn, error) {
+	return c.FindVendorWithin(ctx, mapID, x, y, flags, 500)
+}
+
+// FindVendorWithin lists the vendors with these flags within radius yards, nearest first.
+func (c C) FindVendorWithin(ctx context.Context, mapID uint32, x, y float32, flags uint32, radius float32) ([]*worldpb.Spawn, error) {
 	var r worldpb.FindNpcResponse
-	err := invoke.Call(ctx, c.S, "world", "find_npc", &worldpb.FindNpcRequest{MapFilter: true, Map: mapID, X: x, Y: y, Radius: 500, Max: 12, NpcFlags: flags}, &r)
+	err := invoke.Call(ctx, c.S, "world", "find_npc", &worldpb.FindNpcRequest{MapFilter: true, Map: mapID, X: x, Y: y, Radius: radius, Max: 12, NpcFlags: flags}, &r)
 	return r.Spawns, err
 }
 

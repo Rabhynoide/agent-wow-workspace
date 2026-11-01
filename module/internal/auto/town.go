@@ -19,8 +19,15 @@ const (
 	shopRadius = 40
 	// shopEvery: no new visit on the way sooner than this after the last one (a turn-in visits anyway).
 	shopEvery = 3 * time.Minute
-	// shopRepairBelow: repair at a vendor we visit anyway below this durability (percent).
-	shopRepairBelow = 90
+	// shopRepairBelow: repair at a vendor we visit anyway below this durability (percent): any wear
+	// (the user, 2026-11-02): the stop costs nothing more, and we leave with all the margin before
+	// deaths far from any vendor (5 deaths east of Elwynn took the gear under 60 % an hour after the
+	// last vendor, run Benchzbnlkj).
+	shopRepairBelow = 100
+	// repairFar: under this durability with no repair vendor within 500 yards, we travel to the
+	// nearest one within repairFarRadius (gear near 0 % gives nothing).
+	repairFar       = 25
+	repairFarRadius = 5000
 	// repairRetry: after a search found no reachable repair vendor, the next one waits this long.
 	repairRetry = 5 * time.Minute
 )
@@ -46,10 +53,24 @@ func (r *run) ensureRepair() error {
 	if err != nil {
 		return err
 	}
+	far := false
+	if len(vendors) == 0 && snap.DurabilityPct < repairFar {
+		if vendors, err = r.s.api.FindVendorWithin(r.ctx, me.Map, me.X, me.Y, repairFlag, repairFarRadius); err != nil {
+			return err
+		}
+		far = true
+	}
 	var lastErr error
 	for _, v := range vendors {
 		if len(v.Name) == 0 || v.Name[0] == '[' {
 			continue
+		}
+		if far {
+			r.step("gear at %d%%, no repair vendor near: travelling to %s (%.0f yards)", snap.DurabilityPct, v.Name, v.Dist)
+			if err := r.goTo(v.Map, v.X, v.Y, v.Z); err != nil {
+				lastErr = err
+				continue
+			}
 		}
 		npc, err := r.reachVendor(v.Entry, v.X, v.Y, v.Z)
 		if err != nil {
