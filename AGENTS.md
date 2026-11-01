@@ -17,9 +17,11 @@ change by the minutes it saves (measurement protocol and roadmap: `NOTES.md` « 
 
 ## Session memory (read first)
 
-Before anything else read `NOTES.md` (character state, how to start/stop, pitfalls) and
-`MODULES.md` (module RPC reference). `BACKLOG.md` lists known issues. Do not read the Go sources
-unless you change a module. Prefer the scripts in `./scripts` (`start.sh`, `job.sh`, `rpc.sh`):
+Before anything else read `NOTES.md` (character state, how to start/stop, pitfalls). Read
+`MODULES.md` (module RPC reference) only when you call a module RPC or change a module, and only
+the section you need; `BACKLOG.md` (open work) the same way. Do not read the Go sources unless you
+change a module. History (series analyses, done items) lives in `journal/`: search it, do not read
+it whole. Prefer the scripts in `./scripts` (`start.sh`, `job.sh`, `rpc.sh`):
 they wait and filter so that one tool call replaces many.
 
 ## System checks
