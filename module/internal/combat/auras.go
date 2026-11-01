@@ -33,9 +33,3 @@ func hasAura(auras []*statepb.Aura, spells ...uint32) bool {
 
 // auraState tells whether the aura state n (1-based, Spell.dbc numbering) is set in UNIT_FIELD_AURASTATE.
 func auraState(field, n uint32) bool { return n > 0 && field&(1<<(n-1)) != 0 }
-
-// needsRefresh: the aura is missing, or ours expires within ms.
-func needsRefresh(auras []*statepb.Aura, spells []uint32, ms uint32) bool {
-	left, ok := auraLeft(auras, spells, true)
-	return !ok || left < ms
-}

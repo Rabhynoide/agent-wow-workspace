@@ -64,7 +64,7 @@ func (r *run) zoneWeapon(me *statepb.SelfInfo) {
 			continue
 		}
 		done[v.Entry] = true
-		items, err := r.s.api.VendorItems(r.ctx, v.Entry)
+		items, err := r.vendorItems(v.Entry)
 		if err != nil || len(items) == 0 {
 			continue
 		}
@@ -97,7 +97,7 @@ func (r *run) gearOnTheWay() *gearBuy {
 	r.zoneWeapon(me)
 	if at := r.weaponAt; at != nil && r.weaponWant > 0 && me.Money >= r.weaponWant && at.Map == me.Map &&
 		math.Hypot(float64(at.X-me.X), float64(at.Y-me.Y)) < gearDetour {
-		if items, err := r.s.api.VendorItems(r.ctx, at.Entry); err == nil {
+		if items, err := r.vendorItems(at.Entry); err == nil {
 			if w := r.bestOf(items, me.Level, true, me.Money); w != nil {
 				w.vendor = &statepb.Obj{Entry: at.Entry, X: at.X, Y: at.Y, Z: at.Z,
 					Dist: float32(math.Hypot(float64(at.X-me.X), float64(at.Y-me.Y)))}
@@ -130,7 +130,7 @@ func (r *run) gearOnTheWay() *gearBuy {
 			continue
 		}
 		r.gearSeen[key] = true
-		items, err := r.s.api.VendorItems(r.ctx, v.Entry)
+		items, err := r.vendorItems(v.Entry)
 		if err != nil || len(items) == 0 {
 			continue
 		}
@@ -187,7 +187,7 @@ func (g *gearBuy) String() string {
 // sellsWeapons tells whether a vendor's items include a weapon.
 func (r *run) sellsWeapons(items []*worldpb.VendorItem) bool {
 	for _, it := range items {
-		if info, err := r.s.api.ItemInfo(r.ctx, it.Entry); err == nil && info.Class == 2 {
+		if info, err := r.itemInfo(it.Entry); err == nil && info.Class == 2 {
 			return true
 		}
 	}
@@ -202,7 +202,7 @@ func (r *run) bestOf(items []*worldpb.VendorItem, level uint32, weapon bool, bud
 		if r.owned[it.Entry] {
 			continue
 		}
-		info, err := r.s.api.ItemInfo(r.ctx, it.Entry)
+		info, err := r.itemInfo(it.Entry)
 		if err != nil || (info.Class == 2) != weapon {
 			continue
 		}
@@ -238,4 +238,29 @@ func (r *run) buyGear(g *gearBuy) {
 		r.weaponWant, r.weaponVendor, r.weaponAt = 0, 0, nil // the weapon kept aside is bought: armor may follow
 	}
 	r.gearUp()
+}
+
+// itemInfo is an item's template, cached for the service (it never changes).
+func (r *run) itemInfo(entry uint32) (*worldpb.ItemInfo, error) {
+	if v, ok := r.s.items.Load(entry); ok {
+		return v.(*worldpb.ItemInfo), nil
+	}
+	in, err := r.s.api.ItemInfo(r.ctx, entry)
+	if err == nil {
+		r.s.items.Store(entry, in)
+	}
+	return in, err
+}
+
+// vendorItems is what a vendor sells, cached for the service: a gear check every 20 s asked the
+// world database again for every vendor in sight and every item they sell.
+func (r *run) vendorItems(entry uint32) ([]*worldpb.VendorItem, error) {
+	if v, ok := r.s.vendors.Load(entry); ok {
+		return v.([]*worldpb.VendorItem), nil
+	}
+	items, err := r.s.api.VendorItems(r.ctx, entry)
+	if err == nil {
+		r.s.vendors.Store(entry, items)
+	}
+	return items, err
 }

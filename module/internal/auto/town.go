@@ -21,6 +21,8 @@ const (
 	shopEvery = 3 * time.Minute
 	// shopRepairBelow: repair at a vendor we visit anyway below this durability (percent).
 	shopRepairBelow = 90
+	// repairRetry: after a search found no reachable repair vendor, the next one waits this long.
+	repairRetry = 5 * time.Minute
 )
 
 // ensureRepair goes to the nearest repair vendor when the gear is worn out, and trades there.
@@ -34,6 +36,9 @@ func (r *run) ensureRepair() error {
 		return nil
 	}
 	if failed := r.s.repairFailedAt.Load(); failed > 0 && me.Money < failed+100 {
+		return nil
+	}
+	if time.Since(time.Unix(r.s.repairNoneAt.Load(), 0)) < repairRetry {
 		return nil
 	}
 	r.step("going to repair (durability %d%%)", snap.DurabilityPct)
@@ -54,6 +59,7 @@ func (r *run) ensureRepair() error {
 		r.trade(npc)
 		return nil
 	}
+	r.s.repairNoneAt.Store(time.Now().Unix())
 	return fmt.Errorf("no reachable repair vendor (%d candidates): %v", len(vendors), lastErr)
 }
 

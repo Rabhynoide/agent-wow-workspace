@@ -3,7 +3,6 @@ package move
 import (
 	"os"
 
-	pb "wowagent/gen/movev1"
 	"wowagent/internal/nav"
 	"wowagent/internal/roads"
 	"wowagent/internal/terrain"
@@ -34,11 +33,6 @@ func (p *Planner) OnRoad(mapID uint32, x, y float32) bool {
 // point within reach of an unreachable destination.
 func (p *Planner) Path(mapID uint32, from, to [3]float32, reach float32) ([][3]float32, float32, error) {
 	return p.s.planReach(mapID, from, to[0], to[1], to[2], nil, reach)
-}
-
-// Areas gives the areas a path crosses (move.path with_areas).
-func (p *Planner) Areas(mapID uint32, pts [][3]float32) []*pb.AreaSpan {
-	return areaSpans(p.s.terrainFor(mapID), pts)
 }
 
 func (p *Planner) Mesh(mapID uint32) (*nav.Mesh, error) { return p.s.mesh(mapID) }

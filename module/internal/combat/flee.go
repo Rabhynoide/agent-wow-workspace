@@ -234,9 +234,6 @@ func (s *Service) lateHold(me *statepb.SelfInfo, att []*statepb.Obj) (bool, stri
 	return left > lateMargin*toKill, fmt.Sprintf("finishing %d: %.0f s to kill, %.0f s before the threshold", weakest.Entry, toKill, left)
 }
 
-// exploreHopeless: no exploration when the expected loss is above our health by more than this (%).
-const exploreHopeless = 20
-
 // lateGroup: from this many attackers, no hold before the damage is measured.
 const lateGroup = 3
 
@@ -347,8 +344,7 @@ func (s *Service) losing(me *statepb.SelfInfo, att []*statepb.Obj) (bool, float6
 	if m, ok := s.dpsMargin(me, t, fresh, att); ok {
 		margin = max(margin, m)
 	}
-	crowded := t.CrowdFlee > 0 && fresh >= max(t.CrowdFlee, s.pullSize.cap(t)+1)
-	return (crowded && loss > t.CrowdLoss) || loss > float64(pct(me.Hp, me.MaxHp))-margin, loss
+	return loss > float64(pct(me.Hp, me.MaxHp))-margin, loss
 }
 
 // dpsMargin is the flee margin from the damage we take (tuning flee_dps): what it costs during a
@@ -375,21 +371,6 @@ func (s *Service) dpsPct(me *statepb.SelfInfo) float64 {
 	return math.Round(1000*dps/float64(me.MaxHp)) / 10
 }
 
-// crowd tells whether at least n attackers (tuning crowd_flee, 0 = no crowd rule) have more than half
-// their health.
-func crowd(att []*statepb.Obj, n int) bool {
-	if n <= 0 {
-		return false
-	}
-	fresh := 0
-	for _, a := range att {
-		if a.MaxHp > 0 && 2*a.Hp > a.MaxHp {
-			fresh++
-		}
-	}
-	return fresh >= n
-}
-
 // flee runs back along our trail (trail.go), then from safe spot to safe spot, until nothing targets
 // us (or fleeMaxS), and reports whether we died on the way. The attackers are skipped by the pull choice for a while, not given up: we
 // still fight them back if they catch us.
@@ -414,7 +395,7 @@ func (s *Service) flee(ctx context.Context, j *job, me *statepb.SelfInfo, att []
 	if way == "trail" {
 		idx = trailIdx
 	}
-	slog.Info("fleeing", "hp", pct(me.Hp, me.MaxHp), "loss_left", int(loss), "attackers", entries, "crowd", crowd(att, s.tuneGet().CrowdFlee),
+	slog.Info("fleeing", "hp", pct(me.Hp, me.MaxHp), "loss_left", int(loss), "attackers", entries,
 		"zone", [2]int{int(z.x), int(z.y)}, "way", way, "legs", len(legs), "dps_pct", s.dpsPct(me))
 	j.Update(func(st *pb.CombatStatus) { st.Doing = "fleeing" })
 	s.trail.pause(true)
@@ -568,26 +549,3 @@ func (s *Service) giveUpVertical(ctx context.Context, me *statepb.SelfInfo, t *s
 
 // unhittable ends a fight against a target given up (giveUp): another one is picked, the job goes on.
 const unhittable = "unhittable"
-
-// exploreProb is the probability to explore a borderline case not learned yet: only when the fight is
-// expected to leave us more than ExploreMinSlack % of health, or where fleeing kills often.
-func exploreProb(t tuning.Tuning, slack float64, fleeKills bool) float64 {
-	// Never a hopeless stay: even where fleeing often kills, a fight expected to cost 117 % of a 61 %
-	// health (slack -56, 3 fresh attackers) was explored and died (run of 2026-10-26 00:09).
-	if slack < -exploreHopeless {
-		return 0
-	}
-	if slack > max(t.ExploreMinSlack, 0) || fleeKills {
-		return exploreRate(t, slack)
-	}
-	return 0
-}
-
-// exploreRate is the probability to explore a borderline case: tuning ExploreSafe when the fight is
-// expected to leave us ExploreSafeSlack % of health or more, else Explore.
-func exploreRate(t tuning.Tuning, slack float64) float64 {
-	if t.ExploreSafe > t.Explore && slack >= t.ExploreSafeSlack {
-		return t.ExploreSafe
-	}
-	return t.Explore
-}

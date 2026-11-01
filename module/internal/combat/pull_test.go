@@ -147,3 +147,10 @@ func TestRestNeed(t *testing.T) {
 		t.Errorf("unknown: %d", need)
 	}
 }
+
+func aggroRange(player, creature uint32) float32 { return safe.AggroRange(player, creature) }
+
+// levelAggro uses the default detection range.
+func levelAggro(level uint32) aggroFn {
+	return func(o *statepb.Obj) float32 { return safe.AggroRangeOf(safe.DefaultDetection, level, o.Level) }
+}

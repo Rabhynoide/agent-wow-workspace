@@ -123,16 +123,12 @@ func TestLateHold(t *testing.T) {
 	}
 }
 
-// Against a group, no hold before the measure; no hopeless exploration (run of 2026-10-26 00:09).
+// Against a group, no hold before the measure (run of 2026-10-26 00:09).
 func TestGroupGuards(t *testing.T) {
 	me := &statepb.SelfInfo{Hp: 230, MaxHp: 250}
 	group := []*statepb.Obj{{Guid: 1, Hp: 100, MaxHp: 100}, {Guid: 2, Hp: 100, MaxHp: 100}, {Guid: 3, Hp: 100, MaxHp: 100}}
 	if hold, _ := (&Service{}).lateHold(me, group); hold {
 		t.Fatal("held against 3 attackers before measuring")
-	}
-	tu := tuning.Defaults()
-	if p := exploreProb(tu, -56, true); p != 0 {
-		t.Fatalf("hopeless exploration: %v", p)
 	}
 }
 
