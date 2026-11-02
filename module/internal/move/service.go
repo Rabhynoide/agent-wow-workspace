@@ -298,6 +298,9 @@ func navPlan(m *nav.Mesh, tm *terrain.Maps, vm *vmap.Tree, from, to [3]float32, 
 	// Monsters on the way: the shortest path bent just outside their aggro discs (nav.Bend), each
 	// corner-to-corner leg smoothed on its own; the weighted A* below is the fallback.
 	if len(f.Avoid) > 0 {
+		f.Avoid = onPathFloor(m, src, dst, f)
+	}
+	if len(f.Avoid) > 0 {
 		pts, why := bentPlan(m, src, dst, f)
 		if why == "" {
 			return onGround(pts, tm, vm), nil

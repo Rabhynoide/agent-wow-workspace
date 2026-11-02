@@ -19,11 +19,15 @@ import (
 // walking, a monster newly seen close to the rest of the path makes us plan again (recheckEvery).
 
 const (
-	avoidMargin  = 4  // yards added to a monster's aggro range
-	avoidSeen    = 90 // yards: monsters farther away are not sent (the server shows ~100)
-	avoidFloor   = 12 // yards of height: a monster on another floor or ledge is ignored
-	recheckEvery = 3  // seconds between two looks for new monsters on the way
-	recheckAhead = 80 // yards of the remaining path checked
+	avoidMargin = 4  // yards added to a monster's aggro range
+	avoidSeen   = 90 // yards: monsters farther away are not sent (the server shows ~100)
+	avoidFloor  = 12 // yards of height: a monster that far above or below the path where it passes is ignored
+	// avoidSeenFloor: monsters up to this far above or below us are sent to the planner, which keeps
+	// those the path passes at their height (onPathFloor): ignoring them by OUR height let 25 of 303
+	// passes attack us in the mines, the path climbing to them (walk watch, 2026-11-02).
+	avoidSeenFloor = 40
+	recheckEvery   = 3  // seconds between two looks for new monsters on the way
+	recheckAhead   = 80 // yards of the remaining path checked
 )
 
 var tuneSrc = tuning.NewSource("")
@@ -53,7 +57,7 @@ func (s *Service) dangers(ctx context.Context, me *statepb.SelfInfo, x, y, z flo
 	if near, err := s.api.Nearby(ctx, &statepb.NearbyRequest{Kind: "unit", Radius: avoidSeen, Max: 60, AliveOnly: true, HostileOnly: true}); err == nil {
 		homes := s.spawnsNear(ctx, me)
 		for _, o := range near.Objs {
-			if o.Target != 0 || math.Abs(float64(o.Z-me.Z)) > avoidFloor {
+			if o.Target != 0 || math.Abs(float64(o.Z-me.Z)) > avoidSeenFloor {
 				continue // in a fight already (with us: running away from it is the flight's job)
 			}
 			r := safe.AggroRange(me.Level, o.Level) + avoidMargin
@@ -164,4 +168,33 @@ func homeOf(homes []*worldpb.Spawn, o *statepb.Obj) *worldpb.Spawn {
 		}
 	}
 	return best
+}
+
+// onPathFloor keeps the dangers that the plain path passes within their radius at their height
+// (within avoidFloor yards up or down): a monster on another floor of a mine is ignored where the path
+// stays below it, and kept where the path climbs to it.
+func onPathFloor(m *nav.Mesh, src, dst nav.V3, f nav.Filter) []nav.Danger {
+	plain := f
+	plain.Avoid = nil
+	path, err := m.SmoothPath(src, dst, plain, nav.SmoothStep, nav.SmoothSlop)
+	if err != nil || len(path) < 2 {
+		return f.Avoid
+	}
+	var keep []nav.Danger
+	for _, d := range f.Avoid {
+		near, level := false, false
+		for _, p := range path {
+			if math.Hypot(float64(p[0]-d.P[0]), float64(p[2]-d.P[2])) <= float64(d.R) {
+				near = true
+				if math.Abs(float64(p[1]-d.P[1])) <= avoidFloor {
+					level = true
+					break
+				}
+			}
+		}
+		if level || !near {
+			keep = append(keep, d) // off the path: no matter (the bend may still meet it)
+		}
+	}
+	return keep
 }
