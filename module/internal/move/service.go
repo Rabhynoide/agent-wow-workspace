@@ -585,7 +585,9 @@ func (s *Service) run(j *job, rt *route, speed float32, flags uint32) {
 	s.rmu.Lock()
 	s.walking, s.walkFlags, s.next = true, flags, nil
 	s.rmu.Unlock()
+	watch := newWalkWatch()
 	finish := func(state, reason string) {
+		watch.log()
 		s.rmu.Lock()
 		s.walking, s.next = false, nil
 		s.rmu.Unlock()
@@ -663,6 +665,8 @@ func (s *Service) run(j *job, rt *route, speed float32, flags uint32) {
 			if b, err := s.api.Brief(ctx); err == nil && b.Self != nil && b.Self.Dead && !b.Self.Ghost {
 				finish("failed", "character died")
 				return
+			} else if err == nil && b.Self != nil {
+				watch.sample(ctx, s, b.Self, rt)
 			}
 		}
 		step := speed * float32(now.Sub(lastTick).Seconds())
