@@ -12,6 +12,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"wowagent/internal/safe"
 
 	modv1 "github.com/agent-wow/agent-wow/pkg/modules/v1"
 	"github.com/agent-wow/agent-wow/pkg/opcode"
@@ -1011,15 +1012,58 @@ func (r *run) explore(info *worldpb.QuestInfo) error {
 		return nil
 	}
 	r.step("explore %s (%.0f,%.0f)", best.Name, best.X, best.Y)
-	// Go well inside: the server checks the distance to the trigger center against its radius.
-	if err := r.clearWalk(best.X, best.Y, best.Z, min(best.Radius/2, 5)); err != nil {
-		return err
+	// Go well inside (the server checks the distance to the trigger center against its radius), at
+	// the point of the trigger farthest from the monsters' aggro: walking to the center of the mine
+	// entrances drew 18 of the 45 attacks by monsters near the walk's destination (walk watch,
+	// 2026-11-02); the path does not go around monsters next to its destination.
+	x, y, z := r.exploreSpot(me, best)
+	if err := r.clearWalk(x, y, z, 2); err != nil {
+		if x == best.X && y == best.Y {
+			return err
+		}
+		if err := r.clearWalk(best.X, best.Y, best.Z, min(best.Radius/2, 5)); err != nil {
+			return err
+		}
 	}
 	if res, err := r.s.api.Explore(r.ctx, best.Entry); err != nil || !res.Ok {
 		return fmt.Errorf("explore: %v %s", err, res.GetReason())
 	}
 	jobs.Sleep(r.ctx, 1500*time.Millisecond)
 	return nil
+}
+
+// exploreSpot is the point of an area trigger (the center or rings at 30 and 60 % of its radius) that
+// enters the fewest aggro discs of the idle hostile monsters around, the nearest to us on ties.
+func (r *run) exploreSpot(me *statepb.SelfInfo, o *worldpb.QuestObjective) (float32, float32, float32) {
+	vis, err := r.s.api.Nearby(r.ctx, &statepb.NearbyRequest{Kind: "unit", Radius: 90, Max: 60, AliveOnly: true, HostileOnly: true})
+	if err != nil || len(vis.Objs) == 0 || o.Radius < 4 {
+		return o.X, o.Y, o.Z
+	}
+	type cand struct{ x, y, cost float32 }
+	cands := []cand{{x: o.X, y: o.Y}}
+	for _, f := range []float32{0.3, 0.6} {
+		for i := 0; i < 12; i++ {
+			a := float64(i) * math.Pi / 6
+			cands = append(cands, cand{x: o.X + f*o.Radius*float32(math.Cos(a)), y: o.Y + f*o.Radius*float32(math.Sin(a))})
+		}
+	}
+	best := -1
+	for i := range cands {
+		c := &cands[i]
+		for _, m := range vis.Objs {
+			if m.Target != 0 || math.Abs(float64(m.Z-o.Z)) > 12 {
+				continue
+			}
+			if in := safe.AggroRange(me.Level, m.Level) + 3 - dist2(c.x, c.y, m.X, m.Y); in > 0 {
+				c.cost += in
+			}
+		}
+		c.cost += 0.05 * dist2(c.x, c.y, me.X, me.Y)
+		if best < 0 || c.cost < cands[best].cost {
+			best = i
+		}
+	}
+	return cands[best].x, cands[best].y, o.Z
 }
 
 func dist2(ax, ay, bx, by float32) float32 {
