@@ -29,6 +29,8 @@ type passed struct {
 	avoided      bool    // a danger of the route
 	wander       bool    // a wandering spawn
 	dz           float32 // height difference at the closest point
+	toDest       float32 // its distance to the walk's destination when first seen
+	why          string  // why the path did not go around it (avoided false)
 }
 
 type walkWatch struct {
@@ -52,7 +54,21 @@ func (w *walkWatch) sample(ctx context.Context, s *Service, me *statepb.SelfInfo
 				continue
 			}
 			p = &passed{entry: o.Entry, level: o.Level, minDist: d, expected: safe.AggroRange(me.Level, o.Level),
-				avoided: rt.known[o.Guid], wander: homeOf(homes, o) != nil, dz: float32(math.Abs(float64(o.Z - me.Z)))}
+				avoided: rt.known[o.Guid], wander: homeOf(homes, o) != nil, dz: float32(math.Abs(float64(o.Z - me.Z))),
+				toDest: float32(math.Hypot(float64(o.X-rt.target[0]), float64(o.Y-rt.target[1])))}
+			switch {
+			case p.avoided:
+			case !tuneSrc.Get().Avoid:
+				p.why = "avoid off"
+			case p.toDest < p.expected+avoidMargin+10:
+				p.why = "near destination"
+			case p.dz > avoidFloor:
+				p.why = "other floor"
+			case len(rt.known) == 0:
+				p.why = "no dangers planned"
+			default:
+				p.why = "seen after planning"
+			}
 			w.seen[o.Guid] = p
 		}
 		if p.aggroDist > 0 {
@@ -75,6 +91,6 @@ func (w *walkWatch) log() {
 			continue
 		}
 		slog.Info("walk pass", "entry", p.entry, "level", p.level, "min_dist", int(p.minDist), "aggro_dist", int(p.aggroDist),
-			"expected", int(p.expected), "avoided", p.avoided, "wander", p.wander, "dz", int(p.dz))
+			"expected", int(p.expected), "avoided", p.avoided, "wander", p.wander, "dz", int(p.dz), "to_dest", int(p.toDest), "why", p.why)
 	}
 }
