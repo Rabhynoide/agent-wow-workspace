@@ -1,109 +1,110 @@
 {
- "until": "2026-11-01T15:11:20.408Z",
- "flee_until": "2026-11-01T15:19:35.209Z",
+ "until": "2026-11-03T09:07:49.486Z",
+ "flee_until": "2026-11-03T09:06:02.239Z",
  "cells": {
   "1:-10": {
    "n": 2,
    "deaths": 1,
-   "flee_n": 11,
+   "flee_n": 14,
    "flee_deaths": 6
   },
   "1:-20": {
    "n": 0,
    "deaths": 0,
-   "flee_n": 3
+   "flee_n": 4,
+   "flee_deaths": 1
   },
   "1:-30": {
    "n": 0,
    "deaths": 0,
-   "flee_n": 8,
-   "flee_deaths": 2
+   "flee_n": 9,
+   "flee_deaths": 3
   },
   "1:0": {
-   "n": 2,
+   "n": 3,
    "deaths": 0,
    "flee_n": 21,
    "flee_deaths": 6
   },
   "1:10": {
-   "n": 0,
-   "deaths": 0,
+   "n": 3,
+   "deaths": 1,
    "flee_n": 37,
    "flee_deaths": 4
   },
   "1:20": {
-   "n": 7,
-   "deaths": 0,
+   "n": 21,
+   "deaths": 3,
    "flee_n": 49,
    "flee_deaths": 3
   },
   "1:30": {
-   "n": 4,
-   "deaths": 0,
+   "n": 17,
+   "deaths": 1,
    "flee_n": 35,
    "flee_deaths": 1
   },
   "1:40": {
-   "n": 20,
-   "deaths": 1,
+   "n": 31,
+   "deaths": 3,
    "flee_n": 6
   },
   "1:50": {
-   "n": 5,
+   "n": 10,
    "deaths": 1,
    "flee_n": 1
   },
   "2:-10": {
    "n": 1,
    "deaths": 1,
-   "flee_n": 33,
+   "flee_n": 37,
    "flee_deaths": 4
   },
   "2:-20": {
    "n": 0,
    "deaths": 0,
-   "flee_n": 9,
-   "flee_deaths": 2
+   "flee_n": 10,
+   "flee_deaths": 3
   },
   "2:-30": {
    "n": 0,
    "deaths": 0,
-   "flee_n": 14,
-   "flee_deaths": 5
+   "flee_n": 18,
+   "flee_deaths": 8
   },
   "2:0": {
    "n": 0,
    "deaths": 0,
-   "flee_n": 31,
+   "flee_n": 33,
    "flee_deaths": 1
   },
   "2:10": {
-   "n": 3,
-   "deaths": 1,
+   "n": 7,
+   "deaths": 2,
    "flee_n": 35,
    "flee_deaths": 2
   },
   "2:20": {
-   "n": 10,
-   "deaths": 0,
+   "n": 19,
+   "deaths": 2,
    "flee_n": 56,
    "flee_deaths": 2
   },
   "2:30": {
-   "n": 25,
-   "deaths": 0,
+   "n": 51,
+   "deaths": 1,
    "flee_n": 66,
    "flee_deaths": 2
   },
   "2:40": {
-   "n": 103,
-   "deaths": 8,
+   "n": 123,
+   "deaths": 9,
    "flee_n": 11,
    "flee_deaths": 2
   },
   "2:50": {
-   "n": 22,
-   "deaths": 1,
+   "n": 39,
+   "deaths": 2,
    "flee_n": 13,
    "flee_deaths": 1
   },
@@ -114,104 +115,104 @@
   "3:-10": {
    "n": 0,
    "deaths": 0,
-   "flee_n": 44,
+   "flee_n": 47,
    "flee_deaths": 7
   },
   "3:-20": {
    "n": 3,
    "deaths": 3,
-   "flee_n": 21,
-   "flee_deaths": 5
+   "flee_n": 24,
+   "flee_deaths": 6
   },
   "3:-30": {
    "n": 1,
    "deaths": 1,
-   "flee_n": 41,
-   "flee_deaths": 6
+   "flee_n": 52,
+   "flee_deaths": 8
   },
   "3:0": {
    "n": 2,
    "deaths": 2,
-   "flee_n": 43,
+   "flee_n": 51,
    "flee_deaths": 4
   },
   "3:10": {
    "n": 2,
    "deaths": 1,
-   "flee_n": 62,
-   "flee_deaths": 3
+   "flee_n": 69,
+   "flee_deaths": 4
   },
   "3:20": {
-   "n": 15,
+   "n": 19,
    "deaths": 5,
    "flee_n": 70,
    "flee_deaths": 5
   },
   "3:30": {
-   "n": 15,
-   "deaths": 2,
+   "n": 22,
+   "deaths": 4,
    "flee_n": 78,
    "flee_deaths": 6
   },
   "3:40": {
-   "n": 60,
+   "n": 69,
    "deaths": 8,
    "flee_n": 36
   },
   "3:50": {
-   "n": 60,
-   "deaths": 4,
+   "n": 67,
+   "deaths": 5,
    "flee_n": 20
   },
   "3:60": {
-   "n": 28,
+   "n": 34,
    "deaths": 0,
    "flee_n": 31
   },
   "4:-10": {
    "n": 4,
    "deaths": 2,
-   "flee_n": 5,
+   "flee_n": 11,
    "flee_deaths": 1
   },
   "4:-20": {
    "n": 3,
    "deaths": 2,
-   "flee_n": 5,
-   "flee_deaths": 1
+   "flee_n": 9,
+   "flee_deaths": 2
   },
   "4:-30": {
    "n": 5,
    "deaths": 4,
-   "flee_n": 32,
-   "flee_deaths": 10
+   "flee_n": 66,
+   "flee_deaths": 16
   },
   "4:0": {
    "n": 4,
    "deaths": 3,
-   "flee_n": 11,
+   "flee_n": 19,
    "flee_deaths": 3
   },
   "4:10": {
    "n": 4,
    "deaths": 2,
-   "flee_n": 8,
+   "flee_n": 19,
    "flee_deaths": 1
   },
   "4:20": {
-   "n": 5,
-   "deaths": 1,
+   "n": 7,
+   "deaths": 3,
    "flee_n": 6,
    "flee_deaths": 1
   },
   "4:30": {
-   "n": 8,
+   "n": 9,
    "deaths": 3,
    "flee_n": 1
   },
   "4:40": {
-   "n": 13,
-   "deaths": 3,
+   "n": 16,
+   "deaths": 4,
    "flee_n": 8,
    "flee_deaths": 2
   },

@@ -266,3 +266,7 @@ date,name,commit,race,class,target,reached,final_level,minutes,deaths,quests_don
 2026-11-02 18:05,Benchvhclcf,845a0c2,human,warrior,8,1,8,37.0,1,7,1,7,6,0,89,warrior_human_6,6
 2026-11-02 18:43,Benchurjgpk,845a0c2,human,warrior,8,1,8,46.7,2,9,0,10,1,0,244,warrior_human_6,6
 2026-11-02 19:31,Benchlkcyrv,845a0c2,human,warrior,8,1,8,36.7,0,9,1,8,5,0,220,warrior_human_6,6
+2026-11-03 00:59,Benchsfdjjy,15a7199,human,warrior,10,1,10,150.2,9,8,3,44,11,0,1628,wt_warrior_human_6,6
+2026-11-03 03:30,Benchjmsirr,15a7199,human,warrior,10,1,10,122.0,4,6,0,30,10,0,1760,wt_warrior_human_6,6
+2026-11-03 05:34,Benchnyxkay,15a7199,human,warrior,10,1,10,128.9,4,5,0,42,3,0,964,wt_warrior_human_6,6
+2026-11-03 07:44,Benchdwspqk,15a7199,human,warrior,10,1,10,149.8,6,8,1,56,6,0,502,wt_warrior_human_6,6
